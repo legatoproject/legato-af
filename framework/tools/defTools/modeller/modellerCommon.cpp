@@ -648,7 +648,26 @@ size_t GetNonNegativeInt
 )
 //--------------------------------------------------------------------------------------------------
 {
-    auto valueTokenPtr = sectionPtr->Contents()[0];
+    return GetNonNegativeInt(sectionPtr->Contents()[0]);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Extracts the integer value from a token and verifies that it is
+ * non-negative.
+ *
+ * @return the value.
+ *
+ * @throw mk::Exception if out of range.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t GetNonNegativeInt
+(
+    const parseTree::Token_t *valueTokenPtr
+)
+//--------------------------------------------------------------------------------------------------
+{
     char* endPtr;
     errno = 0;
     size_t result = strtoul(valueTokenPtr->text.c_str(), &endPtr, 0);

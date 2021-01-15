@@ -993,6 +993,22 @@ static void AddRequiredItems
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add a pool size from a "pools:" section to the API referenced by the pool.
+ */
+//--------------------------------------------------------------------------------------------------
+static bool AddPoolToApi
+(
+    model::ApiRef_t *apiPtr,
+    const std::string &poolName,
+    size_t poolSize
+)
+//--------------------------------------------------------------------------------------------------
+{
+    return apiPtr->poolSizeEntries.insert(std::make_pair(poolName, poolSize)).second;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Adds the items from a given "pools:" section to a given Component_t object.
  */
 //--------------------------------------------------------------------------------------------------
@@ -1003,8 +1019,7 @@ static void AddPoolItems
     const mk::BuildParams_t         &buildParams
 )
 {
-    model::MemPoolSize_t::PoolType_t    type;
-    std::string                         name;
+    std::string                         name, api;
     unsigned int                        size;
 
     // Iterate over every parsed pool token object in the pools section.
@@ -1012,40 +1027,53 @@ static void AddPoolItems
     {
         auto poolPtr = static_cast<const parseTree::Pool_t *>(itemPtr);
 
-        // A valid specification must have at least two tokens: POOL_NAME and SIZE.
-        if (poolPtr->Contents().size() < 2)
+        switch (poolPtr->Contents().size())
         {
-            poolPtr->ThrowException(LE_I18N("Invalid pool size specification."));
-        }
+            case 2:
+                // Component pool
+                name = poolPtr->Contents()[0]->text;
+                size = GetNonNegativeInt(poolPtr->Contents()[1]);
 
-        // A pool size specification may have an optional leading scope token.  Currently
-        // "messaging" is the only non-default scope.
-        if (poolPtr->Contents()[0]->text == "<messaging>")
-        {
-            // If a scope is specified, then at least three tokens are needed: SCOPE, POOL_NAME, and
-            // SIZE.
-            if (poolPtr->Contents().size() < 3)
+                if (!componentPtr->poolSizeEntries.insert(std::make_pair(name, size)).second)
+                {
+                    poolPtr->ThrowException(LE_I18N("Duplicate pool entry."));
+                }
+                break;
+            case 3:
             {
-                poolPtr->ThrowException(LE_I18N("Missing pool name."));
+                model::ApiServerInterface_t *serverApi;
+                model::ApiClientInterface_t *clientApi;
+
+                api  = poolPtr->Contents()[0]->text;
+                name = poolPtr->Contents()[1]->text;
+                size = GetNonNegativeInt(poolPtr->Contents()[2]);
+
+                if ((serverApi = componentPtr->FindServerInterface(api)))
+                {
+                    if (!AddPoolToApi(serverApi, name, size))
+                    {
+                        poolPtr->ThrowException(LE_I18N("Duplicate pool entry."));
+                    }
+                }
+                else if ((clientApi = componentPtr->FindClientInterface(api)))
+                {
+                    if (!AddPoolToApi(clientApi, name, size))
+                    {
+                        poolPtr->ThrowException(LE_I18N("Duplicate pool entry."));
+                    }
+                }
+                else
+                {
+                    poolPtr->ThrowException(mk::format(LE_I18N("No API found named '%s.'"),
+                                                       api));
+                }
+
+                break;
+            default:
+                poolPtr->ThrowException(
+                    LE_I18N("INTERNAL ERROR: Invalid pool size specification in modelling.")
+                );
             }
-
-            // Messaging pool specification.
-            type = model::MemPoolSize_t::POOLTYPE_MESSAGING;
-            name = poolPtr->Contents()[1]->text;
-            size = std::stoul(poolPtr->Contents()[2]->text);
-        }
-        else
-        {
-            // Normal, two token user pool specification.
-            type = model::MemPoolSize_t::POOLTYPE_USER;
-            name = poolPtr->Contents()[0]->text;
-            size = std::stoul(poolPtr->Contents()[1]->text);
-        }
-
-        // Insert the new pool size specification.
-        if (!componentPtr->poolSizeEntries.insert(model::MemPoolSize_t(type, name, size)).second)
-        {
-            poolPtr->ThrowException(LE_I18N("Duplicate pool entry."));
         }
     }
 }

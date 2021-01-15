@@ -17,5 +17,5 @@ sources:
 
 pools:
 {
-    <messaging>.ipcTest_Messages = 3
+    ipcTest.ipcTest_Messages = 3
 }

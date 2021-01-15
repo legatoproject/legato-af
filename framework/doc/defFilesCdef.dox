@@ -233,43 +233,47 @@ ldflags:
 
 This section specifies the number of memory pool blocks that each @ref c_memory "memory pool" should
 contain.  If a pool's size is not specified here then it takes whatever default is defined in the
-code at the location where the pool is created.
+code at the location where the pool is created.  In order to use this feature, your memory pool
+must either be:
 
-This feature can be useful on any platform to adjust pools to the right size if le_mem_AssertAlloc
-is being used or if the @ref MEM_ALLOC_ASSERT KConfig option is selected.  On highly constrained
-systems such as those running RTOSes this feature allows for easier fine tuning of the system's
-memory footprint.
+ * a static memory pool defined with @ref LE_MEM_DEFINE_STATIC_POOL, or
+ * a dynamic memory pool and call
+   `le_mem_ExpandPool(myPoolRef, LE_MEM_BLOCKS(PoolName, DEFAULT_SIZE))`, where myPoolRef is the
+   pool reference created by @ref le_mem_CreatePool, PoolName is the name of the pool, and
+   `DEFAULT_SIZE` is the default size of your pool, if it is not overridden.
 
-There are two pool "scopes" that are currently defined.
-
-The "user" scope is the default and requires no prefix.  It defines a preprocessor macro of
-`_mem_%poolName%_POOL_SIZE`, which must then be used as the parameter specifying the number of
-blocks when creating the memory pool to have any effect.  Replace `%poolSize%` with the camel-cased
-name of the pool.  The macros for static memory pool creation will perform this substitution
-automatically, and will select the default value from code if the value is not provided in the
-.cdef.  This default selection behaviour can be used elsewhere in code explicitly via the
-@ref LE_MEM_BLOCKS macro.
-
-The "messaging" scope is denoted by prefixing the pool name with the literal string "<messaging>."
-and provides control over the pool sizes in the generated IPC messaging code.  The following pool
-names may be used in this scope, each corresponding to a generated memory pool (replace "API" here
-with the actual interface name):
-
- * `API_ClientThreadData`: Expected maximum simultaneous client threads.
- * `API_ClientData`: Expected maximum simultaneous client data items.
- * `API_Messages`: Expected number of clients of this server API.
- * `API_ServerData`: Expected number of simultaneous server data objects.
- * `API_ServerCmd`: Expected number of simultaneous async server commands.
+Then in the .cdef file add a pools section which defines the size of the pool.  So the following
+code would set the pool size to 40:
 
 @code
 pools:
 {
-    <messaging>.myApi_Messages = 4  // Set size of generated "myApi_Messages" memory pool.
+    poolName = 40
+}
+@code
 
-    myPool                     = 45 // Set size of the explicitly declared pool "myPool."  The
-                                    // component's code must use the macro "myPool_POOL_SIZE" when
-                                    // declaring the number of blocks in the pool for this to have
-                                    // any effect.
+This feature can is particularly useful if le_mem_AssertAlloc
+is being used or if the @ref MEM_ALLOC_ASSERT KConfig option is selected.  On highly constrained
+systems such as those running RTOSes this feature allows for fine tuning of the system's
+memory footprint.
+
+If your code uses a Legato API, there are also a number of memory pools which can be fine-tuned
+to control the memory usage of the API
+
+ * `API.API_ClientThreadData`: Expected maximum of client threads connected to this API.
+   Default is 1.
+ * `API.API_ClientData`: Expected maximum number of registered handlers by this client.  Default is
+   the number of handlers in the API + 1.
+ * `API.API_Messages`: Expected maximum number simultaneous function calls to (or from) this API.
+   Default is 1.
+ * `API.API_ServerData`: Expected maximum number of registered handlers by this server.  Default is
+   3.
+ * `API.API_ServerCmd`: Expected number of simultaneous async function calls.  Default is 5.
+
+@code
+pools:
+{
+    myApi.myApi_Messages = 4        // Set size of generated "myApi_Messages" memory pool.
 }
 @endcode
 

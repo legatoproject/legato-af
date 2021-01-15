@@ -25,5 +25,5 @@ sources:
 
 pools:
 {
-    <messaging>.ipcServer_Messages = 3
+    ipcServer.ipcServer_Messages = 3
 }

@@ -41,6 +41,10 @@ static bool DontRunNinja = false;
 static generator::ExeGenerator_t LinuxSteps[] =
 {
     generator::ForAllComponents<GenerateLinuxCode>,
+    [](model::Exe_t *systemPtr, const mk::BuildParams_t& buildParams)
+    {
+        code::CalculateLinuxApiPoolSize(buildParams);
+    },
     code::GenerateLinuxExeMain,
     ninja::GenerateLinux,
     NULL

@@ -174,6 +174,56 @@ Component_t::Component_t
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Searches the list of server-side interface instances for one with a given name.
+ *
+ * @return Pointer to the interface instance object or NULL if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+ApiServerInterface_t* Component_t::FindServerInterface
+(
+    const std::string& name
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto ifPtr : serverApis)
+    {
+        if (ifPtr->internalName == name)
+        {
+            return ifPtr;
+        }
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Searches the list of client-side interface instances for one with a given name.
+ *
+ * @return Pointer to the interface instance object or NULL if not found.
+ */
+//--------------------------------------------------------------------------------------------------
+ApiClientInterface_t* Component_t::FindClientInterface
+(
+    const std::string& name
+)
+//--------------------------------------------------------------------------------------------------
+{
+    for (auto ifPtr : clientApis)
+    {
+        if (ifPtr->internalName == name)
+        {
+            return ifPtr;
+        }
+    }
+
+    return NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Constructor.
  **/
 //--------------------------------------------------------------------------------------------------

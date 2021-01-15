@@ -39,6 +39,10 @@ static generator::ComponentGenerator_t LinuxSteps[] =
 {
     code::GenerateInterfacesHeader,
     code::GenerateLinuxComponentMainFile,
+    [](model::Component_t *systemPtr, const mk::BuildParams_t& buildParams)
+    {
+        code::CalculateLinuxApiPoolSize(buildParams);
+    },
     ninja::GenerateLinux,
     NULL
 };

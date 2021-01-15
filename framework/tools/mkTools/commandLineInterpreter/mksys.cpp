@@ -46,6 +46,10 @@ static const generator::SystemGenerator_t LinuxSteps[] =
     {
         GenerateLinuxCode(model::Component_t::GetComponentMap(), buildParams);
     },
+    [](model::System_t *systemPtr, const mk::BuildParams_t& buildParams)
+    {
+        code::CalculateLinuxApiPoolSize(buildParams);
+    },
     generator::ForAllApps<GenerateLinuxCode>,
     config::Generate,
     ninja::GenerateLinux,
@@ -60,6 +64,7 @@ static const generator::SystemGenerator_t RTOSSteps[] =
         GenerateRtosCode(model::Component_t::GetComponentMap(), buildParams);
     },
     code::CountSystemComponentUsage,
+    code::CountApiPools,
     generator::ForAllApps<GenerateRtosCode>,
     code::GenerateRtosSystemTasks,
     code::GenerateRtosCliCommandRegistration,

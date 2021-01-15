@@ -11,43 +11,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Memory pool size specification.
- */
-//--------------------------------------------------------------------------------------------------
-struct MemPoolSize_t
-{
-    enum PoolType_t
-    {
-        POOLTYPE_USER,      ///< User-created memory pool in the component.
-        POOLTYPE_MESSAGING  ///< Auto-generated memory pool in the messaging code.
-    };
-
-    PoolType_t      type;   ///< Pool type.
-    std::string     name;   ///< Pool name.
-    unsigned int    size;   ///< Number of entries.
-
-    MemPoolSize_t(PoolType_t type, const std::string &name, unsigned int size) :
-        type(type), name(name), size(size)
-    {
-        // Do nothing.
-    }
-
-    bool operator<(const MemPoolSize_t &lhs) const
-    {
-        if (type < lhs.type)
-        {
-            return true;
-        }
-        else if (name < lhs.name)
-        {
-            return true;
-        }
-        return false;
-    }
-};
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Represents a single component.
  */
 //--------------------------------------------------------------------------------------------------
@@ -92,8 +55,8 @@ struct Component_t : public HasTargetInfo_t
     FileObjectPtrSet_t requiredDirs;  ///< List of dirs to be imported into the app.
     FileObjectPtrSet_t requiredDevices;///< List of devices to be imported into the app.
 
-    ///< Map of required modules.
-    ///< Key is module name and value is the struct of token pointer and its bool 'optional' value.
+    /// Map of required modules.
+    /// Key is module name and value is the struct of token pointer and its bool 'optional' value.
     std::map<std::string, model::Module_t::ModuleInfoOptional_t> requiredModules;
 
     std::list<ApiTypesOnlyInterface_t*> typesOnlyApis;///< List of API files to import types from.
@@ -105,7 +68,7 @@ struct Component_t : public HasTargetInfo_t
 
     std::set<std::string> implicitDependencies; ///< Changes to these files triggers a re-link.
 
-    std::set<MemPoolSize_t> poolSizeEntries; ///< Memory pool size specifications.
+    std::map<std::string, size_t> poolSizeEntries; ///< Memory pool size specifications.
 
     // Get a pre-existing Component object for the component found at a given directory path.
     // @return Pointer to the object or NULL if not found.
@@ -171,6 +134,10 @@ struct Component_t : public HasTargetInfo_t
 
     void ThrowIncompatibleLanguageException(const parseTree::CompoundItem_t* conflictSectionPtr)
         const __attribute__((noreturn));
+
+
+    ApiServerInterface_t* FindServerInterface(const std::string& name);
+    ApiClientInterface_t* FindClientInterface(const std::string& name);
 
 protected:
 

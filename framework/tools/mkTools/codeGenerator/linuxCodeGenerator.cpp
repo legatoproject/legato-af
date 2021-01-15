@@ -50,6 +50,69 @@ void GeneratePythonExeMain
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Sum any pools in this reference to the parent file.
+ *
+ * This is needed on RTOS as API pools are shared across all references to the API.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddPoolsToApiFile
+(
+    model::ApiRef_t *apiRefPtr
+)
+{
+    for (const auto &poolEntry : apiRefPtr->poolSizeEntries)
+    {
+        auto insertResult = apiRefPtr->apiFilePtr->poolSizeEntries.insert(poolEntry);
+
+        // If insertion failed because an entry already exists, add the size of the pool
+        // in this
+        if (!insertResult.second)
+        {
+            // The joys of STL maps.
+            // Use the largest pool size value for the new pool size
+            if (poolEntry.second > insertResult.first->second)
+            {
+                insertResult.first->second = poolEntry.second;
+            }
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Find how large an API pool needs to be
+ *
+ * On Linux API pools sizes are shared across all components built in a system, even if
+ * the individual pools are not shared.  Go through each application and component in the system
+ * to calculate the correct pool size.
+ */
+//--------------------------------------------------------------------------------------------------
+void CalculateLinuxApiPoolSize
+(
+    const mk::BuildParams_t& buildParams
+)
+{
+    const auto &componentMap = model::Component_t::GetComponentMap();
+    for (auto componentEntry : componentMap)
+    {
+        auto componentPtr = componentEntry.second;
+
+        for (auto serverApiPtr : componentPtr->serverApis)
+        {
+            AddPoolsToApiFile(serverApiPtr);
+        }
+
+        for (auto clientApiPtr : componentPtr->clientApis)
+        {
+            AddPoolsToApiFile(clientApiPtr);
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate _componentMain.c for a given component.
  *
  * This resolves the undefined service name symbols in all the interfaces' .o files

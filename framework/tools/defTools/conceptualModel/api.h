@@ -81,6 +81,8 @@ struct ApiFile_t
 
     std::string codeGenDir; ///< Path to code generation dir relative to working directory.
 
+    std::map<std::string, size_t> poolSizeEntries; ///< Memory pool size specifications.
+
     // Functions to fetch relative paths to files (relative to root of working dir tree).
     std::string GetClientInterfaceFile (const std::string& internalName) const;
     std::string GetServerInterfaceFile(const std::string& internalName) const;
@@ -141,6 +143,8 @@ struct ApiRef_t
     ApiFile_t* apiFilePtr;    ///< Pointer to the API file object.
 
     Component_t* componentPtr;  ///< Pointer to the component (NULL if unknown).
+
+    std::map<std::string, size_t> poolSizeEntries; ///< Memory pool size specifications.
 
     const std::string internalName;   ///< Name used inside the component to refer to the interface.
 

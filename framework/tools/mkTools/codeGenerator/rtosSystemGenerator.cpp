@@ -115,6 +115,65 @@ void CountSystemComponentUsage
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Sum any pools in this reference to the parent file.
+ *
+ * This is needed on RTOS as API pools are shared across all references to the API.
+ */
+//--------------------------------------------------------------------------------------------------
+static void AddPoolsToApiFile
+(
+    model::ApiRef_t *apiRefPtr
+)
+{
+    for (const auto &poolEntry : apiRefPtr->poolSizeEntries)
+    {
+        auto insertResult = apiRefPtr->apiFilePtr->poolSizeEntries.insert(poolEntry);
+
+        // If insertion failed because an entry already exists, add the size of the pool
+        // in this
+        if (!insertResult.second)
+        {
+            // The joys of STL maps.
+            // Add the API reference pool value to the API file pool value
+            insertResult.first->second += poolEntry.second;
+        }
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add up how many times an API memory pool is used across the entire system.
+ *
+ * On RTOS API pools are shared across all components on the system, so if the user overrides
+ * the memory pool size those overrides need to be added up to get the total size of the pool.
+ */
+//--------------------------------------------------------------------------------------------------
+void CountApiPools
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+)
+{
+    const auto &componentMap = model::Component_t::GetComponentMap();
+    for (auto componentEntry : componentMap)
+    {
+        auto componentPtr = componentEntry.second;
+
+        for (auto serverApiPtr : componentPtr->serverApis)
+        {
+            AddPoolsToApiFile(serverApiPtr);
+        }
+
+        for (auto clientApiPtr : componentPtr->clientApis)
+        {
+            AddPoolsToApiFile(clientApiPtr);
+        }
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -31,7 +31,7 @@ pools:
     /* Clients may call le_atProxy APIs from inside the CommandHandler which is
      * registered with le_atProxy
      */
-    <messaging>.le_atServer_Messages = 2
+    le_atServer.le_atServer_Messages = 2
 }
 
 cflags:

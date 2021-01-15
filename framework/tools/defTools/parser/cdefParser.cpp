@@ -255,18 +255,24 @@ static parseTree::CompoundItem_t *ParsePoolSize
     parseTree::Token_t *scopePtr = NULL;
     parseTree::Token_t *sizePtr;
 
-    // If the first token is a value in angle brackets (not a valid C variable name), handle it as a
-    // scope prefix.
-    if (!lexer.IsMatch(parseTree::Token_t::NAME))
+    // There are two options for pool names.  Either
+    //   poolName         - for pools inside the component, or
+    //   apiName.poolName - for pools inside a referenced API
+
+    // Pull the first name
+    namePtr = lexer.Pull(parseTree::Token_t::NAME);
+
+    // Then check if there's a '.'
+    if (lexer.IsMatch(parseTree::Token_t::DOT))
     {
-        // Get the scope value.
-        scopePtr = lexer.Pull(parseTree::Token_t::IPC_AGENT);
-        // Discard the (required) following dot.
-        (void) lexer.Pull(parseTree::Token_t::DOT);
+        // If there was, the first part is an apiName which scopes the pool,
+        // and the second part is the poolName.
+        scopePtr = namePtr;
+
+        (void)lexer.Pull(parseTree::Token_t::DOT);
+        namePtr = lexer.Pull(parseTree::Token_t::NAME);
     }
 
-    // Get the pool name.
-    namePtr = lexer.Pull(parseTree::Token_t::NAME);
     // Discard the (required) assignment operator.
     (void) lexer.Pull(parseTree::Token_t::EQUALS);
     // Finally, get the size value itself.

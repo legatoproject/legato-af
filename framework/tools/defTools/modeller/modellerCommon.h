@@ -111,6 +111,22 @@ size_t GetNonNegativeInt
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Extracts the integer value from a token and verifies that it is
+ * non-negative.
+ *
+ * @return the value.
+ *
+ * @throw mk::Exception if out of range.
+ */
+//--------------------------------------------------------------------------------------------------
+size_t GetNonNegativeInt
+(
+    const parseTree::Token_t *valueTokenPtr
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Extracts the integer value from a simple (name: value) section and verifies that it is
  * positive.
  *

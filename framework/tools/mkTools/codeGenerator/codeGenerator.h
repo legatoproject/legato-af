@@ -27,6 +27,21 @@ void GenerateInterfacesHeader
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Find how large an API pool needs to be
+ *
+ * On Linux API pools sizes are shared across all components built in a system, even if
+ * the individual pools are not shared.  Go through each application and component in the system
+ * to calculate the correct pool size.
+ */
+//--------------------------------------------------------------------------------------------------
+void CalculateLinuxApiPoolSize
+(
+    const mk::BuildParams_t& buildParams
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate _componentMain.c for a given component on Linux.
  *
  * This resolves the undefined service name symbols in all the interfaces' .o files
@@ -88,6 +103,22 @@ void CountSystemComponentUsage
     model::System_t* systemPtr,
     const mk::BuildParams_t& buildParams
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add up how many times an API memory pool is used across the entire system.
+ *
+ * On RTOS API pools are shared across all components on the system, so if the user overrides
+ * the memory pool size those overrides need to be added up to get the total size of the pool.
+ */
+//--------------------------------------------------------------------------------------------------
+void CountApiPools
+(
+    model::System_t* systemPtr,
+    const mk::BuildParams_t& buildParams
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**

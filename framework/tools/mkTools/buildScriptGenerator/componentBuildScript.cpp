@@ -25,18 +25,32 @@ namespace ninja
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateMemPoolDefinitions
 (
-    const model::Component_t            *componentPtr,
-    model::MemPoolSize_t::PoolType_t     poolType
+    const model::Component_t            *componentPtr
 )
 {
-    for (auto poolSizeEntry : componentPtr->poolSizeEntries)
+    for (const auto &poolSizeEntry : componentPtr->poolSizeEntries)
     {
-        if (poolSizeEntry.type == poolType)
-        {
-            script << " -D_mem_" << poolSizeEntry.name << "_POOL_SIZE=," << poolSizeEntry.size;
-        }
+        script << " -D_mem_" << poolSizeEntry.first << "_POOL_SIZE=," << poolSizeEntry.second;
     }
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Generate preprocessor definition arguments for memory pool sizes.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateMemPoolDefinitions
+(
+    const model::ApiFile_t            *apiFilePtr
+)
+{
+    for (const auto &poolSizeEntry : apiFilePtr->poolSizeEntries)
+    {
+        script << " -D_mem_" << poolSizeEntry.first << "_POOL_SIZE=," << poolSizeEntry.second;
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -163,7 +177,7 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
     script << " -DLE_COMPONENT_NAME=" << componentPtr->name;
 
     // Add cFlags for user memory pool sizes, if provided.
-    GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_USER);
+    GenerateMemPoolDefinitions(componentPtr);
 }
 
 
@@ -929,7 +943,6 @@ void ComponentBuildScriptGenerator_t::GenerateServerUsetypesBuildStatement
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCApiBuildStatement
 (
-    const model::Component_t *componentPtr, ///< The component being built
     const model::ApiFile_t *apiFilePtr, ///< The API associated with this source
     const std::string &objFilePath,  ///< The object file to build.
     const std::string &sourceFilePath, ///< The source file to build from.
@@ -969,7 +982,7 @@ void ComponentBuildScriptGenerator_t::GenerateCApiBuildStatement
             script << " -I$builddir/" << dirPath;
         }
     }
-    GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
+    GenerateMemPoolDefinitions(apiFilePtr);
     script << "\n\n";
 }
 
@@ -1054,12 +1067,14 @@ void ComponentBuildScriptGenerator_t::GenerateJavaUsetypesBuildStatement
 /**
  * Print to a given script a build statement for building the object file for a given client-side
  * API interface.
- **/
+ *
+ * This is called multiple times from different components for the same API file.  In this
+ * case the build statement will only be generated on the first call.
+**/
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
 (
-    const model::Component_t            *componentPtr,
-    const model::ApiClientInterface_t   *ifPtr
+    const model::ApiClientInterface_t* ifPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1089,8 +1104,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
 
         // Then generate a build statement for this source file
-        GenerateCApiBuildStatement(componentPtr,
-                                   ifPtr->apiFilePtr,
+        GenerateCApiBuildStatement(ifPtr->apiFilePtr,
                                    cFiles.commonObjectFile,
                                    cFiles.commonSourceFile,
                                    apiHeaders);
@@ -1113,8 +1127,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
         ifPtr->apiFilePtr->GetClientUsetypesApiHeaders(apiHeaders);
 
-        GenerateCApiBuildStatement(componentPtr,
-                                   ifPtr->apiFilePtr,
+        GenerateCApiBuildStatement(ifPtr->apiFilePtr,
                                    cFiles.objectFile,
                                    cFiles.sourceFile,
                                    apiHeaders);
@@ -1179,6 +1192,9 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
 //--------------------------------------------------------------------------------------------------
 /**
  * Generate the Java ifgen build statement for the client/server side of an API.
+ *
+ * This is called multiple times from different components for the same API file.  In this
+ * case the build statement will only be generated on the first call.
  **/
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateJavaBuildStatement
@@ -1231,6 +1247,9 @@ void ComponentBuildScriptGenerator_t::GenerateJavaBuildStatement
 //--------------------------------------------------------------------------------------------------
 /**
  * Generate the Java ifgen build statement for the client side of an API.
+ *
+ * This is called multiple times from different components for the same API file.  In this
+ * case the build statement will only be generated on the first call.
  **/
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateJavaBuildStatement
@@ -1364,12 +1383,14 @@ void ComponentBuildScriptGenerator_t::GeneratePythonBuildStatement
 /**
  * Print to a given script a build statement for building the object file for a given server-side
  * API interface.
- **/
+ *
+ * This is called multiple times from different components for the same API file.  In this
+ * case the build statement will only be generated on the first call.
+**/
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
 (
-    const model::Component_t            *componentPtr,
-    const model::ApiServerInterface_t   *ifPtr
+    const model::ApiServerInterface_t* ifPtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -1398,8 +1419,7 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
         ifPtr->apiFilePtr->GetServerUsetypesApiHeaders(apiHeaders);
 
-        GenerateCApiBuildStatement(componentPtr,
-                                   ifPtr->apiFilePtr,
+        GenerateCApiBuildStatement(ifPtr->apiFilePtr,
                                    cFiles.objectFile,
                                    cFiles.sourceFile,
                                    apiHeaders);
@@ -1538,7 +1558,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
-            GenerateCBuildStatement(componentPtr, clientApi);
+            GenerateCBuildStatement(clientApi);
         }
     }
 
@@ -1554,7 +1574,7 @@ void ComponentBuildScriptGenerator_t::GenerateIpcBuildStatements
         }
         else
         {
-            GenerateCBuildStatement(componentPtr, serverApi);
+            GenerateCBuildStatement(serverApi);
         }
     }
 
