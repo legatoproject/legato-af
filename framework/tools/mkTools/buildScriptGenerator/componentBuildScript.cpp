@@ -344,9 +344,9 @@ void ComponentBuildScriptGenerator_t::GetCommonApiFiles
     {
         model::InterfaceCFiles_t cFiles;
 
-        clientApiPtr->apiFilePtr->GetCommonInterfaceFiles(cFiles);
+        clientApiPtr->GetInterfaceFiles(cFiles);
 
-        commonApiObjects.insert(cFiles.objectFile);
+        commonApiObjects.insert(cFiles.commonObjectFile);
     }
 }
 
@@ -921,16 +921,69 @@ void ComponentBuildScriptGenerator_t::GenerateServerUsetypesBuildStatement
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print to a given script a build statement for building a given C API source code file's object
+ * file.
+ */
+//--------------------------------------------------------------------------------------------------
+void ComponentBuildScriptGenerator_t::GenerateCApiBuildStatement
+(
+    const model::Component_t *componentPtr, ///< The component being built
+    const model::ApiFile_t *apiFilePtr, ///< The API associated with this source
+    const std::string &objFilePath,  ///< The object file to build.
+    const std::string &sourceFilePath, ///< The source file to build from.
+    const std::set<std::string>& apiHeaders ///< IPC API .h files needed by component.
+)
+{
+    // Create the build statement.
+    script << "build $builddir/" << objFilePath << ":"
+              " CompileC $builddir/" << sourceFilePath;
+
+    // Add order-only dependencies for all the generated .h files that will be needed by the
+    // component.  This ensures that the .c files won't be compiled until all the .h files are
+    // available.
+    // If there are some, add them as order-only dependencies.
+    if (!apiHeaders.empty())
+    {
+        script << " | ";
+
+        for (auto hFilePath : apiHeaders)
+        {
+            script << " $builddir/" << hFilePath;
+        }
+    }
+
+    script << "\n";
+
+    // Define the cFlags variable.
+    script << "  cFlags = $cFlags";
+
+    std::set<std::string> includeDirs;
+    for (auto hFilePath : apiHeaders)
+    {
+        auto dirPath = path::GetContainingDir(hFilePath);
+        if (includeDirs.find(dirPath) == includeDirs.end())
+        {
+            includeDirs.insert(dirPath);
+            script << " -I$builddir/" << dirPath;
+        }
+    }
+    GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
+    script << "\n\n";
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Print to a given script a build statement for building the common files required by an API
+ *
+ * This can be called multiple times from different components for the same API file.  In this
+ * case the build statement will only be generated on the first call.
  **/
 //--------------------------------------------------------------------------------------------------
 void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
 (
-    const model::Component_t    *componentPtr,
-    const model::ApiFile_t      *apiFilePtr
+    const model::ApiFile_t* apiFilePtr
 )
 //--------------------------------------------------------------------------------------------------
 {
@@ -939,60 +992,9 @@ void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
     // Get common header and source files
     apiFilePtr->GetCommonInterfaceFiles(commonFiles);
 
-    if (   (!buildParams.codeGenOnly)
-        && (generatedIPC.find(commonFiles.objectFile) == generatedIPC.end())  )
-    {
-        generatedIPC.insert(commonFiles.objectFile);
-
-        // .o file
-        script << "build $builddir/" << commonFiles.objectFile << ":"
-                  " CompileC $builddir/" << commonFiles.sourceFile;
-
-        // Add order-only dependencies on the generated .h files for this interface so we make sure
-        // those get built first.
-        script << " | $builddir/" << commonFiles.internalHFile << " $builddir/"
-               << commonFiles.interfaceFile;
-
-        // Build a set containing all the .h files that will be included (via USETYPES statements)
-        // by the .h file generated for this .api file.
-        std::set<std::string> apiHeaders;
-        apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
-
-        // If there are some, add them as order-only dependencies.
-        for (auto hFilePath : apiHeaders)
-        {
-            script << " $builddir/" << hFilePath;
-        }
-
-        // Define a cFlags variable that tells the compiler where to look for the interface
-        // headers needed due to USETYPES statements.
-        script << "\n"
-                  "  cFlags = $cFlags";
-        std::set<std::string> includeDirs;
-        for (auto hFilePath : apiHeaders)
-        {
-            auto dirPath = path::GetContainingDir(hFilePath);
-            if (includeDirs.find(dirPath) == includeDirs.end())
-            {
-                includeDirs.insert(dirPath);
-                script << " -I$builddir/" << dirPath;
-            }
-        }
-
-        // Add cFlags for generated message pool sizes, if provided.
-        GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
-        script << "\n\n";
-    }
-
     // .c file and .h files
     std::string generatedFiles;
     std::string ifgenFlags;
-    if (generatedIPC.find(commonFiles.sourceFile) == generatedIPC.end())
-    {
-        generatedIPC.insert(commonFiles.sourceFile);
-        generatedFiles += " $builddir/" + commonFiles.sourceFile;
-        ifgenFlags += " --gen-common-client";
-    }
     if (generatedIPC.find(commonFiles.interfaceFile) == generatedIPC.end())
     {
         generatedIPC.insert(commonFiles.interfaceFile);
@@ -1012,7 +1014,7 @@ void ComponentBuildScriptGenerator_t::GenerateCCommonBuildStatement
         baseGeneratorPtr->GenerateIncludedApis(apiFilePtr);
         script << "\n"
                   "  ifgenFlags =" << ifgenFlags << " $ifgenFlags\n"
-                  "  outputDir = $builddir/" << path::GetContainingDir(commonFiles.sourceFile) <<
+                  "  outputDir = $builddir/" << path::GetContainingDir(commonFiles.interfaceFile) <<
                   "\n"
                   "\n";
     }
@@ -1065,55 +1067,58 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
     ifPtr->GetInterfaceFiles(cFiles);
 
     // Generate common interface files (if needed)
-    GenerateCCommonBuildStatement(componentPtr, ifPtr->apiFilePtr);
+    GenerateCCommonBuildStatement(ifPtr->apiFilePtr);
+
+    // And get the common interface files as they are needed later when building the client
+    // files
+    model::InterfaceCFiles_t commonFiles;
+    ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+
+    if (   (!buildParams.codeGenOnly)
+        && (generatedIPC.find(cFiles.commonObjectFile) == generatedIPC.end())  )
+    {
+        generatedIPC.insert(cFiles.commonObjectFile);
+
+        // Build a set containing all the .h files that will be included (via USETYPES statements)
+        // by the .h file generated for this .api file.
+        std::set<std::string> apiHeaders;
+        apiHeaders.insert(cFiles.internalHFile);
+        apiHeaders.insert(cFiles.interfaceFile);
+        apiHeaders.insert(commonFiles.internalHFile);
+        apiHeaders.insert(commonFiles.interfaceFile);
+        ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
+
+        // Then generate a build statement for this source file
+        GenerateCApiBuildStatement(componentPtr,
+                                   ifPtr->apiFilePtr,
+                                   cFiles.commonObjectFile,
+                                   cFiles.commonSourceFile,
+                                   apiHeaders);
+    }
+
 
     if (   (!buildParams.codeGenOnly)
         && (generatedIPC.find(cFiles.objectFile) == generatedIPC.end())  )
     {
         generatedIPC.insert(cFiles.objectFile);
 
-        // .o file
-        script << "build $builddir/" << cFiles.objectFile << ":"
-                  " CompileC $builddir/" << cFiles.sourceFile;
-
-        // Add dependencies on the generated .h files for this interface so we make sure
-        // those get built first.
-        script << " | $builddir/" << cFiles.internalHFile << " $builddir/" << cFiles.interfaceFile;
-
         // Build a set containing all the .h files that will be included by the .h file generated
         // for this .api file.
         std::set<std::string> apiHeaders;
-        model::InterfaceCFiles_t commonFiles;
-        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+        apiHeaders.insert(cFiles.interfaceFile);
+        apiHeaders.insert(cFiles.internalHFile);
         apiHeaders.insert(commonFiles.interfaceFile);
         apiHeaders.insert(commonFiles.internalHFile);
 
         ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
         ifPtr->apiFilePtr->GetClientUsetypesApiHeaders(apiHeaders);
 
-        // If there are some, add them as order-only dependencies.
-        for (auto const &hFilePath : apiHeaders)
-        {
-            script << " $builddir/" << hFilePath;
-        }
+        GenerateCApiBuildStatement(componentPtr,
+                                   ifPtr->apiFilePtr,
+                                   cFiles.objectFile,
+                                   cFiles.sourceFile,
+                                   apiHeaders);
 
-        // Define a cFlags variable that tells the compiler where to look for the interface
-        // headers needed due to USETYPES statements.
-        script << "\n"
-                  "  cFlags = $cFlags";
-        std::set<std::string> includeDirs;
-        for (auto const &hFilePath : apiHeaders)
-        {
-            auto dirPath = path::GetContainingDir(hFilePath);
-            if (includeDirs.find(dirPath) == includeDirs.end())
-            {
-                includeDirs.insert(dirPath);
-                script << " -I$builddir/" << dirPath;
-            }
-        }
-
-        // Add cFlags for generated message pool sizes, if provided.
-        GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
         script << "\n\n";
     }
 
@@ -1125,6 +1130,26 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
         generatedIPC.insert(cFiles.sourceFile);
         generatedFiles += " $builddir/" + cFiles.sourceFile;
         ifgenFlags += " --gen-client";
+    }
+    if (generatedIPC.find(cFiles.commonSourceFile) == generatedIPC.end())
+    {
+        generatedIPC.insert(cFiles.commonSourceFile);
+        if (ifPtr->internalName == ifPtr->apiFilePtr->defaultPrefix)
+        {
+            generatedFiles += " $builddir/" + cFiles.commonSourceFile;
+            ifgenFlags += " --gen-common-client";
+        }
+        else
+        {
+            // For aliased common sources, need to run ifgen a separate time.
+            script << "build $builddir/" << cFiles.commonSourceFile <<
+                ": GenInterfaceCode " << ifPtr->apiFilePtr->path << " |";
+            baseGeneratorPtr->GenerateIncludedApis(ifPtr->apiFilePtr);
+            script << "\n"
+                "  ifgenFlags = --gen-common-client --name-prefix " <<
+                    ifPtr->apiFilePtr->defaultPrefix << " $ifgenFlags\n"
+                "  outputDir = $builddir/" << path::GetContainingDir(cFiles.sourceFile) << "\n\n";
+        }
     }
     if (generatedIPC.find(cFiles.interfaceFile) == generatedIPC.end())
     {
@@ -1352,56 +1377,32 @@ void ComponentBuildScriptGenerator_t::GenerateCBuildStatement
     ifPtr->GetInterfaceFiles(cFiles);
 
     // Generate common interface files (if needed)
-    GenerateCCommonBuildStatement(componentPtr, ifPtr->apiFilePtr);
+    GenerateCCommonBuildStatement(ifPtr->apiFilePtr);
 
     if (   (!buildParams.codeGenOnly)
         && (generatedIPC.find(cFiles.objectFile) == generatedIPC.end())  )
     {
         generatedIPC.insert(cFiles.objectFile);
 
-        // .o file
-        script << "build $builddir/" << cFiles.objectFile << ":"
-                  " CompileC $builddir/" << cFiles.sourceFile;
-
-        // Add order-only dependencies on the generated .h files for this interface so we make sure
-        // those get built first.
-        script << " | $builddir/" << cFiles.internalHFile << " $builddir/" << cFiles.interfaceFile;
+         model::InterfaceCFiles_t commonFiles;
+        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
 
         // Build a set containing all the .h files that will be included (via USETYPES statements)
         // by the .h file generated for this .api file.
         std::set<std::string> apiHeaders;
-        model::InterfaceCFiles_t commonFiles;
-        ifPtr->apiFilePtr->GetCommonInterfaceFiles(commonFiles);
+        apiHeaders.insert(cFiles.internalHFile);
+        apiHeaders.insert(cFiles.interfaceFile);
         apiHeaders.insert(commonFiles.interfaceFile);
         apiHeaders.insert(commonFiles.internalHFile);
 
         ifPtr->apiFilePtr->GetCommonUsetypesApiHeaders(apiHeaders);
         ifPtr->apiFilePtr->GetServerUsetypesApiHeaders(apiHeaders);
 
-        // If there are some, add them as order-only dependencies.
-        for (auto const &hFilePath : apiHeaders)
-        {
-            script << " $builddir/" << hFilePath;
-        }
-
-        // Define a cFlags variable that tells the compiler where to look for the interface
-        // headers needed due to USETYPES statements.
-        script << "\n"
-                  "  cFlags = $cFlags";
-        std::set<std::string> includeDirs;
-        for (auto const &hFilePath : apiHeaders)
-        {
-            auto dirPath = path::GetContainingDir(hFilePath);
-            if (includeDirs.find(dirPath) == includeDirs.end())
-            {
-                includeDirs.insert(dirPath);
-                script << " -I$builddir/" << dirPath;
-            }
-        }
-
-        // Add cFlags for generated message pool sizes, if provided.
-        GenerateMemPoolDefinitions(componentPtr, model::MemPoolSize_t::POOLTYPE_MESSAGING);
-        script << "\n\n";
+        GenerateCApiBuildStatement(componentPtr,
+                                   ifPtr->apiFilePtr,
+                                   cFiles.objectFile,
+                                   cFiles.sourceFile,
+                                   apiHeaders);
     }
 
     // .c file and .h files

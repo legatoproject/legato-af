@@ -209,8 +209,8 @@ void ApiFile_t::GetCommonInterfaceFiles
 {
     cFiles.interfaceFile = codeGenDir + "/"  + defaultPrefix + "_common.h";
     cFiles.internalHFile = codeGenDir + "/" + defaultPrefix + "_messages.h";
-    cFiles.sourceFile    = codeGenDir + "/" + defaultPrefix + "_commonclient.c";
-    cFiles.objectFile    = cFiles.sourceFile + ".o";
+    cFiles.sourceFile    = "";
+    cFiles.objectFile    = "";
 }
 
 
@@ -462,6 +462,8 @@ const
     cFiles.internalHFile = codeGenDir + internalName + "_service.h";
     cFiles.sourceFile = codeGenDir + internalName + "_client.c";
     cFiles.objectFile = codeGenDir + internalName + "_client.c.o";
+    cFiles.commonSourceFile = codeGenDir + apiFilePtr->defaultPrefix + "_commonclient.c";
+    cFiles.commonObjectFile = codeGenDir + apiFilePtr->defaultPrefix + "_commonclient.c.o";
 }
 
 

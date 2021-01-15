@@ -35,8 +35,16 @@ class ComponentBuildScriptGenerator_t : protected RequireBaseGenerator_t
         virtual void GenerateServerUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateCommonUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
         virtual void GenerateJavaUsetypesBuildStatement(const model::ApiFile_t* apiFilePtr);
-        virtual void GenerateCCommonBuildStatement(const model::Component_t *componentPtr,
-                                                   const model::ApiFile_t   *apiFilePtr);
+        virtual void GenerateCApiBuildStatement
+        (
+            const model::Component_t *componentPtr,
+            const model::ApiFile_t *apiFilePtr,
+            const std::string &objFilePath,
+            const std::string &sourceFilePath,
+            const std::set<std::string>& apiHeaders
+        );
+
+        virtual void GenerateCCommonBuildStatement(const model::ApiFile_t   *apiFilePtr);
         virtual void GenerateCBuildStatement(const model::Component_t           *componentPtr,
                                              const model::ApiClientInterface_t  *ifPtr);
         virtual void GenerateCBuildStatement(const model::Component_t           *componentPtr,

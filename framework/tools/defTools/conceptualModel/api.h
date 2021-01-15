@@ -26,6 +26,14 @@ struct InterfaceCFiles_t
     std::string internalHFile;  ///< local.h file that gets included by generated .c code.
     std::string sourceFile;     ///< Generated .c file.
     std::string objectFile;     ///< Path to the .o file for this interface.
+    std::string commonSourceFile; ///< Generated .c file common across multiple instances of the
+                                  ///< interface
+    std::string commonObjectFile; ///< Path to the .o file for the common source file
+
+    InterfaceCFiles_t(void) :
+        interfaceFile(""), internalHFile(""),
+        sourceFile(""), objectFile(""),
+        commonSourceFile(""), commonObjectFile("") {}
 };
 
 
