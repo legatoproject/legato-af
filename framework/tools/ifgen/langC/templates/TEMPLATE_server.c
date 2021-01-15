@@ -34,7 +34,7 @@
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL({{apiName}}_Messages, LE_CDATA_COMPONENT_COUNT,
-                          LE_CDATA_COMPONENT_COUNT*(LE_MSG_LOCAL_HEADER_SIZE +_MAX_MSG_SIZE));
+                          (LE_MSG_LOCAL_HEADER_SIZE +_MAX_MSG_SIZE));
 
 //--------------------------------------------------------------------------------------------------
 /**
