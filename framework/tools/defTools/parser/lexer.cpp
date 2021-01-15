@@ -714,6 +714,9 @@ void Lexer_t::BailUntil
 
     do
     {
+        // Do this first so we always advance at least one character on parse error.
+        AdvanceOneCharacter(phonyTokenPtr);
+
         if (   stopAtNewline
             && (context.top().nextChars[0] == '\n'))
         {
@@ -731,10 +734,6 @@ void Lexer_t::BailUntil
         else if (IsMatch(parseTree::Token_t::END_OF_FILE))
         {
             done = true;
-        }
-        else
-        {
-            AdvanceOneCharacter(phonyTokenPtr);
         }
     }
     while (done == false);
