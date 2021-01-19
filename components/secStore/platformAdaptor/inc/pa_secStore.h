@@ -48,7 +48,8 @@ typedef void (*pa_secStore_RestoreHdlrFunc_t)
 //--------------------------------------------------------------------------------------------------
 typedef void (*pa_secStore_GetEntry_t)
 (
-    const char* entryPtr,           ///< [IN] Entry name.
+    const char* entryPathPtr,       ///< [IN] Entry path.
+    const char* entryNamePtr,       ///< [IN] Entry name.
     bool isDir,                     ///< [IN] true if the entry is a directory, otherwise entry is a
                                     ///       file.
     void* contextPtr                ///< [IN] Pointer to the context supplied to pa_secStore_GetEntries()

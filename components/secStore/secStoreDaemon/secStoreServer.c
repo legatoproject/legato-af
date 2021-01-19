@@ -234,12 +234,14 @@ static bool IsSystemInList
 //--------------------------------------------------------------------------------------------------
 static void AddSystemToList
 (
+    const char* entryPathPtr,       ///< [IN] Entry path.
     const char* indexStr,           ///< [IN] System index as a string.
     bool isDir,                     ///< [IN] true if the entry is a directory, otherwise entry is a
                                     ///       file.
     void* contextPtr                ///< [IN] Contains the list to add the index too.
 )
 {
+    LE_UNUSED(entryPathPtr);
     le_sls_List_t* listPtr = (le_sls_List_t*)contextPtr;
 
     int index;
@@ -1490,12 +1492,14 @@ static void CleanupClientIterators
 //--------------------------------------------------------------------------------------------------
 static void StoreEntry
 (
+    const char* entryPathPtr,       ///< [IN] Entry path.
     const char* entryNamePtr,       ///< [IN] Entry name.
     bool isDir,                     ///< [IN] true if the entry is a directory, otherwise entry is a
                                     ///       file.
     void* contextPtr                ///< [IN] Pointer to the context supplied to pa_secStore_GetEntries()
 )
 {
+    LE_UNUSED(entryPathPtr);
     EntryIter_t* iterPtr = contextPtr;
 
     // Do not add duplicates.
