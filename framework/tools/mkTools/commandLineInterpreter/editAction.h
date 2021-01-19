@@ -26,6 +26,8 @@ class EditAction_t
         explicit EditAction_t(ArgHandler_t &arghandle) : handler(arghandle) {}
         virtual void DoAction() = 0;  ///< Pure virtual function
         virtual void UndoAction() {}
+
+        virtual ~EditAction_t() {}
 };
 
 

@@ -5,7 +5,7 @@
  */
 
 #ifndef ARGS_INCLUDE_GUARD
-#define ARGS_INLCUDE_GUARD
+#define ARGS_INCLUDE_GUARD
 
 //--------------------------------------------------------------------------------------------------
 /**
