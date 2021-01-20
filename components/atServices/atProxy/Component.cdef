@@ -33,3 +33,8 @@ pools:
      */
     <messaging>.le_atServer_Messages = 2
 }
+
+cflags:
+{
+    -I${SWI_ROOT}/include
+}
