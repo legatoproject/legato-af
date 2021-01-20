@@ -1953,21 +1953,17 @@ void le_mem_DeleteSubPool
 //--------------------------------------------------------------------------------------------------
 /**
  * Start of pool memory
- *
- * @note The extern is required to access symbols defined only in the linker script.
  */
 //--------------------------------------------------------------------------------------------------
-extern uint8_t le_mem_StartPools[];
+static uint8_t *StartPools;
 
 
 //--------------------------------------------------------------------------------------------------
 /**
  * End of pool memory
- *
- * @note The extern is required to access symbols defined only in the linker script.
  */
 //--------------------------------------------------------------------------------------------------
-extern uint8_t le_mem_EndPools[];
+static uint8_t *EndPools;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2033,6 +2029,22 @@ void SpillFreeBlocks
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prepare system to support hibernate-to-memory.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mem_InitHibernation
+(
+    void *startPtr,           ///< [IN] Beginning of memory pool region
+    void *endPtr              ///< [IN] End of memory pool region
+)
+{
+    StartPools = startPtr;
+    EndPools = endPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Compress memory pools ready for hibernate-to-RAM
  *
  * This compresses the memory pools ready for hibernation.  All Legato tasks must remain
@@ -2052,6 +2064,20 @@ void le_mem_Hibernate
     le_mem_Pool_t* currentPoolPtr;
     le_sls_List_t allFreeList = LE_SLS_LIST_INIT;
 
+    if (!StartPools || !EndPools)
+    {
+        // Memory pool region is not set, no memory can be freed from hibernate
+        if (freeStartPtr)
+        {
+            *freeStartPtr = NULL;
+        }
+
+        if (freeEndPtr)
+        {
+            *freeEndPtr = NULL;
+        }
+    }
+
     // Collect all the free items from the pools
     LE_DLS_FOREACH(&PoolList, currentPoolPtr, le_mem_Pool_t, poolLink)
     {
@@ -2066,8 +2092,8 @@ void le_mem_Hibernate
                 CONTAINER_OF(curLink, MemBlock_t, data[0].link);
 
             // Is this in a static pool?
-            if (((uint8_t*)currentFreeBlockPtr >= le_mem_StartPools) &&
-                ((uint8_t*)currentFreeBlockPtr < le_mem_EndPools))
+            if (((uint8_t*)currentFreeBlockPtr >= StartPools) &&
+                ((uint8_t*)currentFreeBlockPtr < EndPools))
             {
                 le_sls_RemoveAfter(&currentPoolPtr->freeList, prevLink);
                 le_sls_Stack(&allFreeList, curLink);
@@ -2092,10 +2118,10 @@ void le_mem_Hibernate
     // and compact used memory.
     MemBlock_t* currentBlockPtr;
     MemBlock_t freeBlock = { .poolPtr = NULL, .refCount = 0 };
-    uint8_t* nextDecompactedMemPtr = le_mem_StartPools;
+    uint8_t* nextDecompactedMemPtr = StartPools;
 
     // Reset end of memory to be preserved in hibernation
-    EndOfHibernationPtr = le_mem_StartPools;
+    EndOfHibernationPtr = StartPools;
 
     LE_SLS_FOREACH(&allFreeList, currentBlockPtr, MemBlock_t, data[0].link)
     {
@@ -2153,14 +2179,14 @@ void le_mem_Hibernate
     }
 
     // and compact any final used memory
-    size_t usedBlockSize = (uint8_t*)le_mem_EndPools - nextDecompactedMemPtr;
+    size_t usedBlockSize = (uint8_t*)EndPools - nextDecompactedMemPtr;
     memmove(EndOfHibernationPtr, nextDecompactedMemPtr,
             usedBlockSize);
     EndOfHibernationPtr += usedBlockSize;
     nextDecompactedMemPtr += usedBlockSize;
 
     // Ensure all pool memory is compacted
-    LE_ASSERT(nextDecompactedMemPtr == le_mem_EndPools);
+    LE_ASSERT(nextDecompactedMemPtr == EndPools);
 
     if (freeStartPtr)
     {
@@ -2169,7 +2195,7 @@ void le_mem_Hibernate
 
     if (freeEndPtr)
     {
-        *freeEndPtr = le_mem_EndPools;
+        *freeEndPtr = EndPools;
     }
 }
 
@@ -2189,7 +2215,7 @@ void le_mem_Resume
 )
 {
     le_sls_Link_t* compactBlockLinkPtr;
-    uint8_t *startOfDecompactedMem = le_mem_EndPools;
+    uint8_t *startOfDecompactedMem = EndPools;
 
     while ((compactBlockLinkPtr = le_sls_Pop(&CompactBlockList)) != NULL)
     {

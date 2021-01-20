@@ -1547,6 +1547,18 @@ void le_mem_DeleteSubPool
 #if LE_CONFIG_RTOS
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prepare system to support hibernate-to-memory.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mem_InitHibernation
+(
+    void *startPtr,           ///< [IN] Beginning of memory pool region
+    void *endPtr              ///< [IN] End of memory pool region
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Compress memory pools ready for hibernate-to-RAM
  *
  * This compresses the memory pools ready for hibernation.  All Legato tasks must remain
