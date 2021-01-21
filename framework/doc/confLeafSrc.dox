@@ -9,46 +9,45 @@ available for you to use as soon as the package gets installed and you use @c le
 If you need want to contribute back to the legato project or need a tracked version of the source
 code you can switch from using the pre-built version to the source code.
 
-Before downloading the source code you must set up an account on Legato's Gerrit instance and
-set up ssh keys on your development machine.
+Before downloading the source code you must set up an account on [GitHub)[https://github.com],
+accept the license at https://swi-license.legato.io , and set up an SSH identity on your development machine.
 
-@section confLeafSrc_Gerrit Legato's Gerrit
+@section confLeafSrc_GitHub GitHub
 
 These steps only need to be done the first time you are connecting your development machine to
-Legato Gerrit.
+GitHub.
 
-Visit https://gerrit.legato.io
+Visit https://github.com
 
-If you don't have an account click @b Register and create an account with AirVantage. In the future
-you will be able to use existing accounts created on source.sierrawireless.com and other Sierra
-sites.
+If you don't have an account click <b>Sign up</b> and create a user account.
 
-Once you have an account click on @b Sign @b In and enter in your user name and password.
+Once you have an account click on <b>Sign in</b> and enter in your user name and password.
 
-After you have successfully signed in click your user id in the right hand corner and choose
-Settings
-
-Under the Profile settings enter in a user name (it must be unique for the site). This will be the
-user name you use to connect to Gerrit through leaf.
+After you have successfully signed in, you will need to associate an SSH key with your account.
+The settings are available at https://github.com/settings/keys , but you can also access it by clicking
+on your user avatar in the right hand corner and choosing @b Settings .
+Then, on the left menu, click on <b>SSH and GPG keys</b>,
 
 Next, if you have not created RSA keys for your linux development machine before follow these steps:
 - From the Terminal or Git Bash, run @c ssh-keygen
 - Confirm the default path @c .ssh/id_rsa
 - Enter a passphrase (recommended) or leave it blank. Remember this passphrase, as you will need it
   to unlock the key whenever you use it.
-- Open @c ~/.ssh/id_rsa.pub and copy & paste the contents into the box labeled New SSH Key, then
-  click on <b>Add New SSH Key</b>.
+- Click on <b>New SSH key</b>
+- Open @c ~/.ssh/id_rsa.pub and copy & paste the contents into the box labeled @c Key, then
+  provide a short description in @c Title and click on <b>Add New SSH key</b>.
 
 @note @c id_rsa.pub is your public key and can be shared, while the key contained in id_rsa is your
-private key and should be kept secret.
+private key and should be kept secret. It should be treated with the same amount of care as a password.
 
-If you already have a @c ~/.ssh/id_rsa.pub created, open it and copy & paste the contents into the
-box labeled <b>New SSH Key</b>, then click on <b>Add New SSH Key</b>.
+If you already have a @c ~/.ssh/id_rsa.pub created, go to https://github.com/settings/keys and register
+a new key by clicking on <b>New SSH key</b>, then copy & paste the content of the file in @c Key.
+Finally, name that key in @c Title, and click <b>Add SSH key</b>.
 
 Your account is now set up for ssh authentication to Legato's Gerrit server and you are ready to
 download the tracked source code.
 
-For more details on manually cloning the source code see @ref toolsGerrit.
+For more details on manually cloning the source code see @ref toolsGitHub.
 
 @section confLeafSrc_Switch Switch to the Source Code
 
@@ -63,8 +62,7 @@ $ leaf getsrc legato
 @note If you wish to use the legato source code for all leaf profiles add the @c --workspace option
 to the end of your command. i.e., @c leaf @c getsrc @c legato --@c workspace
 
-You will then be prompted to add your gerrit user account (that was created in the first step) and
-choose a directory to sync the source code to.
+You will then be prompted to choose a directory to sync the source code to.
 
 If at any reason the sync stops or times out you can run @c leaf @c getsrc @c legato again to
 re-sync from Gerrit (it picks up where it left off).
