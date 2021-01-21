@@ -9,7 +9,7 @@
 #ifndef LE_AT_PROXY_H_INCLUDE_GUARD
 #define LE_AT_PROXY_H_INCLUDE_GUARD
 
-#include "le_atServer_server.h"
+#include "interfaces.h"
 
 // Final response.
 #define LE_AT_PROXY_ERROR       "\r\nERROR\r\n"
@@ -39,23 +39,5 @@ struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistry(void);
 // Function to retrieve the AT Command Registry entry for a specific command
 struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry(uint32_t command);
 
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function can be used to send the unsolicited response.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to send the unsolicited response.
- *
- */
-//--------------------------------------------------------------------------------------------------
-void le_atProxy_SendUnsolicitedResponse
-(
-    le_atServer_ServerCmdRef_t _cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    const char* LE_NONNULL responseStr  ///< [IN] Unsolicited Response String
-);
-
-#define AT_PROXY_PARAMETER_LIST_MAX   5   ///< Maximum number of parameters supported per AT Cmd
 
 #endif /* LE_AT_PROXY_H_INCLUDE_GUARD */

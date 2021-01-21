@@ -10,7 +10,6 @@
 #include "interfaces.h"
 #include "atProxy.h"
 #include "atProxyCmdHandler.h"
-#include "atProxySerialUart.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -29,14 +28,14 @@
 //--------------------------------------------------------------------------------------------------
 void le_atServer_Suspend
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t devRef      ///< [IN] device to be unbinded
 )
 {
     LE_UNUSED(devRef);
 
     LE_WARN("Not implemented!");
-    le_atServer_SuspendRespond(_cmdRef, LE_FAULT);
+    le_atServer_SuspendRespond(cmdRef, LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -55,14 +54,14 @@ void le_atServer_Suspend
 //--------------------------------------------------------------------------------------------------
 void le_atServer_Resume
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t devRef      ///< [IN] device to be unbound
 )
 {
     LE_UNUSED(devRef);
 
     LE_WARN("Not implemented!");
-    le_atServer_ResumeRespond(_cmdRef, LE_FAULT);
+    le_atServer_ResumeRespond(cmdRef, LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -76,14 +75,14 @@ void le_atServer_Resume
 //--------------------------------------------------------------------------------------------------
 void le_atServer_Open
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     int fd                              ///< The file descriptor
 )
 {
     LE_UNUSED(fd);
 
     LE_WARN("Not implemented!");
-    le_atServer_OpenRespond(_cmdRef, NULL);
+    le_atServer_OpenRespond(cmdRef, NULL);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -99,14 +98,14 @@ void le_atServer_Open
 //--------------------------------------------------------------------------------------------------
 void le_atServer_Close
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t devRef      ///< [IN] device to be unbinded
 )
 {
     LE_UNUSED(devRef);
 
     LE_WARN("Not implemented!");
-    le_atServer_CloseRespond(_cmdRef, LE_FAULT);
+    le_atServer_CloseRespond(cmdRef, LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -122,7 +121,7 @@ void le_atServer_Close
 //--------------------------------------------------------------------------------------------------
 void le_atServer_Delete
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_CmdRef_t commandRef     ///< [IN] AT command reference
 )
 {
@@ -130,7 +129,7 @@ void le_atServer_Delete
 
     LE_WARN("Not implemented!");
 
-    le_atServer_DeleteRespond(_cmdRef, LE_FAULT);
+    le_atServer_DeleteRespond(cmdRef, LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -179,7 +178,7 @@ void le_atServer_RemoveCmdRegistrationHandler
 //--------------------------------------------------------------------------------------------------
 void le_atServer_GetDevice
 (
-    le_atServer_ServerCmdRef_t _cmdRef,     ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,      ///< [IN] Asynchronous Server Command Reference
     le_atServer_CmdRef_t commandRef         ///< [IN] AT command reference
 )
 {
@@ -188,7 +187,7 @@ void le_atServer_GetDevice
     le_atServer_DeviceRef_t deviceRefPtr = NULL;
 
     LE_WARN("Not implemented!");
-    le_atServer_GetDeviceRespond(_cmdRef, LE_FAULT, deviceRefPtr);
+    le_atServer_GetDeviceRespond(cmdRef, LE_FAULT, deviceRefPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -204,14 +203,14 @@ void le_atServer_GetDevice
 //--------------------------------------------------------------------------------------------------
 void le_atServer_SendStoredUnsolicitedResponses
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_CmdRef_t commandRef     ///< [IN] AT command reference
 )
 {
     LE_UNUSED(commandRef);
 
     LE_WARN("Not implemented!");
-    le_atServer_SendStoredUnsolicitedResponsesRespond(_cmdRef, LE_FAULT);
+    le_atServer_SendStoredUnsolicitedResponsesRespond(cmdRef, LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -225,7 +224,7 @@ void le_atServer_SendStoredUnsolicitedResponses
 //--------------------------------------------------------------------------------------------------
 void le_atServer_EnableEcho
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t device      ///< [IN] device reference
 
 )
@@ -233,7 +232,7 @@ void le_atServer_EnableEcho
     LE_UNUSED(device);
 
     LE_WARN("Not implemented!");
-    le_atServer_EnableEchoRespond(_cmdRef, LE_FAULT);
+    le_atServer_EnableEchoRespond(cmdRef, LE_FAULT);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -247,7 +246,7 @@ void le_atServer_EnableEcho
 //--------------------------------------------------------------------------------------------------
 void le_atServer_DisableEcho
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t device      ///< [IN] device reference
 
 )
@@ -255,7 +254,7 @@ void le_atServer_DisableEcho
     LE_UNUSED(device);
 
     LE_WARN("Not implemented!");
-    le_atServer_DisableEchoRespond(_cmdRef, LE_BAD_PARAMETER);
+    le_atServer_DisableEchoRespond(cmdRef, LE_BAD_PARAMETER);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -271,7 +270,7 @@ void le_atServer_DisableEcho
 //--------------------------------------------------------------------------------------------------
 void le_atServer_OpenBridge
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     int fd                              ///< [IN] File descriptor.
 )
 {
@@ -280,7 +279,7 @@ void le_atServer_OpenBridge
 #if MK_CONFIG_DISABLE_AT_BRIDGE
     le_atServer_BridgeRef_t bridgeRef = NULL;
     LE_WARN("Not implemented!");
-    le_atServer_OpenBridgeRespond(_cmdRef, bridgeRef);
+    le_atServer_OpenBridgeRespond(cmdRef, bridgeRef);
 #else
     // Do something to open bridge
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
@@ -298,14 +297,14 @@ void le_atServer_OpenBridge
 //--------------------------------------------------------------------------------------------------
 void le_atServer_CloseBridge
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_BridgeRef_t bridgeRef   ///< [IN] Bridge refence
 )
 {
 #if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_UNUSED(bridgeRef);
     LE_WARN("Not implemented!");
-    le_atServer_CloseBridgeRespond(_cmdRef, LE_FAULT);
+    le_atServer_CloseBridgeRespond(cmdRef, LE_FAULT);
 #else
     // Do something to close bridge
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
@@ -323,7 +322,7 @@ void le_atServer_CloseBridge
 //--------------------------------------------------------------------------------------------------
 void le_atServer_AddDeviceToBridge
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t deviceRef,  ///< [IN] Device reference to add to the bridge
     le_atServer_BridgeRef_t bridgeRef   ///< [IN] Bridge refence
 )
@@ -332,7 +331,7 @@ void le_atServer_AddDeviceToBridge
     LE_UNUSED(deviceRef);
     LE_UNUSED(bridgeRef);
     LE_WARN("Not implemented!");
-    le_atServer_AddDeviceToBridgeRespond(_cmdRef, LE_FAULT);
+    le_atServer_AddDeviceToBridgeRespond(cmdRef, LE_FAULT);
 #else
     // Do something to add device to bridge
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
@@ -350,7 +349,7 @@ void le_atServer_AddDeviceToBridge
 //--------------------------------------------------------------------------------------------------
 void le_atServer_RemoveDeviceFromBridge
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     le_atServer_DeviceRef_t deviceRef,  ///< [IN] Device reference to add to the bridge
     le_atServer_BridgeRef_t bridgeRef   ///< [IN] Bridge refence
 )
@@ -359,7 +358,7 @@ void le_atServer_RemoveDeviceFromBridge
     LE_UNUSED(deviceRef);
     LE_UNUSED(bridgeRef);
     LE_WARN("Not implemented!");
-    le_atServer_RemoveDeviceFromBridgeRespond(_cmdRef, LE_FAULT);
+    le_atServer_RemoveDeviceFromBridgeRespond(cmdRef, LE_FAULT);
 #else
     // Do something to remove device from bridge
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
@@ -372,11 +371,11 @@ void le_atServer_RemoveDeviceFromBridge
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void le_atServer_EnableVerboseErrorCodes
 (
-    le_atServer_ServerCmdRef_t _cmdRef  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef   ///< [IN] Asynchronous Server Command Reference
 )
 {
     LE_WARN("Not implemented!");
-    le_atServer_EnableVerboseErrorCodesRespond(_cmdRef);
+    le_atServer_EnableVerboseErrorCodesRespond(cmdRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -386,11 +385,11 @@ LE_SHARED void le_atServer_EnableVerboseErrorCodes
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void le_atServer_EnableExtendedErrorCodes
 (
-    le_atServer_ServerCmdRef_t _cmdRef  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef  ///< [IN] Asynchronous Server Command Reference
 )
 {
     LE_WARN("Not implemented!");
-    le_atServer_EnableExtendedErrorCodesRespond(_cmdRef);
+    le_atServer_EnableExtendedErrorCodesRespond(cmdRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -401,11 +400,11 @@ LE_SHARED void le_atServer_EnableExtendedErrorCodes
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void le_atServer_DisableExtendedErrorCodes
 (
-    le_atServer_ServerCmdRef_t _cmdRef  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef  ///< [IN] Asynchronous Server Command Reference
 )
 {
     LE_WARN("Not implemented!");
-    le_atServer_DisableExtendedErrorCodesRespond(_cmdRef);
+    le_atServer_DisableExtendedErrorCodesRespond(cmdRef);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -422,7 +421,7 @@ LE_SHARED void le_atServer_DisableExtendedErrorCodes
 //--------------------------------------------------------------------------------------------------
 void le_atServer_CreateErrorCode
 (
-    le_atServer_ServerCmdRef_t _cmdRef, ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
     uint32_t errorCode,                 ///< [IN] Numerical error code
     const char* patternPtr              ///< [IN] Prefix of the final response string
 )
@@ -433,7 +432,7 @@ void le_atServer_CreateErrorCode
     LE_UNUSED(errorCode);
     LE_UNUSED(patternPtr);
     LE_WARN("Not implemented!");
-    le_atServer_CreateErrorCodeRespond(_cmdRef, NULL);
+    le_atServer_CreateErrorCodeRespond(cmdRef, NULL);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS
 }
 
@@ -448,7 +447,7 @@ void le_atServer_CreateErrorCode
 //--------------------------------------------------------------------------------------------------
 void le_atServer_DeleteErrorCode
 (
-    le_atServer_ServerCmdRef_t _cmdRef,     ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t cmdRef,      ///< [IN] Asynchronous Server Command Reference
     le_atServer_ErrorCodeRef_t errorCodeRef ///< [IN] Reference to a custom error code
 )
 {
@@ -457,7 +456,7 @@ void le_atServer_DeleteErrorCode
 #else
     LE_UNUSED(errorCodeRef);
     LE_WARN("Not implemented!");
-    le_atServer_DeleteErrorCodeRespond(_cmdRef, LE_FAULT);
+    le_atServer_DeleteErrorCodeRespond(cmdRef, LE_FAULT);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS
 }
 
@@ -472,7 +471,7 @@ void le_atServer_DeleteErrorCode
 //--------------------------------------------------------------------------------------------------
 void le_atServer_SetVerboseErrorCode
 (
-    le_atServer_ServerCmdRef_t _cmdRef,         ///< [IN] Asynchronous Server Command Reference
+    le_atServer_ServerCmdRef_t  cmdRef,         ///< [IN] Asynchronous Server Command Reference
     le_atServer_ErrorCodeRef_t  errorCodeRef,   ///< [IN] Reference to a custom error code
     const char*  messagePtr                     ///< [IN] Verbose string
 )
@@ -483,7 +482,7 @@ void le_atServer_SetVerboseErrorCode
     LE_UNUSED(errorCodeRef);
     LE_UNUSED(messagePtr);
     LE_WARN("Not implemented!");
-    le_atServer_SetVerboseErrorCodeRespond(_cmdRef, LE_FAULT);
+    le_atServer_SetVerboseErrorCodeRespond(cmdRef, LE_FAULT);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS
 }
 

@@ -1,0 +1,20 @@
+requires:
+{
+    api:
+    {
+        atServices/le_atServer.api [types-only]
+    }
+}
+
+sources:
+{
+    pa_port.c
+    pa_atProxy.c
+    pa_remote.c
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/components/atServices/atProxy
+    -I${LEGATO_ROOT}/components/atServices/atProxy/platformAdaptor/inc
+}

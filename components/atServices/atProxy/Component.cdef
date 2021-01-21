@@ -16,14 +16,7 @@ sources:
 {
     atProxy.c
     atProxyCmdHandler.c
-    atProxySerialUart.c
-    atProxyAdaptor.c
     atProxyStub.c
-#if ${MK_CONFIG_ATSERVER_LITE} = y
-#else
-    atProxyUnsolicitedRsp.c
-    atProxyEmux.c
-#endif
 }
 
 pools:
@@ -34,7 +27,17 @@ pools:
     le_atServer.le_atServer_Messages = 2
 }
 
+requires:
+{
+    component:
+    {
+        ${LEGATO_ATPROXY_PA}
+    }
+}
+
 cflags:
 {
     -I${SWI_ROOT}/include
+    -I${LEGATO_ROOT}/components/atServices/atProxy
+    -I${LEGATO_ROOT}/components/atServices/atProxy/platformAdaptor/inc
 }
