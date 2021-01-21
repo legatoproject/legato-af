@@ -6,7 +6,7 @@ environment and get you developing quickly. Leaf is also @b profile @b aware, me
 easily switch to a new version of Legato or a different target and automatically update your dev
 environment to use the environment variables and toolchain specific to that profile.
 
-Alternatively, you can clone the source code from our @ref toolsGerrit server but you must set up
+Alternatively, you can clone the source code from @ref toolsGitHub but you must set up
 your development environment @ref basicBuild "manually".
 
 To configure the Legato Application Framework we provide a @ref toolsKconfig "Kconfig menu system"
@@ -16,7 +16,7 @@ to enable or disable Framework features.
 | --------------------------------- | ------------------------------------------------------------ |
 | @subpage toolsLeaf                | Download, Install and Configure your development environment |
 | @subpage tools_vsCode             | Use Visual Studio Code IDE with Legato                       |
-| @subpage toolsGerrit              | Clone the source code of both Legato and the Linux Distros   |
+| @subpage toolsGitHub              | Clone the source code of both Legato and the Linux Distros   |
 | @subpage toolsKconfig             | Configure the Legato Application Framework                   |
 
 @note If you change options within Kconfig you must rebuild the framework by running
