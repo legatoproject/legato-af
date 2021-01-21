@@ -1,0 +1,124 @@
+/** @page toolsGitHub GitHub
+
+[GitHub](https://github.com/legatoproject/) is a hosting service
+
+#Gerrit is a web based code review system for Git projects.  The Legato Application Framework uses
+#Gerrit to provide a way for users to clone both the open source code and proprietary apps/libraries
+#that are needed to build and configure the Legato Application Framework and a Linux
+#Distribution on your target.
+
+Legato provides its code on GitHub, both in public repositories (open source components only) and in private repositories (proprietary content).
+Downloading the public code from GitHub will exclude the following Sierra Wireless Proprietary apps that are needed for communication with
+AirVantage:
+- @c atQmiLinker
+- @c atAirVantage
+- @c qmiAirVantage
+
+The Yocto source code (to rebuild the Linux Distro) is also partially public. Many of the 3rd party proprietary binaries
+(that are not open source) that are used to communicate with the modem hardware are released privately.
+
+Access to the private repositories is possible for anyone registered on GitHub by accepting a license
+on https://swi-license.legato.io .
+
+@note In the future you will also be able to upstream changes and patches to the Legato team for
+inclusion in our builds.
+
+@section toolsGitHub_setup First Time Set up
+
+Before being able to download and use the source code for both Legato and Linux users register to GitHub and set up SSH keys to their dev machine.
+Once the SSH keys are set up then you are able to pull the source code and get all the tracked changes.
+
+The following steps only need to be done the first time you are connecting your development machine
+to GitHub.
+
+If you do not have a GitHub account, you will need to create one for free at https://github.com/join .
+
+Once you have an account, you will need to register an SSH key available on your development machine.
+
+If you have not created RSA keys for your linux development machine, follow these steps:
+- From the Terminal or Git Bash, run @c ssh-keygen
+- Confirm the default path @c .ssh/id_rsa
+- Enter a passphrase (recommended) or leave it blank. Remember this passphrase, as you will need it
+  to unlock the key whenever you use it.
+- Open @c ~/.ssh/id_rsa.pub and register the SSH key in https://github.com/settings/keys
+
+If you already have a @c ~/.ssh/id_rsa.pub created, go to https://github.com/settings/keys and register
+a new key by clicking on <b>New SSH key</b>, then copy & paste the content of the file in @c Key.
+Finally, name that key in @c Title, and click <b>Add SSH key</b>.
+
+@note @c id_rsa.pub is your public key and can be shared, while the key contained in @c id_rsa is your
+private key and should be kept secret. It should be treated with the same amount of care as a password.
+
+Your account is now set up for SSH authentication to GitHub.
+
+To make it possible for your account to access private repositories, go to https://swi-license.legato.io .
+Follow the instructions, and if you choose to accept the license, your GitHub user will be placed in
+the @c legatoproject organisation.
+
+You can check that access was granted successfuly by accessing https://github.com/legatoproject/test-access/ .
+
+If you face any issue with that process, please document it my creating a new topic on the [Legato forum](https://forum.legato.io).
+
+@section toolsGitHub_repo Repo and Git
+
+Now that you have an account set up, you will be able to use the @b repo tool to clone the
+repositories needed to obtain the source code for both the Legato Application Framework and the
+Linux Distribution.
+
+Repo unifies Git repositories and makes it possible to work with multiple git repositories. The
+repo command augments Git to give a more unified workflow and keep multiple repositories in sync.
+
+For more details on Git, see the [Git documentation](https://git-scm.com/doc).
+
+For more details on Repo, see the
+[Repo command reference](https://source.android.com/setup/develop/repo).
+
+Install Git and Repo:
+@verbatim
+$ sudo apt-get install git
+
+$ sudo apt-get install repo
+@endverbatim
+
+@section toolsGitHub_manifests Manifests
+
+For each new release, a new manifest is published on GitHub, the manifest specifies all the different repositories and revisions needed to build either the Legato source code and/or the Linux
+Distribution.
+
+Manifests can be found by cloning the manifest repo or by [browsing the manifest repo](https://github.com/legatoproject/manifest/).
+@verbatim
+git clone https://github.com/legatoprojects/manifest
+@endverbatim
+
+To clone the latest release of the Legato source code:
+@verbatim
+repo init -u ssh://git@github.com/legatoproject/manifest; repo sync
+@endverbatim
+
+To clone a specific release of Legato or the Linux distribution use repo with the @c -m flag and
+specify the path to the manifest that you wish to clone:
+@verbatim
+repo init -u ssh://git@github.com/legatoproject/manifest -m path/to/the/manifest/manifest-name.xml -g default,-cache; repo sync
+@endverbatim
+
+To clone the source code (both Linux and Legato) for a specific release use the @c -m flag and
+specify the path to the manifest.
+
+@verbatim
+repo init -u ssh://git@github.com/legatoproject/manifest -m products/<target>/releases/<ReleaseXX>.xml -g default,-cache; repo sync
+@endverbatim
+
+For example to get Release 13 for the wp76xx target (assumes that your Gerrit user id is the same as
+the linux user):
+@verbatim
+repo init -u ssh://git@github.com/legatoproject/manifest -m products/wp76xx/releases/Release13.xml -g default,-cache; repo sync
+@endverbatim
+
+@warning If you are downloading the product release, you are only able to upgrade Legato to the
+Legato version that is released with the Sierra Wireless product version. e.g., You can clone the
+Legato version published with Release 13. Any interim Legato versions will need to be cloned into
+their own repository.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
