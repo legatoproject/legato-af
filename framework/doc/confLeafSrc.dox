@@ -44,8 +44,13 @@ If you already have a @c ~/.ssh/id_rsa.pub created, go to https://github.com/set
 a new key by clicking on <b>New SSH key</b>, then copy & paste the content of the file in @c Key.
 Finally, name that key in @c Title, and click <b>Add SSH key</b>.
 
-Your account is now set up for ssh authentication to Legato's Gerrit server and you are ready to
-download the tracked source code.
+Your account is now set up for SSH authentication to GitHub.
+
+To make it possible for your account to access private repositories, go to https://swi-license.legato.io .
+Follow the instructions, and if you choose to accept the license, your GitHub user will be placed in
+the @c legatoproject organisation.
+
+You can check that access was granted successfuly by accessing https://github.com/legatoproject/test-access/ .
 
 For more details on manually cloning the source code see @ref toolsGitHub.
 
@@ -65,7 +70,7 @@ to the end of your command. i.e., @c leaf @c getsrc @c legato --@c workspace
 You will then be prompted to choose a directory to sync the source code to.
 
 If at any reason the sync stops or times out you can run @c leaf @c getsrc @c legato again to
-re-sync from Gerrit (it picks up where it left off).
+re-sync from GitHub (it picks up where it left off).
 
 To switch back and to use the pre-build version of Legato, disable the source in leaf. This does not
 delete the source directory, it re-configures leaf to use the original pre-build version of
