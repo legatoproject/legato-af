@@ -167,7 +167,7 @@ do make directly to the Legato Application Framework will be reflected in your s
 run @c mksys from within the leaf shell in your workspace.
 
 If you do wish to use the Git tracked source code for Legato you are able to check-out the source
-code for Legato. This version requires you to have an account on @b Legato's @b Gerrit server.
+code for Legato. This version requires you to have an account on GitHub.
 Use the command @subpage confLeafSrc "leaf getsrc legato" to checkout the version of Legato that
 matches your profile.
 
