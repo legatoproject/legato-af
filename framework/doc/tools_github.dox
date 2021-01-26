@@ -1,11 +1,9 @@
 /** @page toolsGitHub GitHub
 
-[GitHub](https://github.com/legatoproject/) is a hosting service
-
-#Gerrit is a web based code review system for Git projects.  The Legato Application Framework uses
-#Gerrit to provide a way for users to clone both the open source code and proprietary apps/libraries
-#that are needed to build and configure the Legato Application Framework and a Linux
-#Distribution on your target.
+[GitHub](https://github.com/legatoproject/) is a hosting service for Git projects, and the largest online development platform in the world.
+The Legato Application Framework uses GitHub to provide a way for users to clone both the open source code and
+proprietary apps/libraries that are needed to build and configure the Legato Application Framework and a Linux
+Distribution on your target.
 
 Legato provides its code on GitHub, both in public repositories (open source components only) and in private repositories (proprietary content).
 Downloading the public code from GitHub will exclude the following Sierra Wireless Proprietary apps that are needed for communication with
@@ -108,8 +106,7 @@ specify the path to the manifest.
 repo init -u ssh://git@github.com/legatoproject/manifest -m products/<target>/releases/<ReleaseXX>.xml -g default,-cache; repo sync
 @endverbatim
 
-For example to get Release 13 for the wp76xx target (assumes that your Gerrit user id is the same as
-the linux user):
+For example to get Release 13 for the wp76xx target:
 @verbatim
 repo init -u ssh://git@github.com/legatoproject/manifest -m products/wp76xx/releases/Release13.xml -g default,-cache; repo sync
 @endverbatim
