@@ -147,7 +147,7 @@ le_result_t secSocket_Init
     }
 
     // Alloc memory from pool
-    contextPtr = le_mem_TryAlloc(SocketCtxPoolRef);
+    contextPtr = le_mem_ForceAlloc(SocketCtxPoolRef);
     if (NULL == contextPtr)
     {
         LE_ERROR("Unable to allocate a socket context from pool");
