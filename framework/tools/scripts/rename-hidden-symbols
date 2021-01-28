@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2.7
 #
 # Preprocess input objects to a relocatable object file (produced by partial linking, i.e. ld -r).
 # This script avoid multiple symbol definition errors by renaming symbols that conflict.
