@@ -581,6 +581,23 @@ ENUM States
     STATE_UNKNOWN    ///< Unknown SIM state.
 };
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM selection modes
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SimMode
+{
+    FORCE_EXTERNAL,    ///< Force to select external SIM
+    FORCE_INTERNAL,    ///< Select internal SIM if present.
+                       ///< The presence of an external SIM will be ignored
+    PREF_EXTERNAL,     ///< Select external SIM if present, else select internal SIM
+    SIMMODE_MAX
+};
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * SIM identifiers.
@@ -764,6 +781,17 @@ HANDLER IccidChangeHandler
 EVENT IccidChange
 (
     IccidChangeHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current selected sim Mode.
+ *
+ * @return Sim selection Mode
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SimMode GetSimMode
+(
 );
 
 //--------------------------------------------------------------------------------------------------

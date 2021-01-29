@@ -1445,6 +1445,33 @@ le_result_t le_sim_Init
     return LE_OK;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the current selected sim Mode.
+ *
+ * @return Sim selection Mode
+ */
+//--------------------------------------------------------------------------------------------------
+le_sim_SimMode_t le_sim_GetSimMode
+(
+    void
+)
+{
+    le_sim_SimMode_t simMode;
+    if (pa_sim_GetSimMode(&simMode) == LE_OK)
+    {
+        return simMode;
+    }
+    else
+    {
+        LE_ERROR("Error in getting sim selection mode");
+        return LE_SIM_SIMMODE_MAX;
+    }
+}
+
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to get the current selected card.

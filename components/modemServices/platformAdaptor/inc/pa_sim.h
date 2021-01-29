@@ -241,6 +241,22 @@ LE_SHARED le_result_t pa_sim_SelectCard
     le_sim_Id_t      simId   ///< [IN]  The SIM identififier
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets sim selection mode.
+ *
+ * @return LE_FAULT         The function failed.
+ * @return LE_TIMEOUT       No response was received.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_GetSimMode
+(
+    le_sim_SimMode_t*  simModePtr     ///< [OUT] The SIM selection mode
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function gets the card on which operations are operated.
