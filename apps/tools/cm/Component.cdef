@@ -16,6 +16,7 @@ requires:
         modemServices/le_mdmCfg.api
         le_cellnet.api
         le_dcs.api
+        le_fwupdate.api [optional]
     }
 }
 

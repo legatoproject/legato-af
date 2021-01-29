@@ -39,6 +39,7 @@ bindings:
     cm.cm.le_cellnet -> cellNetService.le_cellnet
     cm.cm.le_ulpm -> powerMgr.le_ulpm
     cm.cm.le_dcs -> dataConnectionService.le_dcs
+    cm.cm.le_fwupdate -> fwupdateService.le_fwupdate
 
     gnss.gnss.le_gnss -> positioningService.le_gnss
     gnss.gnss.le_pos -> positioningService.le_pos

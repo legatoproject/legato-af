@@ -10,6 +10,7 @@
 
 #include "interfaces.h"
 #include "pa_fwupdate_simu.h"
+#include "le_cfg_simu.h"
 
 #include "log.h"
 
@@ -267,6 +268,122 @@ static void Testle_fwupdate_GetBootloaderVersion
     LE_ASSERT (0 == strncmp(Version, BOOT_VERSION_UT, strlen (BOOT_VERSION_UT)));
 
     LE_INFO ("======== Test: le_fwupdate_GetBootloaderVersion PASSED ========");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This test gets the le_fwupdate_GetSystemVersion API
+ *
+ * API Tested:
+ *  le_fwupdate_GetSystemVersion().
+ */
+//--------------------------------------------------------------------------------------------------
+static void Testle_fwupdate_GetSystemVersion
+(
+    void
+)
+{
+    le_result_t result;
+    uint8_t index;
+    char Version[20];
+    char VersionName[20];
+    char stringVersionName[] = "Test String Version";
+    char stringVersion[] = "testString";
+    char fileVersionName[] = "Test File Version";
+    char fileVersionPath[] = "file:/tmp/testVersion";
+    char fileVersion[] = "testFile";
+    LE_INFO ("======== Test: le_fwupdate_GetSystemVersion ========");
+
+    // Create a testVersion file with "testFile" as contents to
+    // test file read functionality
+    FILE * fPtr;
+    fPtr = fopen("/tmp/testVersion", "w");
+    if(fPtr == NULL)
+    {
+        LE_ERROR ("Unable to create a test file");
+    }
+    fputs(fileVersion, fPtr);
+    fclose(fPtr);
+
+    // Test errors
+    /* Test LE_OUT_OF_RANGE error if index is greater than the maximum number of
+     * system versions allowed:
+     * API needs to return LE_OUT_OF_RANGE
+     */
+    index = 33;
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, sizeof(VersionName),
+                                          Version, sizeof(Version));
+    // Check required values
+    LE_ASSERT (result == LE_OUT_OF_RANGE);
+
+    /* Test LE_OUT_OF_RANGE error if no system versions exist:
+     * API needs to return LE_OUT_OF_RANGE
+     */
+    index = 0;
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, sizeof(VersionName),
+                                          Version, sizeof(Version));
+    // Check required values
+    LE_ASSERT (result == LE_OUT_OF_RANGE);
+
+    /* Test LE_OUT_OF_RANGE error if index requested is greater than number of
+     * existing system versions:
+     * API needs to return LE_OUT_OF_RANGE
+     */
+    le_cfgSimu_SetSystemVersion(stringVersionName, stringVersion);
+    index = 1;
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, sizeof(VersionName),
+                                          Version, sizeof(Version));
+    // Check required values
+    LE_ASSERT (result == LE_OUT_OF_RANGE);
+
+    /* Test LE_OVERFLOW error if the version name string cannot fit in provided buffer:
+     * API needs to return LE_OUT_OF_RANGE
+     */
+    index = 0;
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, 0,
+                                          Version, sizeof(Version));
+    // Check required values
+    LE_ASSERT (result == LE_OVERFLOW);
+
+    /* Test LE_OVERFLOW error if the version string cannot fit in provided buffer:
+     * API needs to return LE_OUT_OF_RANGE
+     */
+    index = 0;
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, sizeof(VersionName),
+                                          Version, 0);
+    // Check required values
+    LE_ASSERT (result == LE_OVERFLOW);
+
+    /* Test correct behavior of getting a valid version from a string
+     * API needs to return LE_OK
+     */
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, sizeof(VersionName),
+                                          Version, sizeof(Version));
+    // Check required values
+    LE_ASSERT (result == LE_OK);
+    LE_ASSERT (0 == strncmp(VersionName, stringVersionName, strlen(stringVersionName)));
+    LE_ASSERT (0 == strncmp(Version, stringVersion, strlen(stringVersion)));
+
+    /* Test correct behavior of getting a valid version from a file
+     * API needs to return LE_OK
+     */
+    le_cfgSimu_SetSystemVersion(fileVersionName, fileVersionPath);
+    index = 1;
+    // Call the function to be tested
+    result = le_fwupdate_GetSystemVersion(index, VersionName, sizeof(VersionName),
+                                          Version, sizeof(Version));
+    // Check required values
+    LE_ASSERT (result == LE_OK);
+    LE_ASSERT (0 == strncmp(VersionName, fileVersionName, strlen(fileVersionName)));
+    LE_ASSERT (0 == strncmp(Version, fileVersion, strlen(fileVersion)));
+
+    LE_INFO ("======== Test: le_fwupdate_GetSystemVersion PASSED ========");
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -813,6 +930,7 @@ COMPONENT_INIT
     Testle_fwupdate_InstallAndMarkGood();
     Testle_fwupdate_GetFirmwareVersion();
     Testle_fwupdate_GetBootloaderVersion();
+    Testle_fwupdate_GetSystemVersion();
     Testle_fwupdate_InitDownload();
     Testle_fwupdate_GetResumePosition();
     Testle_flash_AddBadImageDetectionHandler();

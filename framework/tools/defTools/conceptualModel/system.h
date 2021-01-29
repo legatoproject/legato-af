@@ -65,6 +65,9 @@ struct System_t : public HasTargetInfo_t
 
     ApiServerInterfaceInstance_t* FindServerInterface(const parseTree::Token_t* appTokenPtr,
                                                       const parseTree::Token_t* interfaceTokenPtr);
+
+    /// Map of custom system versions (key is version name).
+    std::map<std::string, std::string> systemVersions;
 };
 
 

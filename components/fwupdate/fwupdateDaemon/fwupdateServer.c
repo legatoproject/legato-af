@@ -332,6 +332,126 @@ le_result_t le_fwupdate_GetBootloaderVersion
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the custom system version string at the specified index
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OUT_OF_RANGE if the index specified is greater than the number of versions available,
+ *                        or greater than the number of versions allowed to be returned.
+ *      - LE_OVERFLOW if the version string cannot fit in provided buffer
+ *      - LE_NOT_FOUND if opening a version containing file fails
+ *      - LE_FAULT if reading a version containing file fails
+ *      - LE_UNAVAILABLE if the configTree is unavailable
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_fwupdate_GetSystemVersion
+(
+    uint8_t index,
+        ///< [IN] Index to retrieve
+
+    char* versionNamePtr,
+        ///< [OUT] System version name string
+
+    size_t versionNameNumElements,
+        ///< [IN] Buffer size
+
+    char* versionPtr,
+        ///< [OUT] System version string
+
+    size_t versionNumElements
+        ///< [IN] Buffer size
+)
+{
+#if LE_CONFIG_ENABLE_CONFIG_TREE
+    // The index must be less than the maximum number of system versions allowed
+    if (index >= LE_FWUPDATE_MAX_NUM_VERSIONS)
+    {
+        LE_ERROR("The index requested exceeds the maximum number of versions allowed");
+        return LE_OUT_OF_RANGE;
+    }
+
+    // Read the system versions from configtree
+    le_cfg_IteratorRef_t iterRef = le_cfg_CreateReadTxn("framework/systemVersions");
+
+    if (le_cfg_GoToFirstChild(iterRef) != LE_OK)
+    {
+        le_cfg_CancelTxn(iterRef);
+        return LE_OUT_OF_RANGE;
+    }
+
+    // Loop until the specified version at index is reached
+    for (uint8_t i = 0; i < index; i++)
+    {
+        // If specified version at index cannot be reached, return
+        if (le_cfg_GoToNextSibling(iterRef) != LE_OK)
+        {
+            le_cfg_CancelTxn(iterRef);
+            return LE_OUT_OF_RANGE;
+        }
+    }
+
+    // Get the version name
+    if (le_cfg_GetNodeName(iterRef, "", versionNamePtr, versionNameNumElements) == LE_OVERFLOW)
+    {
+        LE_ERROR("Version name buffer size is too small: %" PRIuS, versionNameNumElements);
+        le_cfg_CancelTxn(iterRef);
+        return LE_OVERFLOW;
+    }
+
+    // Get the version
+    if (le_cfg_GetString(iterRef, "", versionPtr, versionNumElements, "") == LE_OVERFLOW)
+    {
+        LE_ERROR("Version buffer size is too small: %" PRIuS, versionNumElements);
+        le_cfg_CancelTxn(iterRef);
+        return LE_OVERFLOW;
+    }
+
+    le_cfg_CancelTxn(iterRef);
+
+    // Check if version is a file path
+    char* fileHeader = "file:";
+    if (strncmp(versionPtr, fileHeader, strlen(fileHeader)) == 0)
+    {
+        char* path = strtok(versionPtr, ":");
+        // The path is the second token after splitting the string
+        path = strtok(NULL, " ");
+
+        FILE* fp;
+        fp = fopen(path, "r");
+        if (fp == NULL)
+        {
+            LE_ERROR("Failed to open %s", path);
+            return LE_NOT_FOUND;
+        }
+
+        if (fgets(versionPtr, versionNumElements, fp) == NULL)
+        {
+            LE_ERROR("Failed to read %s", path);
+            if (fclose(fp) != 0)
+            {
+                LE_ERROR("Failed to close %s", path);
+            }
+            return LE_FAULT;
+        }
+
+        if (fclose(fp) != 0)
+        {
+            LE_ERROR("Failed to close %s", path);
+        }
+
+        // Remove trailing newline
+        strtok(versionPtr, "\n");
+    }
+
+    return LE_OK;
+#else
+    // If the configTree is not enabled, system versions cannot be gotten
+    return LE_UNAVAILABLE;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the app bootloader version string
  *
  * @return

@@ -5,6 +5,7 @@
 set(TEST_EXEC fwupdateUnitTest)
 set(LEGATO_FWUPDATE "${LEGATO_ROOT}/components/fwupdate")
 set(FILEPATH "${LEGATO_ROOT}/apps/test/fwupdate/files")
+set(SIMU_CONFIG_TREE "${CMAKE_CURRENT_SOURCE_DIR}/simu/")
 
 if(TEST_COVERAGE EQUAL 1)
     set(CFLAGS "--cflags=\"--coverage\"")
@@ -22,6 +23,7 @@ mkexe(${TEST_EXEC}
     -i ${LEGATO_ROOT}/platformAdaptor/simu/components/le_pa_fwupdate
     -i ${PA_DIR}/simu/components/le_pa_fwupdate
     -i ${LEGATO_ROOT}/
+    -i ${SIMU_CONFIG_TREE}
     -C "-fvisibility=default"
     ${CFLAGS}
     ${LFLAGS}

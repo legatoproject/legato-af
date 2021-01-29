@@ -20,6 +20,20 @@
 //--------------------------------------------------------------------------------------------------
 #define CM_INFO_MAX_STRING_BYTES 100
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the version name string.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_VERS_NAME_BYTES  65
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of the version string.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_VERS_BYTES  257
+
 //-------------------------------------------------------------------------------------------------
 /**
  * Print the data help text to stdout.
@@ -383,6 +397,46 @@ void cm_info_PrintResetsCount
     }
 }
 
+//-------------------------------------------------------------------------------------------------
+/**
+ * Print all system versions
+ */
+//-------------------------------------------------------------------------------------------------
+void cm_info_PrintSystemVersions
+(
+    bool withHeaders
+)
+{
+    if ( le_fwupdate_TryConnectService() != LE_OK )
+    {
+        LE_ERROR("Cannot connect to fwupdate service to print system versions");
+        return;
+    }
+
+    char versionName[MAX_VERS_NAME_BYTES];
+    char version[MAX_VERS_BYTES];
+    uint8_t index = 0;
+    le_result_t systemVersionResult;
+    do
+    {
+        systemVersionResult = le_fwupdate_GetSystemVersion(index, versionName, sizeof(versionName),
+                                                           version, sizeof(version));
+        if ( systemVersionResult == LE_OK )
+        {
+            if (withHeaders)
+            {
+                cm_cmn_FormatPrint(versionName, version);
+            }
+            else
+            {
+                printf("%s\n", version);
+            }
+        }
+        index++;
+    }
+    while ( systemVersionResult != LE_OUT_OF_RANGE && index < LE_FWUPDATE_MAX_NUM_VERSIONS );
+}
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Process commands for info service.
@@ -412,6 +466,7 @@ void cm_info_ProcessInfoCommand
         cm_info_PrintGetSku(true);
         cm_info_PrintResetCause(true);
         cm_info_PrintResetsCount(true);
+        cm_info_PrintSystemVersions(true);
     }
     else if (strcmp(command, "firmware") == 0)
     {

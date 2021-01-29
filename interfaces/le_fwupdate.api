@@ -84,6 +84,20 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum number of system versions allowed
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_NUM_VERSIONS   = 32;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum length of a version name string, excluding any termination character.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_VERS_NAME_LEN   = 64;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum length of a version string, excluding any termination character.
  */
 //--------------------------------------------------------------------------------------------------
@@ -231,6 +245,27 @@ FUNCTION le_result_t GetFirmwareVersion
 FUNCTION le_result_t GetBootloaderVersion
 (
     string version[MAX_VERS_LEN] OUT     ///< Bootloader version string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the custom system version string at the specified index
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_OUT_OF_RANGE if the index specified is greater than the number of versions available,
+ *                        or greater than the number of versions allowed to be returned.
+ *      - LE_OVERFLOW if the version string cannot fit in provided buffer
+ *      - LE_NOT_FOUND if opening a version containing file fails
+ *      - LE_FAULT if reading a version containing file fails
+ *      - LE_UNAVAILABLE if the configTree is unavailable
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetSystemVersion
+(
+    uint8 index IN,                              ///< Index to retrieve
+    string versionName[MAX_VERS_NAME_LEN] OUT,   ///< System version name string
+    string version[MAX_VERS_LEN] OUT             ///< System version string
 );
 
 //--------------------------------------------------------------------------------------------------

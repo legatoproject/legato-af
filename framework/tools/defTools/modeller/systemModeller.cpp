@@ -1036,6 +1036,35 @@ static void GetExternalWdogKick
     systemPtr->externalWatchdogKick = value;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Adds each custom system version listed in a "systemVersions:" section to system config
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetSystemVersions
+(
+    model::System_t* systemPtr,
+    const parseTree::CompoundItem_t* sectionPtr
+)
+{
+    // A systemVersion section is a list of STRING to STRING pair tokens.
+    // Each pair's key STRING is a version name,
+    // and value STRING is the version or path to file containing the version.
+    auto systemVersionSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+    for (auto itemPtr : systemVersionSectionPtr->Contents())
+    {
+        dynamic_cast<const parseTree::ComplexSection_t*>(itemPtr);
+        // Unquote the custom version name and version
+        const auto versionName = path::Unquote(DoSubstitution(itemPtr->firstTokenPtr));
+        const auto version = path::Unquote(DoSubstitution(itemPtr->lastTokenPtr));
+        // Insert the custom system version into the systemVersions map
+        systemPtr->systemVersions[versionName] = version;
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Make sure that the required kernel modules listed in app and modules are in sdef.
@@ -1465,6 +1494,10 @@ model::System_t* GetSystem
         {
             auto complexSectionPtr = dynamic_cast<parseTree::ComplexSection_t*>(sectionPtr);
             AddLinks(linkSections, complexSectionPtr);
+        }
+        else if (sectionName == "systemVersions")
+        {
+            GetSystemVersions(systemPtr, sectionPtr);
         }
         else
         {

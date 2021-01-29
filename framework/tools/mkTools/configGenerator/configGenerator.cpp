@@ -1603,6 +1603,35 @@ static void GenerateExternalWatchdogKickConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate the systemVersions configuration.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateSystemVersionsConfig
+(
+    std::ofstream& cfgStream,
+    const model::System_t* systemPtr
+)
+{
+    if (systemPtr->systemVersions.empty())
+    {
+        return;
+    }
+
+    cfgStream <<
+        "    \"systemVersions\"\n"
+        "    {\n";
+    for (auto &mapEntry : systemPtr->systemVersions)
+    {
+        cfgStream << "        \"" << mapEntry.first << "\" \""
+                << mapEntry.second << "\"\n";
+    }
+    cfgStream <<
+        "    }\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate the rpcProxy system link configuration settings
  */
 //--------------------------------------------------------------------------------------------------
@@ -1700,6 +1729,7 @@ static void GenerateFrameworkConfig
     cfgStream << "{" << std::endl;
 
     GenerateExternalWatchdogKickConfig(cfgStream, systemPtr);
+    GenerateSystemVersionsConfig(cfgStream, systemPtr);
     GenerateSystemLinkConfig(cfgStream, systemPtr->links);
 
     // Client references for the system are server references for rpcServer

@@ -14,6 +14,14 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Maximum length of the version name string.
+ */
+//--------------------------------------------------------------------------------------------------
+#define MAX_VERS_NAME_BYTES  65
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Maximum length of the version string.
  */
 //--------------------------------------------------------------------------------------------------
@@ -245,6 +253,7 @@ static le_result_t QueryVersion
     TryConnect(le_fwupdate_ConnectService, "fwupdateService", &FwupdateConnectionState);
 
     // Connected to service so continue
+    char versionName[MAX_VERS_NAME_BYTES];
     char version[MAX_VERS_BYTES];
     struct utsname linuxInfo;
 
@@ -274,6 +283,20 @@ static le_result_t QueryVersion
     {
         result = LE_FAULT;
     }
+
+    uint8_t index = 0;
+    le_result_t systemVersionResult;
+    do
+    {
+        systemVersionResult = le_fwupdate_GetSystemVersion(index, versionName, sizeof(versionName),
+                                                           version, sizeof(version));
+        if ( systemVersionResult == LE_OK )
+        {
+            printf("%s: %s\n", versionName, version);
+        }
+        index++;
+    }
+    while ( systemVersionResult != LE_OUT_OF_RANGE && index < LE_FWUPDATE_MAX_NUM_VERSIONS );
 
     return result;
 }

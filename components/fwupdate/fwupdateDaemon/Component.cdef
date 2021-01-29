@@ -32,6 +32,7 @@ requires:
     api:
     {
         ${LEGATO_ROOT}/interfaces/le_pm.api [optional]
+        le_cfg.api
     }
     component:
     {

@@ -513,6 +513,36 @@ static parseTree::CompoundItem_t* ParseLinksItem
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parses an entry in the "systemVersions:" section in a .sdef file.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseSystemVersion
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Each entry in the systemVersions: section is a version name followed by
+    // a colon and then the version or path to a file containing the version.
+    // Pull the version name out and create a new object for it.
+    parseTree::Token_t* nameTokenPtr = lexer.Pull(parseTree::Token_t::STRING);
+
+    auto itemPtr = new parseTree::ComplexSection_t(nameTokenPtr);
+
+    // Expect an ':' next.
+    (void)lexer.Pull(parseTree::Token_t::COLON);
+
+    // Expect the content token next.
+    itemPtr->lastTokenPtr = lexer.Pull(parseTree::Token_t::STRING);
+
+    return itemPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses a section in a .sdef file.
  *
  * @return Pointer to the item.
@@ -589,6 +619,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "links")
     {
         return ParseComplexSection(lexer, sectionNameTokenPtr, internal::ParseLinksItem);
+    }
+    else if (sectionName == "systemVersions")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseSystemVersion);
     }
     else
     {

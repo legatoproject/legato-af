@@ -5,6 +5,7 @@ requires:
         le_fwupdate.api         [types-only]
         le_flash.api            [types-only]
         le_dualsys.api          [types-only]
+        le_cfg.api              [types-only]
     }
 }
 
