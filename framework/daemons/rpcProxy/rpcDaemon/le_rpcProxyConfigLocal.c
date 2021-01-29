@@ -123,6 +123,7 @@ LE_SHARED rpcProxy_SystemServiceConfig_t* rpcProxyConfig_GetSystemServiceArray
     uint32_t index
 )
 {
+    LE_ASSERT(index < NUM_ARRAY_MEMBERS(rpcProxy_SystemServiceArray));
     return &(rpcProxy_SystemServiceArray[index]);
 };
 
