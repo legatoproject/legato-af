@@ -1400,3 +1400,21 @@ FUNCTION le_result_t ReadLwm2mResource
     uint16 resourceInstanceId IN,                 ///< Resource instance identifier
     string data[MAX_LWM2M_RESOURCE_BYTES] OUT     ///< String of requested resources to be read
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to set the NAT timeout
+ *
+ * This function sets the NAT timeout in volatile memory.
+ * When data need to be sent by the client, a check is made between this NAT timeout value and the
+ * time when last data were received from the server or sent to the server.
+ * If one of these times is greater than the NAT timeout, a DTLS resume is initiated.
+ * Default value if this function is not called: 40 seconds.
+ * Value 0 will deactivate any DTLS resume.
+ * This function can be called at any time.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION SetNatTimeout
+(
+    uint32 timeout IN                             ///< Timeout (unit: seconds)
+);
