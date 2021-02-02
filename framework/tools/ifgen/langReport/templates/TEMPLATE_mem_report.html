@@ -1,0 +1,34 @@
+<html>
+<head>
+<title>Memory usage of the {{apiBaseName}} API</title>
+</head>
+<body>
+<h1>Memory usage of the {{apiBaseName}} API</h1>
+
+The {{apiBaseName}} requires the following message sizes on each platform:
+
+<p>
+<em>Linux message size:</em> {{messageSize}}<br>
+<em>RTOS message size:</em> {{interface|LocalMessageSize(4)}}
+</p>
+
+This is sized according to the largest amount of data which can be sent by any client in an API
+API call, or sent back by the server to the client in any callback handler.
+
+<h2>Maximum data size by handler</h2>
+<table>
+<tr><th>Handler name</th><th>Linux required size</th><th>RTOS required size</th></tr>
+{%- for handler in types if handler is HandlerType %}
+<tr><td>{{handler.name}}</td><td>{{handler|MessageSize}}</td><td>{{handler|LocalMessageSize(4)}}</td></tr>
+{%- endfor %}
+</table>
+
+<h2>Maximum data size by API</h2>
+<table>
+<tr><th>API name</th><th>Linux required size</th><th>RTOS required size</th></tr>
+{%- for function in functions %}
+<tr><td>{{function.name}}</td><td>{{function|MessageSize}}</td><td>{{function|LocalMessageSize(4)}}</td></tr>
+{%- endfor %}
+</table>
+</body>
+</html>

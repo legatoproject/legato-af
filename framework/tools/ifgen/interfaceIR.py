@@ -660,7 +660,7 @@ class Interface(object):
         else:
             raise Exception("Unknown declaration object type")
 
-    def getMessageSize(self):
+    def GetMessageSize(self):
         """
         Get size of largest possible message to a function or handler.
 

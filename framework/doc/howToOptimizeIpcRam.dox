@@ -1,0 +1,77 @@
+/** @page howToOptimizeIpcRam Optimize IPC RAM usage
+
+@section howToOptimizeIpcRam_intro Introduction
+
+On smaller systems, or systems with complex IPC APIs, the IPC memory usage can be a significant
+contributor to the overall system RAM footprint.  This can extend up to 20-30% of the total
+RAM usage of the system.
+
+When your application uses an API, the Legato framework uses RAM for this API in four ways:
+
+ - Message buffers for sending or receiving messages.
+ - For APIs with events or callbacks, callback contexts to track each callback or event which
+   has been registered.
+ - For async IPC servers, async contexts tracking each outstanding async call.
+ - Various messaging state and synchronization variables.
+
+The callback and async contexts are both typically 16-32 bytes, so by far the largest memory user
+is usually the message buffers.
+
+This page describes how to measure the memory
+required for API messages, and techniques which can be used to reduce this memory usage, such
+as:
+
+ - @ref howToOptimizeIpcRam_sizing
+ - @ref howToOptimizeIpcRam_accessors
+
+@section howToOptimizeIpcRam_measuring Measuring IPC RAM Usage
+
+The @c ifgen tool has a report mode which can be used to measure and report on
+
+ - the memory used for each message buffer, and
+ - the data size required for each API call and callback message.
+
+To generate this report, run
+
+@verbatim
+# ifgen --lang Report --gen-mem-report <apiFile>
+@endverbatim
+
+This will generate the memory report in the current directory in @c <api>_mem_report.html.
+If the API includes any other APIs via @c USETYPES you will need to add @c --import-dir flags
+to point to the directories containing those APIs.
+
+This report contains a column for RTOS message size; this can be ignored unless you are using
+the experimental RTOS support.
+
+@section howToOptimizeIpcRam_sizing Adjusting Buffer Sizes and Message Counts
+
+The easiest way to reduce memory usage is decrease the size of strings and arrays in messages,
+or decrease the number of messages the server will process at a time.  The message buffer is
+sized to accommodate the largest strings and arrays allowed by the API.  Decreasing these, where
+possible, will result in a smaller message buffer.  In a similar vein, consider if a single API
+which requires multiple string or array parameters can be split into different APIs with a smaller
+number of parameters.
+
+Similarly, the Legato framework will estimate the number of message buffers which will be needed.
+This can be fine-tuned by overriding the API's @c Messages pool size.  See the description of
+the cdef @ref defFilesCdef_pools section for details.
+
+@section howToOptimizeIpcRam_accessors Using References and Accessors
+
+There are two common patterns to access bulk data in Legato APIs.  Either a copy of the array
+data structure can be returned all at once to the client, or the client can return a reference
+to the data using a @c REF return value, and the client can make further API calls to access the
+individual elements.  Returning a copy of the entire array or data structure can be convenient
+and quick if the caller will want every element.  But it will also require larger IPC buffers,
+using more memory if the server is also keeping a copy of the data anyway.
+
+This is especially important for handlers on RTOS systems.  If a string or array is passed
+to a handler, the entire data is copied into the message buffer.  If however a string or array
+is returned as an @c OUT parameter on a regular function, only a pointer to the buffer needs to
+be passed over IPC.  This does not apply on Linux, where the string or array must be passed over
+IPC in both cases.
+
+Copyright (C) Sierra Wireless Inc.
+
+ **/

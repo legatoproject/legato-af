@@ -345,7 +345,7 @@ def Main():
                             apiName=args.namePrefix,
                             apiBaseName=args.apiFileName,
                             idString=hashValue,
-                            messageSize=interface.getMessageSize(),
+                            messageSize=interface.GetMessageSize(),
                             # Break-out various aspects of the interface for convenience
                             imports=interface.imports.keys(),
                             types=interface.types.values(),

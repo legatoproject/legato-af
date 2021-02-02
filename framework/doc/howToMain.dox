@@ -34,6 +34,7 @@ the following tutorials:
 | @subpage howToDebugGDB             | Debug Apps using GDB                                        |
 | @subpage howToSandboxHelper        | Troubleshoot sandbox issues                                 |
 | @subpage howToKMod                 | Setup examples for kernel modules                           |
+| @subpage howToOptimizeIpcRam       | Optimize IPC RAM usage                                      |
 | @subpage howToPortLegacyGen        | Port external Apps to Legato                                |
 | @subpage howToAdd3rdParty          | Add 3rd party libraries and external files to an app        |
 
