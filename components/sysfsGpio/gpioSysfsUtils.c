@@ -121,14 +121,14 @@ static le_result_t ExportGpio
     FILE *fp = NULL;
 
     // First check if the GPIO has already been exported
-    snprintf(path, sizeof(path), "%s/%s%s", SYSFS_GPIO_PATH, GpioAliasesPath, gpioRef->gpioName);
+    snprintf(path, sizeof(path), "%s%s%s", SYSFS_GPIO_PATH, GpioAliasesPath, gpioRef->gpioName);
     if (CheckGpioPathExist(path))
     {
         return LE_OK;
     }
 
     // Write the GPIO number to the export file
-    snprintf(export, sizeof(export), "%s/%s%s", SYSFS_GPIO_PATH, GpioAliasPrefix, "export");
+    snprintf(export, sizeof(export), "%s%s%s", SYSFS_GPIO_PATH, GpioAliasPrefix, "export");
     snprintf(gpioStr, sizeof(gpioStr), "%d", gpioRef->pinNum);
     do
     {
@@ -316,7 +316,7 @@ static le_result_t WriteOutputValue
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
                           gpioRef->gpioName, "value");
     snprintf(attr, sizeof(attr), "%d", level);
     LE_DEBUG("path:%s, attr:%s", path, attr);
@@ -353,7 +353,7 @@ static le_result_t SetEdgeSense
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "edge");
 
     switch(edge)
@@ -411,7 +411,7 @@ static le_result_t SetDirection
         return LE_OK;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
             gpioRef->gpioName, "direction");
     attr = (mode == SYSFS_PIN_MODE_OUTPUT) ? "out": "in";
     LE_DEBUG("path:%s, attribute:%s", path, attr);
@@ -447,7 +447,7 @@ le_result_t gpioSysfs_SetPullUpDown
         return LE_NOT_IMPLEMENTED;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "pull");
     attr = (pud == SYSFS_PULLUPDOWN_TYPE_DOWN) ? "down": "up";
     LE_DEBUG("path:%s, attr:%s", path, attr);
@@ -588,7 +588,7 @@ le_result_t gpioSysfs_SetPolarity
         return LE_BAD_PARAMETER;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "active_low");
     snprintf(attr, sizeof(attr), "%d", level);
     LE_DEBUG("path:%s, attr:%s", path, attr);
@@ -650,7 +650,7 @@ void* gpioSysfs_SetChangeCallback
     gpioRef->callbackContextPtr = contextPtr;
 
     // Start monitoring the fd for the correct GPIO
-    snprintf(monFile, sizeof(monFile), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(monFile, sizeof(monFile), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "value");
 
     do
@@ -754,7 +754,7 @@ gpioSysfs_Value_t gpioSysfs_ReadValue
         return -1;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "value");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
@@ -866,7 +866,7 @@ bool gpioSysfs_IsInput
         return false;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "direction");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
@@ -916,7 +916,7 @@ gpioSysfs_PullUpDownType_t gpioSysfs_GetPullUpDown
         return -1;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "pull");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
@@ -965,7 +965,7 @@ gpioSysfs_ActiveType_t gpioSysfs_GetPolarity
         return -1;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "active_low");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
@@ -1014,7 +1014,7 @@ gpioSysfs_EdgeSensivityMode_t gpioSysfs_GetEdgeSense
         return SYSFS_EDGE_SENSE_NONE;
     }
 
-    snprintf(path, sizeof(path), "%s/%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
+    snprintf(path, sizeof(path), "%s%s%s/%s", SYSFS_GPIO_PATH, GpioAliasesPath,
              gpioRef->gpioName, "edge");
     leResult = ReadSysGpioSignalAttr(path, sizeof(result), result);
     if (leResult != LE_OK)
@@ -1303,7 +1303,7 @@ void gpioSysfs_Initialize
     char path[128];
 
     *gpioDesignPtr = GpioDesign;
-    snprintf(path, sizeof(path), "%s/%s%s", SYSFS_GPIO_PATH, SYSFS_GPIO_ALIAS_PREFIX, "export");
+    snprintf(path, sizeof(path), "%s%s%s", SYSFS_GPIO_PATH, SYSFS_GPIO_ALIAS_PREFIX, "export");
     if (access(path, W_OK) == 0)
     {
         LE_INFO("GPIO design V2");
