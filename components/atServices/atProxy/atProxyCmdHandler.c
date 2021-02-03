@@ -362,6 +362,7 @@ static void ProcessAtCmd
         if (atCmdRegistryPtr[atCmdPtr->registryIndex].commandHandlerPtr != NULL)
         {
             atCmdPtr->active = true;
+            atProxySerialUart_write("\r\n", strlen("\r\n"));
             atProxySerialUart_disable();
 
             // Trigger the AT Command Handler callback registered for this "local"
@@ -646,11 +647,7 @@ void atProxyCmdHandler_AsyncRecvHandler
             // Echo Command mode is enabled
             if (AtEchoMode)
             {
-                if (AtCmd.command[AtCmd.index] == 0x0D)
-                {
-                    atProxySerialUart_write("\r\n", strlen("\r\n"));
-                }
-                else
+                if (AtCmd.command[AtCmd.index] != AT_TOKEN_CR)
                 {
                     atProxySerialUart_write(&AtCmd.command[AtCmd.index], 1);
                 }
