@@ -641,6 +641,22 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Retrieves the AT Command Session record associated with the specified Command Reference
+ *
+ * @return le_atProxy_AtCommandSession pointer
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED struct le_atProxy_AtCommandSession*  atProxyCmdHandler_GetAtCommandSession
+(
+    le_atServer_CmdRef_t commandRef  ///< [IN] AT Command Reference
+)
+{
+    return le_ref_Lookup(atCmdSessionRefMap, commandRef);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Complete the current AT command session
  *
  * @return none
@@ -779,6 +795,35 @@ LE_SHARED le_atProxy_AtCommandSession_t* atProxyCmdHandler_OpenSession
     atSessionPtr->port = port;
 
     return atSessionPtr;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close an AT command session
+ *
+ * @return
+ *      - LE_OK                Function succeeded.
+ *      - LE_BAD_PARAMETER     Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t atProxyCmdHandler_CloseSession
+(
+    le_atProxy_AtCommandSession_t* atCmdPtr   ///< [IN] AT Command Session Pointer
+)
+{
+    if (!atCmdPtr)
+    {
+        LE_ERROR("AT Command Session is NULL");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Delete the Safe Reference to the AT Command Session
+    le_ref_DeleteRef(atCmdSessionRefMap, atCmdPtr->ref);
+
+    // Free the memory for the AT Command Session
+    le_mem_Release(atCmdPtr);
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

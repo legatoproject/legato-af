@@ -130,6 +130,18 @@ void atProxyCmdHandler_ParseBuffer
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Retrieves the AT Command Session record associated with the specified Command Reference
+ *
+ * @return le_atProxy_AtCommandSession pointer
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_atProxy_AtCommandSession*  atProxyCmdHandler_GetAtCommandSession
+(
+    le_atServer_CmdRef_t commandRef  ///< [IN] AT Command Reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Send or queue local unsolicited responses
  *
  * @return none
@@ -154,5 +166,18 @@ le_atProxy_AtCommandSession_t* atProxyCmdHandler_OpenSession
     le_atProxy_PortRef_t port   ///< [IN] AT port for AT session to be opened
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Close an AT command session
+ *
+ * @return
+ *      - LE_OK                Function succeeded.
+ *      - LE_BAD_PARAMETER     Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t atProxyCmdHandler_CloseSession
+(
+    le_atProxy_AtCommandSession_t* atCmdPtr   ///< [IN] AT Command Session Pointer
+);
 
 #endif /* LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD */
