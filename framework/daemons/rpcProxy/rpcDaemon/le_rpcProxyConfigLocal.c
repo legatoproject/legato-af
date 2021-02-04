@@ -33,6 +33,7 @@ extern const rpcProxy_ExternClient_t *rpcProxy_ClientReferenceArray[];
 rpcProxy_SystemServiceConfig_t
 rpcProxy_SystemServiceArray[RPC_PROXY_SERVICE_BINDINGS_MAX_NUM + 1];
 
+#if LE_CONFIG_RPC_RUNTIME_CONFIG_TREE
 //--------------------------------------------------------------------------------------------------
 /**
  * This pool is used to allocate memory for general Config strings.
@@ -72,6 +73,45 @@ LE_MEM_DEFINE_STATIC_POOL(
 
 static le_mem_PoolRef_t ConfigArgumentArrayPoolRef = NULL;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for retrieving the Argument Array Pool reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t rpcProxyConfig_GetArgumentArrayPoolRef
+(
+    void
+)
+{
+    return ConfigArgumentArrayPoolRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for retrieving the Argument String Pool reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t rpcProxyConfig_GetArgumentStringPoolRef
+(
+    void
+)
+{
+    return ConfigArgumentStringPoolRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function for retrieving the String Pool reference.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mem_PoolRef_t rpcProxyConfig_GetStringPoolRef
+(
+    void
+)
+{
+    return ConfigStringPoolRef;
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -169,45 +209,6 @@ le_result_t rpcProxyConfig_LoadReferences
     return LE_OK;
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for retrieving the Argument Array Pool reference.
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t rpcProxyConfig_GetArgumentArrayPoolRef
-(
-    void
-)
-{
-    return ConfigArgumentArrayPoolRef;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for retrieving the Argument String Pool reference.
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t rpcProxyConfig_GetArgumentStringPoolRef
-(
-    void
-)
-{
-    return ConfigArgumentStringPoolRef;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Function for retrieving the String Pool reference.
- */
-//--------------------------------------------------------------------------------------------------
-le_mem_PoolRef_t rpcProxyConfig_GetStringPoolRef
-(
-    void
-)
-{
-    return ConfigStringPoolRef;
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -224,6 +225,7 @@ le_result_t rpcProxyConfig_InitializeOnce
     void
 )
 {
+#if LE_CONFIG_RPC_RUNTIME_CONFIG_TREE
     // Initialize memory pool for allocating System and Service Name Strings.
     ConfigStringPoolRef = le_mem_InitStaticPool(
                               ConfigStringPool,
@@ -244,6 +246,7 @@ le_result_t rpcProxyConfig_InitializeOnce
                                       RPC_PROXY_NETWORK_SYSTEM_MAX_NUM,
                                       (RPC_PROXY_COMMAND_LINE_ARG_PER_SYSTEM_LINK_MAX_NUM + 1) *
                                       LIMIT_MAX_ARGS_STR_LEN);
+#endif
 
     // Initialize System-Services Array
     memset(rpcProxy_SystemServiceArray, 0, sizeof(rpcProxy_SystemServiceArray));
