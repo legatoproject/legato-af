@@ -292,7 +292,8 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/lib/libdl.so.2", .dest = "/lib/"},
     {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
     {.src = "/lib/libm.so.6", .dest = "/lib/"},
-    {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"}
+    {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"},
+    {.src = "/lib/libresolv.so.2", .dest = "/lib/"}
 };
 
 #elif defined(TARGET_IMPORTS_RASPI)
