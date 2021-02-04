@@ -1,0 +1,846 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_atServer AT Commands Server
+ *
+ * @ref le_atServer_interface.h "API Reference"
+ *
+ * The AT commands Server handles AT commands' subscriptions on a requested serial device. The
+ * server is compliant with 3GPP 27.007, paragraphs 4.0, 4.1 and 4.2, and V25 ter, paragraphs 5.3,
+ * 5.4.
+ *
+ * @section le_atServer_binding IPC interfaces binding
+ *
+ * All the functions of this API are provided by the @b atService.
+ *
+ * Here's a code sample binding to the AT commands server:
+ * @verbatim
+   bindings:
+   {
+     atServerTest.atServerTestComp.le_atServer -> atService.le_atServer
+   }
+   @endverbatim
+ *
+ * @section atServer_syntax AT command syntax
+ *
+ * @subsection atServer_Syntax Syntax rules
+ *
+ * To be interpreted, the command line sent to the AT commands server must start by the pattern
+ * "AT" (mean ATtention command).<br>
+ * Lowercase characters are changed to their uppercase equivalents. Only characters between quotes
+ * are not replaced.
+ *
+ * The supported command formats are:
+ * - Basic syntax command:
+ *      - using the format AT<command>[<number>]<br>
+ * The command name is composed of one or several of those characters: A to Z, & and \\.
+ *      - the syntax of S command is also supported, like:
+ *          - ATS<parameter_number>?
+ *          - ATS<parameter_number>=\<value>
+ *      - D command is supported. The characters which don't belong to the following list are
+ * ignore:
+ *              - V.250 dialing digits: 0 1 2 3 4 5 6 7 8 9 * # + A B C D
+ *              - V.250 modifier characters: , T P ! W @
+ *              - V.250 semicolon character: ;
+ *              - GSM/UMTS modifier characters:
+ *                  - I or i for CLIR supplementary service subscription
+ * (I=invocation, i=suppression)
+ *                  - G or g for CUG supplementary service subscription (G=invocation,
+ * g=suppression)
+ *                  - Direct dialing from phonebook: > (if follow by a string, it has to be put
+ * between quote)
+ *              .
+ * @if 0 doxygen comment: The dot above ends the sub item, and must be kept @endif
+ * All characters after the "D" are considered part of The D command parameter up to a semicolon or
+ * the end of command line.
+ * <br>
+ * - Extended command format, with the following format:
+ *      - action command with no parameters: AT+<name>
+ *      - parameter command: AT+<name>=<value1>[,<value2>[,<value3>[...]]]<br>
+ *        Values must be separated by a coma. Some values may be optional: in that case, optional
+ *        value can be omitted in the AT command (e.g. AT+ABCD=,1).<br>
+ *        A value is a string composed of one or several of the following characters: 0 to 9,
+ *        A to F, H, h, *, #, +, -. To set a value with other characters, the value has to be set
+ * between quote.
+ *      - test command (determine the supported values): AT+<name>=?
+ *      - read command (determine the current values, or stored values): AT+<name>?[\<value\>]<br>
+ * An optional parameter is supported.
+ *
+ * @note '+' AT command starting character shall be replaced by other symbol, not included into
+ * a to z, A to Z, & and \\.
+ *
+ * @subsection atServer_concate Concatenating commands
+ *
+ * Basic syntax command can be concatenated without a separator:<br>
+ * ATE1V1S95=47S0=0
+ *
+ * Additional commands (extended syntax command or basic syntax command) can be added after an
+ * extended syntax command with the insertion of a semicolon at the end of the command:<br>
+ * AT+CMDA=<param1>,<param2>;+CMDB?;+CMDC=?<br>
+ * AT+CMDA=<param1>,<param2>;E1V1
+ *
+ * Extended syntax command can be concatenated after basic syntax commands without a separator:<br>
+ * ATE1V1+CMD=<param1>
+ *
+ * @section atServer_binding Device Binding
+ *
+ * le_atServer_Open() must be called to bind the file descriptor of the device with the AT commands
+ * server. Note that a socket can also be bound.
+ * Multiple devices can be bound.
+ * A file descriptor can be unbound using le_atServer_Close().
+ *
+ * The server can be suspended using le_atServer_Suspend() in order to use the
+ * opened fd for other purposes like starting a PPP service on the opened fd.
+ * For that a fd dup needs to be done before opening a server session.
+ * When needed, the server can be resumed using le_atServer_Resume(). Make sure
+ * to close the fd when the application exists or you may get too many open files error.
+ *
+ * used before opening a server session
+ * @section atServer_subscription Subscription
+ *
+ * A new AT command can be added into the parser using le_atServer_Create(), and it can be deleted
+ * using le_atServer_Delete().
+ * le_atServer_EnableEcho() allows the user to enable echo on a selected device.
+ * le_atServer_DisableEcho() allows the user to disable echo on a selected device.
+ *
+ * @section atServer_handler Handler
+ *
+ * To handle the AT command, the application has to subscribe a handler using
+ * le_atServer_AddCommandHandler(). It can be removed with le_atServer_RemoveCommandHandler().
+ *
+ * The called handler (le_atServer_CommandHandlerRef_t prototype) can use
+ * le_atServer_GetCommandName() to retrieve the received AT command string.
+ *
+ * The device used to execute the AT command can be retrieve thanks to le_atServer_GetDevice().
+ *
+ * It can also call le_atServer_GetParameter() to retrieve parameters of the AT command. This
+ * function gets the string sending through the AT command. If the parameter was sent between
+ * quotes, the quotes are removed. This API can be used for both formats:
+ * - In case of a basic format command (AT<command>[<number>]), if exists, the <number> can be
+ * retrieved at the index 0. For S command specific format (ATS<parameter_number>=\<value>),
+ * the <parameter_number> is retrieved at the index 0, the \<value> parameter at the index 1.
+ *
+ * - In case of an extended format command, parameters are retrieved thanks to their indexes,
+ * starting from 0. If the parameter is missed (e.g. "AT+CMD=,1"), the getting value is an empty
+ * string (i.e. '\0' with null length).
+ *
+ * The handler receives in argument the type of the AT command (of le_atServer_Type_t type).
+ * Even if these types are specific to the extended format commands according to the standards, they
+ * are also applicable here to basic format commands to detect commands with parameters, or read
+ * values (e.g. ATS<parameter_number>?).
+ *
+ * @note If the parameter is parsed with quotes, the quotes are removed when retrieving the
+ * parameter value using le_atServer_GetParameter() API. If a parmeter is not parsed with quotes,
+ * that parameter is converted to uppercase equivalent.
+ *
+ * @subsection atServer_RegistrationHandler Registration Handler
+ *
+ * The AT command handling mechanism may rely on an intermediate handler to reroute the AT commands
+ * to the atServer.
+ * le_atServer_AddCmdRegistrationHandler() installs such a registration handler that will be called
+ * each time a new command is subscribed by an application with le_atServer_AddCommandHandler().
+ *
+ * @section atServer_responses Responses
+ *
+ * @subsection intermediateRsp Intermediate response
+ *
+ * The application has can send intermediate responses through
+ * le_atServer_SendIntermediateResponse().
+ *
+ * @note If le_atServer_SendIntermediateResponse() return LE_FAULT, the final response have to be
+ * sent.
+ *
+ * @subsection finalResultCode Final result code
+ *
+ * The application must return a final result code using le_atServer_SendFinalResultCode().
+ * The corresponding device will be locked until the final response is sent.
+ *
+ * If no answer is sent, the device will not accept any new AT commands (an error will be
+ * returned).
+ *
+ * le_atServer_SendFinalResultCode() takes as arguments the AT command reference, a pattern (which
+ * is the prefix of the final response), a final response type as defined in
+ * @ref le_atServer_FinalRsp_t and an error code identifier.
+ *
+ * The final response type permits to the AT command Server to continue or stop the parsing of
+ * concatenated commands: if one command is failed, next commands are not executed, the final result
+ * of the concatenated AT command is the last error.
+ *
+ * @subsection unsolicitedRsp Unsolicited response
+ *
+ * The application can also send unsolicited responses to warn a host
+ * application using le_atServer_SendUnsolicitedResponse().
+ *
+ * This response is sent when no AT command is being processing on the device (i.e. unsolicited
+ * response is sent between the latest final response and the next reception of an AT command).
+ *
+ * If an unsolicited response is sent when an AT command is in progress, the unsolicited response
+ * is buffered and sent as soon as the device becomes available (i.e., the processing AT command
+ * sends its final response).
+ *
+ * @section atServer_errors Error codes
+ *
+ * le_atServer_EnableExtendedErrorCodes() allows the user to use extended error codes on a selected
+ * device. When this mode is enabled, numerical codes are displayed when an error occurs.
+ * le_atServer_EnableVerboseErrorCodes() allows the user to enable verbose error codes on a selected
+ * device. Thus, instead of numerical codes, error are actually displayed as verbose messages.
+ * le_atServer_DisableExtendedErrorCodes() allows the user to disable the current error mode namely
+ * extended error codes or verbose error codes on a selected device.
+ *
+ * User can create custom error codes using le_atServer_CreateErrorCode() by providing an error
+ * code identifier and a specific pattern. The pattern is a prefix of the final response string.
+ * Standard error codes use the patterns "+CME ERROR: " and "+CMS ERROR: " for instance. These
+ * standard patterns are defined in the following macros: CME_ERROR and CMS_ERROR.
+ * The code identifier should be equal or higher than 512 as the range [0, 511] is reserved for
+ * standard error codes defined in 3GPP 27.007 9.2 and TS 127.005 3.2.5.
+ *
+ * le_atServer_CreateErrorCode() returns a reference which can be used to attach a custom verbose
+ * message to the error codes by calling le_atServer_SetVerboseErrorCode().
+ * le_atServer_DeleteErrorCode() allows the user to drop an already registered error code.
+ *
+ * @section Text
+ *
+ * le_atServer_GetTextAsync() allows the user to register a le_atServer_GetTextCallback_t callback
+ * to retrieve text and sends a prompt <CR><LF><greater_than><SPACE> on the current command's
+ * device.
+ *
+ * It will receive at max LE_ATDEFS_TEXT_MAX_LEN bytes.
+ * If Esc Key is hit then the command is canceled and an empty buffer is returned with result
+ * set to LE_OK.
+ * If Ctrl+z is hit then the received buffer is returned and the result is set to LE_OK.
+ * In case of a read error, an empty buffer is returned with result set to LE_IO_ERROR;
+ *
+ * Example:
+ *
+ * AT+CMGS="+85291234567"
+ * > <ESC>
+ *
+ * OK
+ *
+ * AT+CMGS="+85291234567"
+ * > It is easy to send text messages. <CTRL-Z>
+ * +CMGS: 5
+ *
+ * OK
+ *
+ * @section atServer_bridge Bridge
+ *
+ * A second file descriptor can be used thanks to le_atServer_OpenBridge() to send
+ * all unknown AT commands to an alternative device (such as the modem). For all devices linked to
+ * that bridge using le_atServer_AddDeviceToBridge(), unknown commands will be sent through that
+ * file descriptor.
+ *
+ * The bridge only works with AT commands that have the following terminal responses:
+ * - "OK"
+ * - "NO CARRIER"
+ * - "NO DIALTONE"
+ * - "BUSY"
+ * - "NO ANSWSER"
+ * - "ERROR"
+ * - "+CME ERROR"
+ * - "+CMS ERROR"
+ *
+ * AT commands executed through the bridge do not support text mode (e.g.; +CMGS) or data mode
+ * (e.g.; ATD*99***1#). Sending these commands through the bridge may lock the Legato AT commands
+ * parser.
+ *
+ * @image html atCommandsParserBridge.png
+ *
+ * @note AT commands server is opened on the file descriptor fd1 using le_atServer_Open() API.
+ * AT commands server is bridged on the file descriptor fd2 using le_atServer_OpenBridge() API.
+ *
+ * A device can be remove from a bridge thanks to le_atServer_RemoveDeviceFromBridge() API.
+ * A bridge can be closed using le_atServer_CloseBridge() API.
+ *
+ * @warning Some modem AT commands may conflict with Legato APIs; using both may cause problems that
+ * can be difficult to diagnose. The modem AT commands should be avoided whenever possible, and
+ * should only be used with great care.
+ *
+ * The application can send an unsolicited on all opened device, or only one on a dedicated device.
+ *
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_atServer_interface.h
+ *
+ * Legato @ref c_atServer include file.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+
+USETYPES le_atDefs;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Maximum text length.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE TEXT_MAX_LEN = 4096;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  CME error pattern
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CME_ERROR = "+CME ERROR: ";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  CMS error pattern
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE CMS_ERROR = "+CMS ERROR: ";
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for an AT command.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Cmd;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for a AT command device.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Device;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for a AT commands server / AT commands client bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE Bridge;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Reference type for an error code.
+ */
+//--------------------------------------------------------------------------------------------------
+REFERENCE ErrorCode;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Received AT command type.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM Type
+{
+    TYPE_ACT,  ///< Action AT command (e.g. 'AT+CMD')
+    TYPE_PARA, ///< AT command received with parameters (e.g. 'AT+CMD=x,y')
+    TYPE_TEST, ///< Test AT command (e.g. 'AT+CMD=?')
+    TYPE_READ  ///< Read AT command (e.g. 'AT+CMD?')
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Final response.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM FinalRsp
+{
+    OK,         ///< AT command successfully treated
+    NO_CARRIER, ///< Connection terminated
+    ERROR,      ///< Error in AT command treatement
+    NO_DIALTONE,///< No dialtone detected
+    BUSY        ///< Busy signal detected
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Device availability.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM AvailableDevice
+{
+    ALL_DEVICES,      ///< action will be done on all bound devices
+    SPECIFIC_DEVICE   ///< action will be done on a specified device
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Suspend server / enter data mode
+ *
+ * When this function is called the server stops monitoring the fd for events
+ * hence no more I/O operations are done on the fd by the server.
+ *
+ * @return
+ *      - LE_OK             Success.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_FAULT          Device not monitored
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Suspend
+(
+    Device device IN   ///< device to be suspended
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Resume server / enter command mode
+ *
+ * When this function is called the server resumes monitoring the fd for events
+ * and is able to interpret AT commands again.
+ *
+ * @return
+ *      - LE_OK             Success.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_FAULT          Device not monitored
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Resume
+(
+    Device device IN   ///< device to be resumed
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function opens an AT server session on the requested device.
+ *
+ * @return
+ *      - Reference to the requested device.
+ *      - NULL if the device is not available or fd is a BAD FILE DESCRIPTOR.
+ *
+ * @note Make sure to duplicate (man dup) your file descriptor before opening
+ *       a server session to be able to use the suspend/resume feature
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Device Open
+(
+    file   fd                       IN  ///< File descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function closes the AT server session on the requested device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ *      - LE_BUSY           The requested device is busy.
+ *      - LE_FAULT          Failed to stop the server, check logs
+ *                              for more information.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Close
+(
+    Device device IN   ///< device to be unbound
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function created an AT command and register it into the AT parser.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Cmd Create
+(
+    string name[le_atDefs.COMMAND_MAX_LEN] IN   ///< AT command name string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes an AT command (i.e. unregister from the AT parser).
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to delete the command.
+ *      - LE_BUSY          Command is in progress.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Delete
+(
+    Cmd commandRef IN   ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for platform-specific command registration.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CmdRegistrationHandler
+(
+    Cmd            commandRef         IN    ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information when a new AT command is subscribed.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT CmdRegistration
+(
+    CmdRegistrationHandler handler  IN   ///< Handler to called when a new AT command
+                                         ///< is subscribed
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Handler for the AT command processing.
+ *
+ * @note The argument "parametersNumber" is set only when "type" parameter value is
+ * LE_AT_SERVER_TYPE_PARA
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER CommandHandler
+(
+    Cmd     commandRef       IN,      ///< Received AT command reference
+    Type    type             IN,      ///< Received AT command type
+    uint32  parametersNumber IN       ///< Parameters number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information when the AT command is detected.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT Command
+(
+    Cmd            commandRef   IN,   ///< AT command reference
+    CommandHandler handler      IN       ///< Handler to called when the AT command is detected
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the parameters of a received AT command.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the requested parameter.
+ *
+ * @note If the parameter is parsed with quotes, the quotes are removed when retrieving the
+ * parameter value using this API. If a parmeter is not parsed with quotes, that parameter is
+ * converted to uppercase equivalent.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetParameter
+(
+    Cmd    commandRef                               IN, ///< AT command reference
+    uint32 index                                    IN, ///< agument index
+    string parameter[le_atDefs.PARAMETER_MAX_LEN]   OUT ///< parameter value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the AT command string.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCommandName
+(
+    Cmd    commandRef            IN,            ///< AT command reference
+    string name[le_atDefs.COMMAND_MAX_LEN] OUT  ///< AT command string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the device reference in use for an AT command specified with
+ * its reference.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetDevice
+(
+    Cmd    commandRef            IN,         ///< AT command reference
+    Device deviceRef             OUT         ///< Device reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send an intermediate response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendIntermediateResponse
+(
+    Cmd      commandRef                                     IN, ///< AT command reference
+    string   intermediateRsp[le_atDefs.RESPONSE_MAX_BYTES]  IN  ///< Intermediate response to be
+                                                                ///< sent
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to send stored unsolicited reponses.
+ * It can be used to send unsolicited reponses that were stored before switching to data mode.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendStoredUnsolicitedResponses
+(
+    Cmd      commandRef                             IN  ///< AT command reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the final result code.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the final result code.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendFinalResultCode
+(
+    Cmd        commandRef                             IN, ///< AT command reference
+    FinalRsp   finalResult                            IN, ///< Final result code to be sent
+    string     pattern[le_atDefs.RESPONSE_MAX_BYTES]  IN, ///< Prefix of the return message
+    uint32     errorCode                              IN  ///< Numeric error code
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to send the unsolicited response.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the unsolicited response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SendUnsolicitedResponse
+(
+    string          unsolRsp[le_atDefs.RESPONSE_MAX_BYTES]      IN, ///< Unsolicited response to be
+                                                                    ///< sent
+    AvailableDevice availableDevice                             IN, ///< device to send the
+                                                                    ///< unsolicited response
+    Device          device                                      IN  ///< device reference where the
+                                                                    ///< unsolicited response has to
+                                                                    ///< be sent
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables echo on the selected device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t EnableEcho
+(
+    Device device  IN       ///< device reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables echo on the selected device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DisableEcho
+(
+    Device device  IN       ///< device reference
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function opens a AT commands server bridge.
+ * All unknown AT commands will be sent on this alternative file descriptor thanks to the AT client
+ * Service.
+ *
+ * @return
+ *      - Reference to the requested bridge.
+ *      - NULL if the device can't be bridged
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Bridge OpenBridge
+(
+    file              fd           IN  ///< File descriptor.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function closes an opened bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to close the bridge.
+ *      - LE_BUSY          The bridge is in use (devices references have to be removed first).
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t CloseBridge
+(
+    Bridge            bridgeRef       IN  ///< Bridge reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds a device to an opened bridge.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_BUSY          The device is already used by the bridge.
+ *      - LE_FAULT         The function failed to add the device to the bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AddDeviceToBridge
+(
+    Device            deviceRef       IN, ///< Device reference to add to the bridge
+    Bridge            bridgeRef       IN  ///< Bridge refence
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function removes a device from a bridge
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_NOT_FOUND     The device is not isued by the specified bridge
+ *      - LE_BUSY          The device is currently in use
+ *      - LE_FAULT         The function failed to add the device to the bridge.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t RemoveDeviceFromBridge
+(
+    Device            deviceRef       IN, ///< Device reference to add to the bridge
+    Bridge            bridgeRef       IN  ///< Bridge refence
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables verbose error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION EnableVerboseErrorCodes
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables extended error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION EnableExtendedErrorCodes
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables extended error codes on the selected device.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION DisableExtendedErrorCodes
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creates a custom error code.
+ * @return
+ *      - ErrorCode    Reference to the created error code
+ *      - NULL         Function failed to create the error code
+ *
+ * @note This function fails to create the error code if the combinaison (errorCode, pattern)
+ * already exists or if the errorCode number is lower than 512.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION ErrorCode CreateErrorCode
+(
+    uint32    errorCode                             IN, ///< Numerical error code
+    string    pattern[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< Prefix of the response message
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function deletes a custom error code.
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_FAULT         The function failed to delete the error code
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t DeleteErrorCode
+(
+    ErrorCode    errorCodeRef    IN///< Error code reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function adds a verbose message to a specified error code
+ *
+ * @return
+ *      - LE_OK            The function succeeded
+ *      - LE_FAULT         The function failed to set the verbose message
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetVerboseErrorCode
+(
+    ErrorCode  errorCodeRef                              IN, ///< Error code reference
+    string     verboseCode[le_atDefs.RESPONSE_MAX_BYTES] IN  ///< Verbose message
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get text callback
+ *
+ * @return
+ *      - LE_OK: The function succeeded
+ *      - LE_IO_ERROR: An io error happened and the function couldn't read from the device
+ *      - LE_FORMAT_ERROR: Received an invalid character or an invalid sequence
+ *      - LE_FAULT: Failed to remove backspaces
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER GetTextCallback
+(
+    Cmd         cmdRef                          IN, ///< Received AT command reference
+    le_result_t result                          IN, ///< Result
+    string      text[le_atDefs.TEXT_MAX_LEN]    IN, ///< Received text
+    uint32      len                             IN  ///< Text length
+
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function allows the user to register a le_atServer_GetTextCallback_t callback
+ * to retrieve text and sends a prompt <CR><LF><greater_than><SPACE> on the current command's
+ * device.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  Invalid device or command reference.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTextAsync
+(
+    Cmd cmdRef                 IN, ///< AT command reference
+    GetTextCallback callback   IN  ///< Get text callback
+);
