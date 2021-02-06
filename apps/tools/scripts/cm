@@ -84,8 +84,8 @@ update_route() {
         # Restore previous routes
         if [ -f "$DEFAULT_ROUTE" ]; then
             for family in inet inet6; do
-                local gw=$(grep $family $DEFAULT_ROUTE | cut -d' ' -f3)
-                local iface=$(grep $family $DEFAULT_ROUTE | cut -d' ' -f5)
+                local gw=$(grep -w $family $DEFAULT_ROUTE | cut -d' ' -f3)
+                local iface=$(grep -w $family $DEFAULT_ROUTE | cut -d' ' -f5)
                 delete_default_route $family false
                 if [ -n "$gw" ]; then
                     echo -n "Routing $family ... "
