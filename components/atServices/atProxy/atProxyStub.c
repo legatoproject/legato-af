@@ -192,29 +192,6 @@ void le_atServer_GetDevice
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is used to send stored unsolicited responses.
- * It can be used to send unsolicited reponses that were stored before switching to data mode.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to send the intermediate response.
- *
- */
-//--------------------------------------------------------------------------------------------------
-void le_atServer_SendStoredUnsolicitedResponses
-(
-    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
-    le_atServer_CmdRef_t commandRef     ///< [IN] AT command reference
-)
-{
-    LE_UNUSED(commandRef);
-
-    LE_WARN("Not implemented!");
-    le_atServer_SendStoredUnsolicitedResponsesRespond(cmdRef, LE_FAULT);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function enables echo on the selected device.
  *
  * @return

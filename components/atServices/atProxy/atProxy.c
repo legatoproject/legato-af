@@ -187,6 +187,7 @@ void le_atServer_RemoveCommandHandler
  *
  * @return
  *      - LE_OK            The function succeeded.
+ *      - LE_OVERFLOW      The client parameter buffer is too small.
  *      - LE_FAULT         The function failed to get the requested parameter.
  *
  */
@@ -211,7 +212,8 @@ void le_atServer_GetParameter
         LE_ERROR("AT Command Session reference pointer is NULL");
         result = LE_FAULT;
     }
-    else if (parameterSize < sizeof(atCmdSessionPtr->atCmdParameterList[index]))
+    else if (parameterSize <=
+             strnlen(atCmdSessionPtr->atCmdParameterList[index], LE_ATDEFS_PARAMETER_MAX_BYTES - 1))
     {
         LE_ERROR("Parameter buffer too small");
         result = LE_OVERFLOW;
@@ -417,7 +419,7 @@ void le_atServer_SendUnsolicitedResponse
             return;
         }
 
-        atProxyCmdHandler_SendUnsolicitedResponse(cmdRef, responseStr, atSessionPtr);
+        atProxyCmdHandler_SendUnsolicitedResponse(responseStr, atSessionPtr);
     }
     else
     {
@@ -426,7 +428,7 @@ void le_atServer_SendUnsolicitedResponse
         {
             atSessionPtr = (struct le_atProxy_AtCommandSession*) le_ref_GetValue(iterRef);
 
-            atProxyCmdHandler_SendUnsolicitedResponse(cmdRef, responseStr, atSessionPtr);
+            atProxyCmdHandler_SendUnsolicitedResponse(responseStr, atSessionPtr);
         }
     }
 
@@ -466,6 +468,29 @@ void le_atServer_Create
 
     le_atServer_CreateRespond(cmdRef, ref);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is used to send stored unsolicited responses.
+ * It can be used to send unsolicited reponses that were stored before switching to data mode.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to send the intermediate response.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_SendStoredUnsolicitedResponses
+(
+    le_atServer_ServerCmdRef_t cmdRef,  ///< [IN] Asynchronous Server Command Reference
+    le_atServer_CmdRef_t commandRef     ///< [IN] AT command reference
+)
+{
+    le_result_t res = atProxyCmdHandler_FlushStoredURC(commandRef);
+
+    le_atServer_SendStoredUnsolicitedResponsesRespond(cmdRef, res);
+}
+
 
 //-------------------------------------------------------------------------------------------------
 /**

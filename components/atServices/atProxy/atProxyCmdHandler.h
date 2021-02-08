@@ -9,6 +9,7 @@
 #ifndef LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD
 #define LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD
 
+#include "legato.h"
 #include "atProxy.h"
 #include "pa_port.h"
 
@@ -28,12 +29,7 @@
 #define AT_TOKEN_SPACE  0x20
 
 // Maximum number of parameters supported per AT Cmd
-#define AT_PROXY_PARAMETER_LIST_MAX   5
-
-// Some component such as PA doesn't know le_atServer_ServerCmdRef_t
-#ifndef le_atServer_ServerCmdRef_t
-    typedef struct le_atServer_ServerCmd* le_atServer_ServerCmdRef_t;
-#endif
+#define AT_PROXY_PARAMETER_LIST_MAX  MK_CONFIG_PARAMETER_LIST_MAX
 
 typedef enum
 {
@@ -149,7 +145,6 @@ struct le_atProxy_AtCommandSession*  atProxyCmdHandler_GetAtCommandSession
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_SendUnsolicitedResponse
 (
-    le_atServer_ServerCmdRef_t cmdRef,             ///< [IN] Asynchronous Server Command Reference
     const char* responseStr,                       ///< [IN] Unsolicited Response String
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
 );
@@ -178,6 +173,20 @@ le_atProxy_AtCommandSession_t* atProxyCmdHandler_OpenSession
 LE_SHARED le_result_t atProxyCmdHandler_CloseSession
 (
     le_atProxy_AtCommandSession_t* atCmdPtr   ///< [IN] AT Command Session Pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send backed-up unsolicited responses
+ *
+ * @return
+ *      - LE_OK     Successfully flushed URCs out
+ *      - LE_FAULT  Otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t atProxyCmdHandler_FlushStoredURC
+(
+    le_atServer_CmdRef_t cmdRef     ///< [IN] AT Command Session Reference
 );
 
 #endif /* LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD */

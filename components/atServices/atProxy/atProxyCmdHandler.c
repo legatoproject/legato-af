@@ -6,6 +6,7 @@
  * 2) Create and manage the AT Command session for the tracking AT command being processed,
  * 3) Trigger the IPC Command Handler callback function associated with the AT command
  *    to notify the local Back-end that an AT command has arrived.
+ * 4) Store and output URCs.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -55,12 +56,34 @@ LE_MEM_DEFINE_STATIC_POOL(AtCmdSessions,
 //--------------------------------------------------------------------------------------------------
 /**
  * Unsolicited responses pool size
- * Since atProxy is working in async mode, one AT backend (AT session) will occupy at most one slot
- * from the pool, so we will need the same size of this pool with that of AT session pool.
+ * Number of maximum URCs can be stored in atProxy at any time from all possible AT sessions.
  */
 //--------------------------------------------------------------------------------------------------
-#define UNSOLICITED_RSP_COUNT       LE_CONFIG_ATSERVER_DEVICE_POOL_SIZE
+#define AT_PROXY_UNSOLICITED_RESPONSE_COUNT         MK_CONFIG_UNSOLICITED_RESPONSE_COUNT
 
+// Large size of one unsolicitied response string
+#define AT_PROXY_UNSOLICITED_RESPONSE_LARGE_BYTES   LE_ATDEFS_COMMAND_MAX_BYTES
+
+// Typical size of one unsolicitied response string
+#define AT_PROXY_UNSOLICITED_RESPONSE_TYPICAL_BYTES 50
+
+// Pool size for large-size response string
+#define AT_PROXY_UNSOLICITED_RESPONSE_COUNT_LARGE   2
+
+// Count of typical-size unsolicited responses in pool
+//      the count = (# of blks in large pool) / 2 * (# of small blks in one large blk)
+#define AT_PROXY_UNSOLICITED_RESPONSE_COUNT_TYPICAL                                             \
+    (((LE_MEM_BLOCKS(UnsoliRspDataPoolRef, AT_PROXY_UNSOLICITED_RESPONSE_COUNT_LARGE) / 2)      \
+        * AT_PROXY_UNSOLICITED_RESPONSE_LARGE_BYTES)                                            \
+            / AT_PROXY_UNSOLICITED_RESPONSE_TYPICAL_BYTES)
+
+// Static pool for response data/string
+LE_MEM_DEFINE_STATIC_POOL(UnsoliRspDataPool,
+                          AT_PROXY_UNSOLICITED_RESPONSE_COUNT_LARGE,
+                          AT_PROXY_UNSOLICITED_RESPONSE_LARGE_BYTES);
+
+// Pool for response string content
+static le_mem_PoolRef_t  UnsoliRspDataPoolRef;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -71,8 +94,7 @@ LE_MEM_DEFINE_STATIC_POOL(AtCmdSessions,
 typedef struct le_atProxy_RspString
 {
     le_dls_Link_t   link;               ///< link for list
-    le_atServer_ServerCmdRef_t cmdRef;  ///< Asynchronous Server Command Reference
-    const char* resp;                   ///< string pointer
+    char* resp;                         ///< string pointer
 } le_atProxy_RspString_t;
 
 //--------------------------------------------------------------------------------------------------
@@ -81,7 +103,7 @@ typedef struct le_atProxy_RspString
  */
 //--------------------------------------------------------------------------------------------------
 LE_MEM_DEFINE_STATIC_POOL(UnsoliRspPool,
-                          UNSOLICITED_RSP_COUNT,
+                          AT_PROXY_UNSOLICITED_RESPONSE_COUNT,
                           sizeof(le_atProxy_RspString_t));
 
 //--------------------------------------------------------------------------------------------------
@@ -97,9 +119,12 @@ static le_mem_PoolRef_t  UnsoliRspPoolRef;
 /**
  * Send backed-up unsolicited responses
  *
+ * @return
+ *      - LE_OK     Successfully processed URCs
+ *      - LE_FAULT  Otherwise
  */
 //--------------------------------------------------------------------------------------------------
-static void ProcessStoredURC
+static le_result_t ProcessStoredURC
 (
     struct le_atProxy_AtCommandSession* atSession      ///< [IN] AT Command Session Pointer
 )
@@ -109,7 +134,7 @@ static void ProcessStoredURC
     if (!atSession)
     {
         LE_ERROR("Bad parameter!");
-        return;
+        return LE_FAULT;
     }
 
     while ( (linkPtr = le_dls_Pop(&atSession->unsolicitedList)) != NULL )
@@ -118,18 +143,24 @@ static void ProcessStoredURC
                                                             le_atProxy_RspString_t,
                                                             link);
 
-        le_atServer_SendUnsolicitedResponse(rspStringPtr->cmdRef,
-                                            rspStringPtr->resp,
-                                            LE_ATSERVER_ALL_DEVICES,
-                                            NULL);
+        pa_port_Write(atSession->port, (char *)rspStringPtr->resp, strlen(rspStringPtr->resp));
+        pa_port_Write(atSession->port, "\r\n", strlen("\r\n"));
 
+        // Release string content
+        le_mem_Release(rspStringPtr->resp);
+
+        // Release URC item
         le_mem_Release(rspStringPtr);
     }
+
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Allocate and initialize a new unsolicited response structure
+ *
+ * @return pointer of created le_atProxy_RspString_t instance if successful, NULL otherwise
  */
 //--------------------------------------------------------------------------------------------------
 static le_atProxy_RspString_t* CreateResponse
@@ -140,7 +171,19 @@ static le_atProxy_RspString_t* CreateResponse
     le_atProxy_RspString_t* rspStringPtr = le_mem_Alloc(UnsoliRspPoolRef);
 
     memset(rspStringPtr, 0, sizeof(le_atProxy_RspString_t));
-    rspStringPtr->resp = rspStr;
+
+    // Allocate space for response content
+    int size = strnlen(rspStr, AT_PROXY_UNSOLICITED_RESPONSE_LARGE_BYTES - 1) + 1;
+    rspStringPtr->resp = le_mem_VarAlloc(UnsoliRspDataPoolRef, size);
+    if (NULL == rspStringPtr->resp)
+    {
+        LE_CRIT("Could not allocate space for string of size %d", size);
+        le_mem_Release(rspStringPtr);
+        return NULL;
+    }
+
+    memset(rspStringPtr->resp, 0, size);
+    memcpy(rspStringPtr->resp, rspStr, size);
 
     return rspStringPtr;
 }
@@ -148,17 +191,31 @@ static le_atProxy_RspString_t* CreateResponse
 //--------------------------------------------------------------------------------------------------
 /**
  * Packs an AT Command parameter string into the Parameter List array
+ *
+ * @return
+ *      - LE_OK         Successfully packed a parameter
+ *      - LE_OVERFLOW   Parameter string is too long
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t PackParameterList
 (
-    struct le_atProxy_AtCommandSession* atCmdPtr,
-    char* parameters,
-    uint16_t startIndex,
-    uint16_t endIndex
+    struct le_atProxy_AtCommandSession* atCmdPtr,   ///< [INOUT] AT session pointer
+    char* parameters,                               ///< [IN] String holds the parameter
+    uint16_t startIndex,                            ///< [IN] Starting index of the parameter
+    uint16_t endIndex,                              ///< [IN] Ending index of the parameter
+    bool stringParam                                ///< [IN] Indicator of whether it's a string
+                                                    ///<      parameter
 )
 {
     uint16_t parameterLength = (endIndex - startIndex);
+
+    // Decrease the length by 2 (pair of quotes) if it's a string parameter
+    // and skip the starting quote for startIndex
+    if (stringParam)
+    {
+        startIndex += 1;
+        parameterLength -= 2;
+    }
 
     if (parameterLength > LE_ATDEFS_PARAMETER_MAX_LEN)
     {
@@ -193,10 +250,13 @@ static le_result_t PackParameterList
     return LE_OK;
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Separates the complete AT Command parameter string into individual parameters
+ *
+ * @return
+ *      - LE_OK         Successfully packed a list of parameters
+ *      - LE_OVERFLOW   At least one parameter string is too long
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t CreateParameterList
@@ -209,6 +269,7 @@ static le_result_t CreateParameterList
     le_result_t result = LE_OK;
     int16_t startIndex = AT_PROXY_PARAMETER_NONE;
     bool openQuote = false;
+    bool stringParam = false;
 
     // Declare a string to hold the parameter
     char parameters[LE_ATDEFS_PARAMETER_MAX_BYTES];
@@ -246,6 +307,7 @@ static le_result_t CreateParameterList
                     else
                     {
                         openQuote = false;  // End of open quote
+                        stringParam = true;
                     }
                 }
             break;
@@ -271,15 +333,35 @@ static le_result_t CreateParameterList
                                      atCmdPtr,
                                      parameters,
                                      startIndex,
-                                     i);
-
+                                     i,
+                                     stringParam);
                         if (result != LE_OK)
                         {
                             return result;
                         }
-
-                        // Reset the startIndex
+                        // Reset the startIndex and string parameter flag
                         startIndex = AT_PROXY_PARAMETER_NONE;
+                        stringParam = false;
+                    }
+                }
+                else
+                {
+                    if (parameters[i-1] == AT_TOKEN_COMMA)
+                    {
+                        startIndex = i;
+                        result = PackParameterList(
+                                     atCmdPtr,
+                                     parameters,
+                                     startIndex,
+                                     i,
+                                     stringParam);
+                        if (result != LE_OK)
+                        {
+                            return result;
+                        }
+                        // Reset the startIndex and string parameter flag
+                        startIndex = AT_PROXY_PARAMETER_NONE;
+                        stringParam = false;
                     }
                 }
             break;
@@ -293,15 +375,17 @@ static le_result_t CreateParameterList
                                  atCmdPtr,
                                  parameters,
                                  startIndex,
-                                 i);
+                                 i,
+                                 stringParam);
 
                     if (result != LE_OK)
                     {
                         return result;
                     }
 
-                    // Reset the startIndex
+                    // Reset the startIndex and string parameter flag
                     startIndex = AT_PROXY_PARAMETER_NONE;
+                    stringParam = false;
                 }
             break;
 
@@ -362,7 +446,7 @@ static void ProcessAtCmd
                 atCmdPtr->ref,  // Command Reference
                 atCmdPtr->type,    // Type
                 atCmdPtr->parameterIndex,   // Number of parameters
-                atCmdRegistryPtr->contextPtr);  // Callback context pointer
+                atCmdRegistryPtr[atCmdPtr->registryIndex].contextPtr);  // Callback context pointer
         }
         else
         {
@@ -464,12 +548,11 @@ static void SearchAtCmdRegistry
 //--------------------------------------------------------------------------------------------------
 static void StoreUnsolicitedResponse
 (
-    le_atServer_ServerCmdRef_t cmdRef,             ///< [IN] Asynchronous Server Command Reference
     const char* responseStr,                       ///< [IN] Unsolicited Response String
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< [INOUT] AT Command Session Pointer
 )
 {
-    if (!cmdRef || !responseStr || !atCmdPtr)
+    if (!responseStr || !atCmdPtr)
     {
         LE_ERROR("Bad parameter!");
         return;
@@ -477,7 +560,12 @@ static void StoreUnsolicitedResponse
 
     le_atProxy_RspString_t* rspStringPtr = CreateResponse(responseStr);
 
-    rspStringPtr->cmdRef = cmdRef;
+    if (!rspStringPtr)
+    {
+        LE_ERROR("Failed to create URC!");
+        return;
+    }
+
     le_dls_Queue(&(atCmdPtr->unsolicitedList), &(rspStringPtr->link));
 }
 
@@ -745,12 +833,11 @@ LE_SHARED bool atProxyCmdHandler_IsActive
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_SendUnsolicitedResponse
 (
-    le_atServer_ServerCmdRef_t cmdRef,             ///< [IN] Asynchronous Server Command Reference
     const char* responseStr,                       ///< [IN] Unsolicited Response String
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
 )
 {
-    if (!cmdRef || !responseStr || !atCmdPtr)
+    if (!responseStr || !atCmdPtr)
     {
         LE_ERROR("Bad parameter!");
         return;
@@ -759,7 +846,7 @@ void atProxyCmdHandler_SendUnsolicitedResponse
     // Queue the response and defer outputting it if current AT session is active (in process)
     if (atProxyCmdHandler_IsActive(atCmdPtr))
     {
-        StoreUnsolicitedResponse(cmdRef, responseStr, atCmdPtr);
+        StoreUnsolicitedResponse(responseStr, atCmdPtr);
         return;
     }
 
@@ -828,6 +915,26 @@ LE_SHARED le_result_t atProxyCmdHandler_CloseSession
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Send backed-up unsolicited responses
+ *
+ * @return
+ *      - LE_OK     Successfully flushed URCs out
+ *      - LE_FAULT  Otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t atProxyCmdHandler_FlushStoredURC
+(
+    le_atServer_CmdRef_t cmdRef     ///< [IN] AT Command Session Reference
+)
+{
+    le_atProxy_AtCommandSession_t* atCmdSessionPtr =
+        le_ref_Lookup(atCmdSessionRefMap, cmdRef);
+
+    return ProcessStoredURC(atCmdSessionPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the AT Proxy Command Handler
  */
 //--------------------------------------------------------------------------------------------------
@@ -844,11 +951,22 @@ void atProxyCmdHandler_Init(void)
                                                 LE_CONFIG_ATSERVER_DEVICE_POOL_SIZE,
                                                 sizeof(le_atProxy_AtCommandSession_t));
 
-    // Parameters pool allocation
-    // Typically, we only need cache one unsolicited response for one AT backend (such as ORP),
-    // but we use memory pool here in case there are multiple AT backends.
+    // Initialize memory pools for URC string content
+    UnsoliRspDataPoolRef = le_mem_InitStaticPool(
+                                    UnsoliRspDataPool,
+                                    AT_PROXY_UNSOLICITED_RESPONSE_COUNT_LARGE,
+                                    AT_PROXY_UNSOLICITED_RESPONSE_LARGE_BYTES);
+
+    UnsoliRspDataPoolRef = le_mem_CreateReducedPool(
+                                    UnsoliRspDataPoolRef,
+                                    "TypicalURCPool",
+                                    AT_PROXY_UNSOLICITED_RESPONSE_COUNT_TYPICAL,
+                                    AT_PROXY_UNSOLICITED_RESPONSE_TYPICAL_BYTES);
+
+    // Initialize memory pool for URC items, all atProxy clients will share this pool for atProxy
+    // to store their URCs
     UnsoliRspPoolRef = le_mem_InitStaticPool(
                                     UnsoliRspPool,
-                                    UNSOLICITED_RSP_COUNT,
+                                    AT_PROXY_UNSOLICITED_RESPONSE_COUNT,
                                     sizeof(le_atProxy_RspString_t));
 }
