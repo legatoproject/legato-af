@@ -1857,7 +1857,8 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
     sessionRef = le_mem_TryAlloc(SessionPool);
     if (sessionRef == NULL)
     {
-        LE_FATAL("No more sessions available.");
+        LE_ERROR("No more sessions available.");
+        return NULL;
     }
     memset(sessionRef, 0, sizeof(struct le_ftpClient_Session));
 
