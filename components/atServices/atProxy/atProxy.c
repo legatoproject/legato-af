@@ -79,7 +79,7 @@ extern le_ref_MapRef_t  atCmdSessionRefMap;
  * Function to retrieve the AT Command Registry
  */
 //--------------------------------------------------------------------------------------------------
-struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistry
+struct le_atProxy_StaticCommand* atProxy_GetCmdRegistry
 (
     void
 )
@@ -92,7 +92,7 @@ struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistry
  * Function to retrieve the AT Command Registry entry for a specific command
  */
 //--------------------------------------------------------------------------------------------------
-LE_SHARED struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry
+LE_SHARED struct le_atProxy_StaticCommand* atProxy_GetCmdRegistryEntry
 (
     uint32_t command
 )
@@ -469,6 +469,7 @@ void le_atServer_Create
     le_atServer_CreateRespond(cmdRef, ref);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function is used to send stored unsolicited responses.
@@ -489,6 +490,42 @@ void le_atServer_SendStoredUnsolicitedResponses
     le_result_t res = atProxyCmdHandler_FlushStoredURC(commandRef);
 
     le_atServer_SendStoredUnsolicitedResponsesRespond(cmdRef, res);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function can be used to get the device reference in use for an AT command specified with
+ * its reference.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the AT command string.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_GetDevice
+(
+    le_atServer_ServerCmdRef_t cmdRef,      ///< [IN] Asynchronous Server Command Reference
+    le_atServer_CmdRef_t commandRef         ///< [IN] AT command reference
+)
+{
+    struct le_atProxy_AtCommandSession* atCmdSessionPtr =
+        le_ref_Lookup(atCmdSessionRefMap, commandRef);
+
+    le_atServer_DeviceRef_t deviceRefPtr = NULL;
+
+    if (atCmdSessionPtr != NULL)
+    {
+        // Set the Device Reference using the AT Command Session ref
+        deviceRefPtr = (le_atServer_DeviceRef_t)atCmdSessionPtr->ref;
+    }
+    else
+    {
+        LE_ERROR("[%s] AT Command Session is NULL", __FUNCTION__);
+    }
+
+    le_atServer_GetDeviceRespond(cmdRef, deviceRefPtr ? LE_OK : LE_FAULT, deviceRefPtr);
 }
 
 

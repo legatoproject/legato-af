@@ -27,6 +27,17 @@
 #define AT_TOKEN_QUOTE  0x22
 #define AT_TOKEN_BACKSLASH  0x5C
 #define AT_TOKEN_SPACE  0x20
+#define AT_TOKEN_ZERO   '0'
+#define AT_TOKEN_ONE    '1'
+#define AT_TOKEN_TWO    '2'
+#define AT_TOKEN_THREE  '3'
+#define AT_TOKEN_FOUR   '4'
+#define AT_TOKEN_FIVE   '5'
+#define AT_TOKEN_SIX    '6'
+#define AT_TOKEN_SEVEN  '7'
+#define AT_TOKEN_EIGHT  '8'
+#define AT_TOKEN_NINE   '9'
+
 
 // Maximum number of parameters supported per AT Cmd
 #define AT_PROXY_PARAMETER_LIST_MAX  MK_CONFIG_PARAMETER_LIST_MAX
@@ -44,7 +55,7 @@ typedef struct le_atProxy_AtCommandSession
 {
     le_atProxy_PortRef_t port;  ///< The connected AT port
     le_atServer_CmdRef_t ref; ///< Command session reference
-    char command[LE_ATDEFS_COMMAND_MAX_BYTES];  ///< cmd found in input string
+    char buffer[LE_ATDEFS_COMMAND_MAX_BYTES];  ///< AT Command Session buffer
     le_atProxy_RxParserState_t rxState;       ///< input string parser state
     uint16_t index;           ///< Parse Buffer index
     uint16_t operatorIndex;   ///< Index of operator ("=" or "?")
@@ -83,6 +94,18 @@ void atProxyCmdHandler_Complete
  */
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_StartDataMode
+(
+    struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop AT command data mode
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxyCmdHandler_StopDataMode
 (
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
 );

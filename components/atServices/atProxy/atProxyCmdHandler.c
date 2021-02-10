@@ -278,10 +278,39 @@ static le_result_t CreateParameterList
     // Initialize parameter index (number)
     atCmdPtr->parameterIndex = 0;
 
-    // Extract the complete list of parameters from the AT Command string
-    strncpy(parameters,
-            &atCmdPtr->command[atCmdPtr->operatorIndex + 1],
-            LE_ATDEFS_PARAMETER_MAX_LEN);
+    struct le_atProxy_StaticCommand* atCmdRegistryPtr = atProxy_GetCmdRegistry();
+
+    // Check the operator character
+    if (isdigit(atCmdPtr->buffer[atCmdPtr->operatorIndex]))
+    {
+        // Verify 'Condensed' flag is set for this AT command, otherwise raise an error
+        if (!(atCmdRegistryPtr[atCmdPtr->registryIndex].flags & LE_AT_PROXY_CMD_FLAG_CONDENSED))
+        {
+            LE_INFO("Parse error - Malformed AT command");
+            return LE_BAD_PARAMETER;
+        }
+
+        // Extract the complete list of parameters starting at the operator.
+        // NOTE: The operator includes the first part of the parameter
+        strncpy(parameters,
+                &atCmdPtr->buffer[atCmdPtr->operatorIndex],
+                LE_ATDEFS_PARAMETER_MAX_LEN);
+    }
+    else
+    {
+        // Verify 'Condensed' flag is not set for this AT command, otherwise raise an error
+        if (atCmdRegistryPtr[atCmdPtr->registryIndex].flags & LE_AT_PROXY_CMD_FLAG_CONDENSED)
+        {
+            LE_INFO("Parse error - Malformed Condensed AT command");
+            return LE_BAD_PARAMETER;
+        }
+
+        // Extract the complete list of parameters from the AT Command string
+        // following the operator
+        strncpy(parameters,
+                &atCmdPtr->buffer[atCmdPtr->operatorIndex + 1],
+                LE_ATDEFS_PARAMETER_MAX_LEN);
+    }
 
     LE_DEBUG("parameters = %s", parameters);
 
@@ -419,7 +448,7 @@ static void ProcessAtCmd
 
     if (atCmdPtr->local == true)
     {
-        struct le_atProxy_StaticCommand* atCmdRegistryPtr = le_atProxy_GetCmdRegistry();
+        struct le_atProxy_StaticCommand* atCmdRegistryPtr = atProxy_GetCmdRegistry();
 
         result = CreateParameterList(atCmdPtr);
         if (result != LE_OK)
@@ -458,13 +487,13 @@ static void ProcessAtCmd
     else
     {
         // Send AT Command to remote end (MAP)
-        LE_DEBUG("Sending AT command [%s] to remote", atCmdPtr->command);
+        LE_DEBUG("Sending AT command [%s] to remote", atCmdPtr->buffer);
 
         atCmdPtr->active = true;
         pa_port_Disable(atCmdPtr->port);
 
-        result = pa_remote_Send(atCmdPtr->command,
-                                    strnlen(atCmdPtr->command, LE_ATDEFS_COMMAND_MAX_BYTES));
+        result = pa_remote_Send(atCmdPtr->buffer,
+                                strnlen(atCmdPtr->buffer, LE_ATDEFS_COMMAND_MAX_BYTES));
 
         if (LE_OK != result)
         {
@@ -490,7 +519,7 @@ static void SearchAtCmdRegistry
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
 )
 {
-    struct le_atProxy_StaticCommand* atCmdRegistryPtr = le_atProxy_GetCmdRegistry();
+    struct le_atProxy_StaticCommand* atCmdRegistryPtr = atProxy_GetCmdRegistry();
 
     // Traverse AT Command Registry
     for (uint32_t i = 0; i < AT_CMD_MAX; i++, atCmdRegistryPtr++)
@@ -500,7 +529,7 @@ static void SearchAtCmdRegistry
 
         // Create a sub-string from the parsed AT Command that is the
         // length of the registered AT Command String
-        strncpy(commandStr, atCmdPtr->command, atCmdPtr->operatorIndex);
+        strncpy(commandStr, atCmdPtr->buffer, atCmdPtr->operatorIndex);
 
         // Ensure string is NULL terminated
         commandStr[atCmdPtr->operatorIndex] = 0;
@@ -587,7 +616,7 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
     for (uint16_t i = startIndex; i < (startIndex + count); i++)
     {
         // New input character to be parsed
-        char input = atCmdPtr->command[i];
+        char input = atCmdPtr->buffer[i];
         LE_DEBUG("Processing input character, [%c], buffer len [%" PRIu16 "]",
                  input,
                  atCmdPtr->index);
@@ -622,7 +651,7 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
             {
                 if ( input == AT_TOKEN_CR )
                 {
-                    atCmdPtr->command[atCmdPtr->index + 1] = 0;
+                    atCmdPtr->buffer[atCmdPtr->index + 1] = 0;
 
                     if (atCmdPtr->operatorIndex == 0)
                     {
@@ -694,6 +723,30 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
                             {
                                 // Set the operation type to 'Read'
                                 atCmdPtr->type = LE_ATSERVER_TYPE_TEST;
+                            }
+                        break;
+
+                        case AT_TOKEN_ZERO:
+                        case AT_TOKEN_ONE:
+                        case AT_TOKEN_TWO:
+                        case AT_TOKEN_THREE:
+                        case AT_TOKEN_FOUR:
+                        case AT_TOKEN_FIVE:
+                        case AT_TOKEN_SIX:
+                        case AT_TOKEN_SEVEN:
+                        case AT_TOKEN_EIGHT:
+                        case AT_TOKEN_NINE:
+                            if (atCmdPtr->operatorIndex == 0)
+                            {
+                                // Mark the operator index for the AT Command
+                                atCmdPtr->operatorIndex = i;
+
+                                // Set the operation type to 'Read'
+                                atCmdPtr->type = LE_ATSERVER_TYPE_PARA;
+
+                                // Try to look for AT Command in the
+                                // AT Command Registry
+                                SearchAtCmdRegistry(atCmdPtr);
                             }
                         break;
 
@@ -786,12 +839,30 @@ LE_SHARED void atProxyCmdHandler_StartDataMode
     struct le_atProxy_AtCommandSession* atCmdPtr   ///< AT Command Session Pointer
 )
 {
+    // Enable Data Mode flag
+    atCmdPtr->dataMode = true;
+
     // Currently only remote MAP commands support data mode.
     if (!atCmdPtr->local)
     {
-        atCmdPtr->dataMode = true;
         pa_remote_SignalCmdFinish();
     }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stop AT command data mode
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void atProxyCmdHandler_StopDataMode
+(
+    struct le_atProxy_AtCommandSession* atCmdPtr   ///< AT Command Session Pointer
+)
+{
+    // Disable Data Mode flag
+    atCmdPtr->dataMode = false;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -903,6 +974,10 @@ LE_SHARED le_result_t atProxyCmdHandler_CloseSession
         LE_ERROR("AT Command Session is NULL");
         return LE_BAD_PARAMETER;
     }
+
+    // Make sure the current session has been cleaned up properly,
+    // including sending any pending URCs and freeing their resouces
+    atProxyCmdHandler_Complete(atCmdPtr);
 
     // Delete the Safe Reference to the AT Command Session
     le_ref_DeleteRef(atCmdSessionRefMap, atCmdPtr->ref);

@@ -24,20 +24,27 @@
 // Intermediate response.
 #define LE_AT_PROXY_CONNECT     "\r\nCONNECT\r\n"
 
+
+// Bit-mask for Static Commands
+#define LE_AT_PROXY_CMD_FLAG_NONE        0x00
+#define LE_AT_PROXY_CMD_FLAG_CONDENSED   0x01
+
+
 // Static registration entry.
 struct le_atProxy_StaticCommand
 {
     const char *commandStr;
     le_atServer_CommandHandlerFunc_t commandHandlerPtr;
     void* contextPtr;
+    uint8_t flags;
 };
 
 
 // Function to retrieve the AT Command Registry
-struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistry(void);
+struct le_atProxy_StaticCommand* atProxy_GetCmdRegistry(void);
 
 // Function to retrieve the AT Command Registry entry for a specific command
-struct le_atProxy_StaticCommand* le_atProxy_GetCmdRegistryEntry(uint32_t command);
+struct le_atProxy_StaticCommand* atProxy_GetCmdRegistryEntry(uint32_t command);
 
 
 #endif /* LE_AT_PROXY_H_INCLUDE_GUARD */

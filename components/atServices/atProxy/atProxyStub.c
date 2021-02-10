@@ -165,30 +165,6 @@ void le_atServer_RemoveCmdRegistrationHandler
     le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
 }
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This function can be used to get the device reference in use for an AT command specified with
- * its reference.
- *
- * @return
- *      - LE_OK            The function succeeded.
- *      - LE_FAULT         The function failed to get the AT command string.
- *
- */
-//--------------------------------------------------------------------------------------------------
-void le_atServer_GetDevice
-(
-    le_atServer_ServerCmdRef_t cmdRef,      ///< [IN] Asynchronous Server Command Reference
-    le_atServer_CmdRef_t commandRef         ///< [IN] AT command reference
-)
-{
-    LE_UNUSED(commandRef);
-
-    le_atServer_DeviceRef_t deviceRefPtr = NULL;
-
-    LE_WARN("Not implemented!");
-    le_atServer_GetDeviceRespond(cmdRef, LE_FAULT, deviceRefPtr);
-}
 
 //--------------------------------------------------------------------------------------------------
 /**

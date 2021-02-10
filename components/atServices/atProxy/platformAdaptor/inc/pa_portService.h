@@ -9,6 +9,8 @@
 #ifndef _AT_PROXY_PA_PORTSERVICE_H_INCLUDE_GUARD
 #define _AT_PROXY_PA_PORTSERVICE_H_INCLUDE_GUARD
 
+#include "atProxyCmdHandler.h"
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -88,6 +90,20 @@ le_result_t pa_portService_GetPortReference
 (
     le_atServer_DeviceRef_t atServerDevRef,   ///< [IN] Device reference from AT server.
     le_port_DeviceRef_t* devRefPtr            ///< [OUT] Device reference from port service.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function retrieves the AT Command Session for the specified device reference.
+ *
+ * @return
+ *      - Pointer to AT Command Sesison    Function succeeded.
+ *      - NULL                             Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_atProxy_AtCommandSession_t* pa_portService_GetAtCommandSession
+(
+    le_port_DeviceRef_t devRef     ///< [IN] Device reference of port service.
 );
 
 #endif /* _AT_PROXY_PA_PORTSERVICE_H_INCLUDE_GUARD */
