@@ -30,6 +30,19 @@
 #define LE_AT_PROXY_CMD_FLAG_CONDENSED   0x01
 
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Error codes modes enum
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum
+{
+    MODE_DISABLED,          ///< Disable extended error code
+    MODE_EXTENDED,          ///< Enable extended error code
+    MODE_VERBOSE            ///< Enable verbose error details
+}
+ErrorCodesMode_t;
+
 // Static registration entry.
 struct le_atProxy_StaticCommand
 {
@@ -40,11 +53,52 @@ struct le_atProxy_StaticCommand
 };
 
 
-// Function to retrieve the AT Command Registry
-struct le_atProxy_StaticCommand* atProxy_GetCmdRegistry(void);
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to retrieve the AT Command Registry
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+struct le_atProxy_StaticCommand* atProxy_GetCmdRegistry
+(
+    void
+);
 
-// Function to retrieve the AT Command Registry entry for a specific command
-struct le_atProxy_StaticCommand* atProxy_GetCmdRegistryEntry(uint32_t command);
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to retrieve the AT Command Registry entry for a specific command
+ *
+ * @return Pointer of the command entry in registry
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED struct le_atProxy_StaticCommand* atProxy_GetCmdRegistryEntry
+(
+    uint32_t command        ///< [IN] Index of AT command in Registry
+);
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function enables extended error codes on the selected device
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxy_EnableExtendedErrorCodes
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function disables the current error codes mode on the selected device
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxy_DisableExtendedErrorCodes
+(
+    void
+);
 
 #endif /* LE_AT_PROXY_H_INCLUDE_GUARD */

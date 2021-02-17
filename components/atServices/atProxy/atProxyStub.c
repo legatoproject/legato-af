@@ -333,35 +333,6 @@ LE_SHARED void le_atServer_EnableVerboseErrorCodes
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function enables extended error codes on the selected device
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void le_atServer_EnableExtendedErrorCodes
-(
-    le_atServer_ServerCmdRef_t cmdRef  ///< [IN] Asynchronous Server Command Reference
-)
-{
-    LE_WARN("Not implemented!");
-    le_atServer_EnableExtendedErrorCodesRespond(cmdRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function disables the current error codes mode on the selected device
- *
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void le_atServer_DisableExtendedErrorCodes
-(
-    le_atServer_ServerCmdRef_t cmdRef  ///< [IN] Asynchronous Server Command Reference
-)
-{
-    LE_WARN("Not implemented!");
-    le_atServer_DisableExtendedErrorCodesRespond(cmdRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function creates a custom error code.
  * @return
  *      - ErrorCode    Reference to the created error code
