@@ -59,17 +59,19 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Insert a string name variable if configured or a placeholder string if not.
+ * Pool representation for printf-style statements.
  *
- *  @param  nameVar Name variable to insert.
+ *  @param  pool Pool to identify.
  *
- *  @return Name variable or a placeholder string depending on configuration.
+ *  @return Pool name or pointer value.
  **/
 //--------------------------------------------------------------------------------------------------
 #if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-#   define  MEMPOOL_NAME(var) (var)
+#   define  REPR(pool)  ((pool)->name)
+#   define  PRIpool     "s"
 #else
-#   define  MEMPOOL_NAME(var) "<omitted>"
+#   define  REPR(pool)  (pool)
+#   define  PRIpool     "p"
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -305,9 +307,9 @@ void mem_Unlock
             if (*guardBandWordPtr != GUARD_WORD)
             {
                 LE_EMERG("Memory corruption detected at address %p before object allocated"
-                                                                                " from pool '%s'.",
+                            " from pool '%" PRIpool "'.",
                          guardBandWordPtr,
-                         MEMPOOL_NAME(blockHeaderPtr->poolPtr->name));
+                         REPR(blockHeaderPtr->poolPtr));
                 LE_FATAL("Guard band value should have been %" PRIu32 ", but was found to be "
                          "%" PRIu32 ".",
                          GUARD_WORD,
@@ -324,9 +326,9 @@ void mem_Unlock
             if (*guardBandWordPtr != GUARD_WORD)
             {
                 LE_EMERG("Memory corruption detected at address %p at end of object allocated"
-                                                                                " from pool '%s'.",
+                            " from pool '%" PRIpool "'.",
                          guardBandWordPtr,
-                         MEMPOOL_NAME(blockHeaderPtr->poolPtr->name));
+                         REPR(blockHeaderPtr->poolPtr));
                 LE_FATAL("Guard band value should have been %" PRIu32 ", but was found to be "
                          "%" PRIu32 ".",
                          GUARD_WORD,
@@ -459,11 +461,11 @@ static size_t MoveBlocks
 
         if (blockLinkPtr == NULL)
         {
-            LE_FATAL("Asked to move %" PRIuS " blocks from pool '%s' to pool '%s', "
-                     "but only %" PRIuS " were available.",
+            LE_FATAL("Asked to move %" PRIuS " blocks from pool '%" PRIpool "' to pool '%" PRIpool
+                        "', but only %" PRIuS " were available.",
                      numBlocks,
-                     MEMPOOL_NAME(srcPool->name),
-                     MEMPOOL_NAME(destPool->name),
+                     REPR(srcPool),
+                     REPR(destPool),
                      i);
         }
 
@@ -631,8 +633,10 @@ static void InitBlock
 
         // Allocate the chunk.
         MemBlock_t* newBlockPtr = malloc(mallocSize);
-
-        LE_ASSERT(newBlockPtr);
+        if (newBlockPtr == NULL)
+        {
+            LE_FATAL("Pool '%" PRIpool "' tried to expand and failed", REPR(pool));
+        }
 
         for (i = 0; i < numBlocks; i++)
         {
@@ -673,7 +677,9 @@ static void VerifyUniquenessOfName
 
         poolLinkPtr = le_dls_PeekNext(&PoolList, poolLinkPtr);
     }
-#endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+#else /* !LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+    LE_UNUSED(newPool);
+#endif /* end !LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 }
 
 
@@ -692,8 +698,8 @@ void SubPoolDestructor
     mem_Lock();
 
     LE_FATAL_IF(subPool->numBlocksInUse != 0,
-                "Subpool '%s' deleted while %" PRIuS " blocks remain allocated.",
-                MEMPOOL_NAME(subPool->name),
+                "Subpool '%" PRIpool "' deleted while %" PRIuS " blocks remain allocated.",
+                REPR(subPool),
                 subPool->numBlocksInUse);
 
 #if LE_CONFIG_MEM_POOLS
@@ -811,10 +817,12 @@ le_mem_PoolRef_t _le_mem_GetBlockPool
 
         if (trace && le_log_IsTraceEnabled(trace))
         {
+            char poolName[LIMIT_MAX_MEM_POOL_NAME_BYTES];
 #   if LE_CONFIG_MEM_POOL_NAMES_ENABLED
-            char poolName[LIMIT_MAX_MEM_POOL_NAME_BYTES] = "";
             LE_ASSERT(le_mem_GetName(pool, poolName, sizeof(poolName)) == LE_OK);
-#   endif /* LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+#   else /* !LE_CONFIG_MEM_POOL_NAMES_ENABLED */
+            snprintf(poolName, sizeof(poolName), "%p", pool);
+#   endif /* end !LE_CONFIG_MEM_POOL_NAMES_ENABLED */
 
             _le_log_Send((le_log_Level_t)-1,
                          trace,
@@ -823,7 +831,7 @@ le_mem_PoolRef_t _le_mem_GetBlockPool
                          callingfunction,
                          line,
                          "%s: %s, %p",
-                         MEMPOOL_NAME(poolName),
+                         poolName,
                          poolFunction,
                          blockPtr);
         }
@@ -907,6 +915,8 @@ le_mem_PoolRef_t _le_mem_InitStaticPool
 #if LE_CONFIG_MEM_POOL_NAMES_ENABLED
     InitPool(poolPtr, componentName, name, objSize);
 #else
+    LE_UNUSED(componentName);
+    LE_UNUSED(name);
     InitPool(poolPtr, objSize);
 #endif
 
@@ -1125,8 +1135,10 @@ void* le_mem_AssertAlloc
     LE_ASSERT(pool != NULL);
 
     void* objPtr = le_mem_TryAlloc(pool);
-
-    LE_ASSERT(objPtr);
+    if (objPtr == NULL)
+    {
+        LE_FATAL("Pool '%" PRIpool "' failed to allocate another block", REPR(pool));
+    }
 
     return objPtr;
 }
@@ -1165,11 +1177,11 @@ void* le_mem_ForceAlloc
 
             // log a warning.
 #   if !LE_CONFIG_LINUX
-        LE_WARN("Memory pool '%s' overflowed. Expanded to %" PRIuS " blocks.",
-            MEMPOOL_NAME(pool->name), pool->totalBlocks);
+        LE_WARN("Memory pool '%" PRIpool "' overflowed. Expanded to %" PRIuS " blocks.",
+            REPR(pool), pool->totalBlocks);
 #   else
-        LE_DEBUG("Memory pool '%s' overflowed. Expanded to %" PRIuS " blocks.",
-            MEMPOOL_NAME(pool->name), pool->totalBlocks);
+        LE_DEBUG("Memory pool '%" PRIpool "' overflowed. Expanded to %" PRIuS " blocks.",
+            REPR(pool), pool->totalBlocks);
 #   endif
         mem_Unlock();
 
@@ -1407,9 +1419,8 @@ void le_mem_Release
 
         case 0:
             LE_EMERG("Releasing free block.");
-            LE_FATAL("Free block released from pool %p (%s).",
-                     blockPtr->poolPtr,
-                     MEMPOOL_NAME(blockPtr->poolPtr->name));
+            LE_FATAL("Free block released from pool '%" PRIpool "'.",
+                     REPR(blockPtr->poolPtr));
             break;
 
         default:

@@ -715,6 +715,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreatePool
                                 /// (in bytes), e.g., sizeof(MyObject_t).
 )
 {
+    LE_UNUSED(name);
     return _le_mem_CreatePool(objSize);
 }
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
@@ -1369,6 +1370,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_FindPool
     const char* name            ///< [IN] Name of the pool inside the component.
 )
 {
+    LE_UNUSED(name);
     return NULL;
 }
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
@@ -1443,6 +1445,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateSubPool
     size_t              numObjects      ///< [IN] Number of objects to take from the super-pool.
 )
 {
+    LE_UNUSED(name);
     return _le_mem_CreateSubPool(superPool, numObjects);
 }
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
@@ -1524,6 +1527,7 @@ LE_DECLARE_INLINE le_mem_PoolRef_t le_mem_CreateReducedPool
     size_t              objSize         ///< [IN] Minimum size of objects in the subpool.
 )
 {
+    LE_UNUSED(name);
     return _le_mem_CreateReducedPool(superPool, numObjects, objSize);
 }
 #endif /* end LE_CONFIG_MEM_POOL_NAMES_ENABLED */
