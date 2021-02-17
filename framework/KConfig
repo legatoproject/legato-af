@@ -355,6 +355,16 @@ config MAX_THREAD_POOL_SIZE
   The maximum number of thread objects in the process-wide thread pool, from
   which all Legato threads are allocated.
 
+config MAX_THREAD_DESTRUCTOR_POOL_SIZE
+  int "Maximum thread destructor pool size"
+  depends on MEM_POOLS
+  range 1 65535
+  default (MAX_THREAD_POOL_SIZE) if RTOS
+  default 40
+  ---help---
+  The maximum number of thread destructors in the process-wide thread
+  destructor pool, from which all thread destructor objects are allocated.
+
 config MAX_TIMER_POOL_SIZE
   int "Maximum timer pool size"
   depends on MEM_POOLS

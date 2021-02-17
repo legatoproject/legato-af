@@ -157,7 +157,8 @@ Destructor_t;
  * Assume (on average) each thread has two destructors
  */
 //--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(DestructorPool, 2 * LE_CONFIG_MAX_THREAD_POOL_SIZE, sizeof(Destructor_t));
+LE_MEM_DEFINE_STATIC_POOL(DestructorPool, LE_CONFIG_MAX_THREAD_DESTRUCTOR_POOL_SIZE,
+                          sizeof(Destructor_t));
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -803,8 +804,9 @@ void thread_Init
     Unlock();
 
     // Create the destructor object pool.
-    DestructorPool = le_mem_InitStaticPool(DestructorPool, 2 * LE_CONFIG_MAX_THREAD_POOL_SIZE,
-        sizeof(Destructor_t));
+    DestructorPool = le_mem_InitStaticPool(DestructorPool,
+                                           LE_CONFIG_MAX_THREAD_DESTRUCTOR_POOL_SIZE,
+                                           sizeof(Destructor_t));
 
     // Create the thread-local data key to be used to store a pointer to each thread object.
     LE_ASSERT(pthread_key_create(&ThreadLocalDataKey, NULL) == 0);

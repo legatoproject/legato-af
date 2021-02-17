@@ -219,7 +219,8 @@ static le_result_t StartProc
     const Task_t     *taskPtr,
     int               argc,
     const char      **argv,
-    const char       *cmdlineStr
+    const char       *cmdlineStr,
+    bool             registerCleanUpDestructor
 )
 {
     int              i;
@@ -333,10 +334,13 @@ static le_result_t StartProc
         }
     }
 
-    // Register function which will be called just before child thread exits
-    le_thread_AddChildDestructor(currentThread,
-                                 &CleanupThread,
-                                 &appPtr->threadList[taskNum]);
+    if (registerCleanUpDestructor)
+    {
+        // Register function which will be called just before child thread exits
+        le_thread_AddChildDestructor(currentThread,
+                                     &CleanupThread,
+                                     &appPtr->threadList[taskNum]);
+    }
 
     LE_DEBUG(" (%d) Starting task %s", taskNum, taskPtr->nameStr);
 
@@ -369,7 +373,8 @@ err:
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartApp
 (
-    const App_t* appPtr
+    const App_t* appPtr,
+    bool         registerCleanUpDestructor
 )
 {
     uint32_t taskNum;
@@ -391,7 +396,8 @@ static le_result_t StartApp
         le_result_t result = StartProc(appPtr, currentTaskPtr,
                                        currentTaskPtr->defaultArgc,
                                        currentTaskPtr->defaultArgv,
-                                       NULL);
+                                       NULL,
+                                       registerCleanUpDestructor);
         if (result != LE_OK)
         {
             return result;
@@ -585,7 +591,7 @@ LE_SHARED void le_microSupervisor_Main
             continue;
         }
 
-        if (StartApp(currentAppPtr) != LE_OK)
+        if (StartApp(currentAppPtr, false) != LE_OK)
         {
             LE_FATAL("Failed to start app '%s'", currentAppPtr->appNameStr);
         }
@@ -628,7 +634,7 @@ le_result_t LE_SHARED le_microSupervisor_StartApp
         return LE_OK;
     }
 
-    return StartApp(currentAppPtr);
+    return StartApp(currentAppPtr, true);
 }
 
 
@@ -664,7 +670,7 @@ le_result_t LE_SHARED le_microSupervisor_RunProc
         return LE_NOT_FOUND;
     }
 
-    return StartProc(appPtr, taskPtr, argc, argv, NULL);
+    return StartProc(appPtr, taskPtr, argc, argv, NULL, true);
 }
 
 
@@ -699,7 +705,7 @@ le_result_t LE_SHARED le_microSupervisor_RunProcStr
         return LE_NOT_FOUND;
     }
 
-    return StartProc(appPtr, taskPtr, 0, NULL, cmdlineStr);
+    return StartProc(appPtr, taskPtr, 0, NULL, cmdlineStr, true);
 }
 
 
@@ -740,7 +746,7 @@ le_result_t LE_SHARED le_microSupervisor_RunCommand
     TaskInfo_t *taskInfoPtr = &appPtr->threadList[taskNum];
     void *retVal;
 
-    result = StartProc(appPtr, taskPtr, argc, argv, NULL);
+    result = StartProc(appPtr, taskPtr, argc, argv, NULL, true);
 
     // Immediately stop process once COMPONENT_INIT is processed
     if (result == LE_OK)
@@ -834,7 +840,7 @@ LE_SHARED le_result_t microSupervisor_RunCliCommand
     taskPtr = (Task_t*)cliApp.taskList;
     taskPtr->entryPoint = entryPoint;
 
-    result = StartProc(&cliApp, taskPtr, argc, argv, NULL);
+    result = StartProc(&cliApp, taskPtr, argc, argv, NULL, true);
 
     if (result == LE_OK)
     {
