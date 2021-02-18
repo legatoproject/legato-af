@@ -75,12 +75,6 @@
 //  PRIVATE DATA
 // ==============================================
 
-/// Maximum number of events that can be received from epoll_wait() at one time.
-#define MAX_EPOLL_EVENTS 32
-
-/// The largest report size to be allocted out of the standard report pool.  Reports larger
-/// than this have a separate pool created for each report types
-#define HIGH_REPORT_OBJECT_SIZE   512
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -325,9 +319,14 @@ QueuedFunctionReport_t;
  * Static pool for Queued Function Event Reports.
  */
 //--------------------------------------------------------------------------------------------------
+#define MAX_SIZE(A,B) (((A) > (B))? (A):(B))
+#define REPORT_POOL_OBJ_SIZE MAX_SIZE(sizeof(QueuedFunctionReport_t), \
+                                      sizeof(PubSubEventReport_t) +   \
+                                          LE_CONFIG_DEFAULT_PUB_SUB_EVENT_REPORT_SIZE)
+
 LE_MEM_DEFINE_STATIC_POOL(ReportPool,
                           LE_CONFIG_MAX_QUEUED_FUNCTION_POOL_SIZE,
-                          HIGH_REPORT_OBJECT_SIZE);
+                          REPORT_POOL_OBJ_SIZE);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -496,7 +495,7 @@ static Event_t* CreateEvent
         LE_WARN("Event report pool name truncated for '%s' events.", name);
     }
 #endif /* end LE_CONFIG_EVENT_NAMES_ENABLED */
-    if (sizeof(PubSubEventReport_t) + payloadSize <= HIGH_REPORT_OBJECT_SIZE)
+    if (payloadSize <= LE_CONFIG_DEFAULT_PUB_SUB_EVENT_REPORT_SIZE)
     {
         // Use standard report pool
         eventPtr->reportPoolRef = ReportPoolRef;
@@ -779,7 +778,7 @@ void event_Init
     // Create the Queued Function Pool from which all Queued Function objects are allocated.
     ReportPoolRef = le_mem_InitStaticPool(ReportPool,
                                           LE_CONFIG_MAX_QUEUED_FUNCTION_POOL_SIZE,
-                                          HIGH_REPORT_OBJECT_SIZE);
+                                          REPORT_POOL_OBJ_SIZE);
 
     // Create the Handler Pool from which all Handler objects are to be allocated.
     HandlerPool = le_mem_InitStaticPool(EventHandler,

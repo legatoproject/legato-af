@@ -300,15 +300,18 @@ config MAX_QUEUED_FUNCTION_POOL_SIZE
   default 15
   ---help---
   The maximum number of objects in the process-wide queued function report
-  pool, from which Queued Function reports are allocated.
+  pool, from which Queued Function reports are allocated. Per event ID
+  reports are also allocated from this pool.
 
-config MAX_REPORT_POOL_SIZE
-  int "Maximum event report pool size"
+config DEFAULT_PUB_SUB_EVENT_REPORT_SIZE
+  int "Default size for publish-subscribe event reports"
   depends on MEM_POOLS
   range 1 65535
-  default 1
+  default 512
   ---help---
-  The maximum number of objects in a per event ID report pool.
+  This value is used as default size for publish subscribe event reports
+  allocated out of the standard report pool.
+  Event reports larger than this have a separate pool created for each report type.
 
 config MAX_FD_MONITOR_POOL_SIZE
   int "Maximum file descriptor monitor pool size"
