@@ -358,7 +358,16 @@ def OptimizableArray(parameter):
 def GetLocalParameterMsgSize(parameter, pointerSize, direction):
     if isinstance(parameter, interfaceIR.StringParameter) or \
        (isinstance(parameter, interfaceIR.ArrayParameter) and OptimizableArray(parameter)):
-        return interfaceIR.UINT32_TYPE.size + pointerSize
+        if direction == interfaceIR.DIR_IN:
+            # On input in we have semantic tag + size + pointer + tagged pointer
+            return 3 + 1 + interfaceIR.UINT32_TYPE.size + 1 + pointerSize
+        else:
+            if isinstance(parameter, interfaceIR.ArrayParameter):
+                # On output we have semantic tag + actual size (for arrays)
+                return 3 + interfaceIR.UINT32_TYPE.size
+            else:
+                # or bare semantic tag for strings
+                return 3
     else:
         return parameter.GetMaxSize(direction)
 

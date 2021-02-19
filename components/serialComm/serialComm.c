@@ -518,6 +518,7 @@ LE_SHARED le_result_t le_comm_Send
 {
     HandleRecordPtr_t recordPtr = (HandleRecordPtr_t)handle;
     LE_DEBUG("le_comm_Send called to send %d bytes to fd:[%d]", len, recordPtr->serialFd);
+    LE_DUMP(buf, len);
     LE_ASSERT(recordPtr->connState == LE_COMM_CONNECTED);
     LE_ASSERT(le_fd_Write(recordPtr->serialFd, buf, len) == (int)len);
     return LE_OK;
@@ -542,7 +543,7 @@ LE_SHARED le_result_t le_comm_Receive
     LE_DEBUG("le_comm_Receive called to get %d bytes from fd:[%d]", *len, recordPtr->serialFd);
     LE_ASSERT(recordPtr->connState == LE_COMM_CONNECTED);
     *len = le_fd_Read(recordPtr->serialFd, buf, *len);
-    LE_DEBUG("le_comm_Receive received %d bytes\n", (unsigned int)(*len));
+    LE_DUMP(buf, *len);
     return LE_OK;
 }
 
@@ -563,11 +564,13 @@ LE_SHARED int le_comm_GetId
 )
 {
     HandleRecordPtr_t recordPtr = (HandleRecordPtr_t)handle;
-    LE_DEBUG("le_comm_GetId called for fd:[%d]", recordPtr->serialFd);
     if (handle == NULL)
     {
         return -1;
     }
+
+    LE_DEBUG("le_comm_GetId called for fd:[%d]", recordPtr->serialFd);
+
     return recordPtr->serialFd;
 }
 

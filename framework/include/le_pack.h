@@ -125,6 +125,9 @@ typedef enum le_pack_Type
 #define LE_PACK_OUT_STRING_SIZE         (2011)
 #define LE_PACK_OUT_BYTE_STR_SIZE       (2012)
 
+#define LE_PACK_OUT_STRING_RESPONSE     (2013)
+#define LE_PACK_OUT_BYTE_STR_RESPONSE   (2014)
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -229,11 +232,25 @@ void _le_pack_packPositiveInteger
  * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_RPC
 bool le_pack_PackSemanticTag
 (
     uint8_t** bufferPtr,
     le_pack_SemanticTag_t value
 );
+#else
+LE_DECLARE_INLINE bool le_pack_PackSemanticTag
+(
+    uint8_t **bufferPtr,
+    le_pack_SemanticTag_t value
+)
+{
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(bufferPtr);
+
+    return true;
+}
+#endif
 
 
 #ifdef LE_CONFIG_RPC
@@ -1500,16 +1517,55 @@ bool le_pack_UnpackByteString_rpc(uint8_t** bufferPtr, void *arrayPtr, size_t *a
 /**
  * Unpack a TagID from a buffer, incrementing the buffer pointer and decrementing the
  * available size, as appropriate.
- *
- * @note By making this an inline function, gcc can often optimize out the size check if the buffer
- * size is known at compile time.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_RPC
 bool le_pack_UnpackSemanticTag
 (
     uint8_t** bufferPtr,
     le_pack_SemanticTag_t* tagIdPtr
 );
+#else
+LE_DECLARE_INLINE bool le_pack_UnpackSemanticTag
+(
+    uint8_t** bufferPtr,
+    le_pack_SemanticTag_t *tagIdPtr
+)
+{
+    LE_UNUSED(bufferPtr);
+
+    if (tagIdPtr)
+    {
+        *tagIdPtr = 0;
+    }
+
+    return true;
+}
+#endif
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a TagID from a buffer, incrementing the buffer pointer and decrementing the
+ * available size, as appropriate, then check the tag matches the expected tag
+ *
+ * @note By making this an inline function, gcc can often optimize out the size check if the buffer
+ * size is known at compile time.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_CheckSemanticTag
+(
+    uint8_t** bufferPtr,
+    le_pack_SemanticTag_t expectedTagId
+)
+{
+#if LE_CONFIG_RPC
+    le_pack_SemanticTag_t tagId;
+    return le_pack_UnpackSemanticTag(bufferPtr, &tagId) && (tagId == expectedTagId);
+#else
+    // No tagging, assume tags always match
+    return true;
+#endif
+}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1679,6 +1735,247 @@ LE_DECLARE_INLINE bool le_pack_UnpackSize
 )
 {
     uint32_t rawValue;
+
+    if (!le_pack_UnpackUint32(bufferPtr, &rawValue))
+    {
+        return false;
+    }
+
+    *valuePtr = rawValue;
+
+    return true;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a uint8_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint8
+(
+    uint8_t** bufferPtr,
+    uint8_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackUint8_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a uint16_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint16
+(
+    uint8_t** bufferPtr,
+    uint16_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackUint16_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a uint32_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint32
+(
+    uint8_t** bufferPtr,
+    uint32_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackUint32_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a uint64_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint64
+(
+    uint8_t** bufferPtr,
+    uint64_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackUint64_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a int8_t from a buffer, checking if the tag matches the expected semantic tag and
+ * incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt8
+(
+    uint8_t** bufferPtr,
+    int8_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackInt8_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a int16_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt16
+(
+    uint8_t** bufferPtr,
+    int16_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackInt16_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a int32_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt32
+(
+    uint8_t** bufferPtr,
+    int32_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackInt32_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Unpack a int64_t from a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt64
+(
+    uint8_t** bufferPtr,
+    int64_t* valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+#ifdef LE_CONFIG_RPC
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
+
+    return le_pack_UnpackInt64_rpc(bufferPtr, valuePtr);
+#else
+    LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
+    return true;
+#endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pack a size_t into a buffer, checking if the tag matches the expected semantic tag
+ * and incrementing the buffer pointer as appropriate.
+ *
+ * @note Packed sizes are limited to 2^32-1, regardless of platform
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE bool le_pack_UnpackTaggedSize
+(
+    uint8_t **bufferPtr,
+    size_t *valuePtr,
+    le_pack_SemanticTag_t tagId
+)
+{
+    uint32_t rawValue;
+
+    if (!le_pack_CheckSemanticTag(bufferPtr, tagId))
+    {
+        return false;
+    }
 
     if (!le_pack_UnpackUint32(bufferPtr, &rawValue))
     {

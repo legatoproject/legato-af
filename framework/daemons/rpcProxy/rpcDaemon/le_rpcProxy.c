@@ -420,6 +420,45 @@ static void GenerateServerResponseErrorMessage
     proxyMessagePtr->commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
 }
 
+#if RPC_PROXY_LOCAL_SERVICE
+static void DestroyLocalBuffers
+(
+    le_dls_List_t *bufferList
+)
+{
+    while (1)
+    {
+        le_dls_Link_t *link = le_dls_Pop(bufferList);
+
+        if (NULL == link)
+        {
+            break;
+        }
+
+        rpcProxy_LocalBuffer_t *localBufferPtr = CONTAINER_OF(link, rpcProxy_LocalBuffer_t, link);
+
+        le_mem_Release(localBufferPtr);
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Destroy all local buffers assocated with a client request response
+ */
+//--------------------------------------------------------------------------------------------------
+static void DestructRequestResponse
+(
+    void *itemPtr
+)
+{
+    rpcProxy_ClientRequestResponseRecord_t *requestResponsePtr =
+        (rpcProxy_ClientRequestResponseRecord_t*)itemPtr;
+
+    DestroyLocalBuffers(&requestResponsePtr->localBuffers);
+}
+#endif
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -991,11 +1030,6 @@ static void ServerResponseCompletionCallback
 
 
 exit:
-#ifdef RPC_PROXY_LOCAL_SERVICE
-    // Clean-up Local Message memory allocation associated with this Proxy Message ID
-    rpcProxy_CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
-#endif
-
     // Release the message object, now that all results/output has been copied.
     le_msg_ReleaseMsg(responseMsgRef);
 
@@ -1035,6 +1069,7 @@ static le_result_t ProcessClientRequest
     else if (recvRes != LE_OK)
     {
         LE_ERROR("Error when receiving a client request stream");
+        DestroyLocalBuffers(&streamStatePtr->localBuffers);
         return LE_FAULT;
     }
 
@@ -1067,15 +1102,14 @@ static le_result_t ProcessClientRequest
 
     if (requestResponsePtr == NULL)
     {
-#ifdef RPC_PROXY_LOCAL_SERVICE
-        uint32_t proxyId = clientRequestMsgPtr->commonHeader.id;
-#endif
-
         LE_WARN("Request-Response Record memory pool is exhausted, "
                 "service-id [%" PRIu32 "], proxy id [%" PRIu32 "] - "
                 "Dropping request and returning error",
                 clientRequestMsgPtr->commonHeader.serviceId,
                 clientRequestMsgPtr->commonHeader.id);
+
+        // Clean up local buffers
+        DestroyLocalBuffers(&streamStatePtr->localBuffers);
 
         //
         // Generate a LE_NO_MEMORY event
@@ -1093,11 +1127,6 @@ static le_result_t ProcessClientRequest
             LE_ERROR("le_comm_Send failed, result %d", result);
         }
 
-#ifdef RPC_PROXY_LOCAL_SERVICE
-        // Clean-up Local Message memory allocation associated with this Proxy Message ID
-        rpcProxy_CleanUpLocalMessageResources(proxyId);
-#endif
-
         return LE_NO_MEMORY;
     }
 
@@ -1109,6 +1138,8 @@ static le_result_t ProcessClientRequest
     requestResponsePtr->commonHeader.id = clientRequestMsgPtr->commonHeader.id;
     requestResponsePtr->commonHeader.serviceId = clientRequestMsgPtr->commonHeader.serviceId;
     requestResponsePtr->commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
+    requestResponsePtr->localBuffers = streamStatePtr->localBuffers;
+    streamStatePtr->localBuffers = LE_DLS_LIST_INIT;
 
     // Copy the Source of the request (system-name) so we know who to send the response back to
     le_utf8_Copy(requestResponsePtr->systemName,
@@ -1125,7 +1156,6 @@ static le_result_t ProcessClientRequest
     le_hashmap_Put(RequestResponseRefByProxyId,
                    (void*)(uintptr_t) clientRequestMsgPtr->commonHeader.id,
                    requestResponsePtr);
-
 #else
     // Evaluate Unit-Test results
     rpcDaemonTest_ProcessClientRequest(clientRequestMsgPtr);
@@ -1183,6 +1213,31 @@ static void DeleteClientRequestTimer
         }
     }
 }
+
+#ifdef RPC_PROXY_LOCAL_SERVICE
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve and remove the next parameter buffer for a request response call
+ */
+//--------------------------------------------------------------------------------------------------
+le_dls_Link_t *rpcProxy_PopNextParameter
+(
+    uint32_t serviceId
+)
+{
+    rpcProxy_ClientRequestResponseRecord_t* requestResponsePtr = NULL;
+
+    // Retrieve the Request-Response Reference pointer,
+    // using the Proxy Message ID (stored in contextPtr)
+    requestResponsePtr = le_hashmap_Get(RequestResponseRefByProxyId, (void *)(uintptr_t)serviceId);
+    if (requestResponsePtr == NULL)
+    {
+        return NULL;
+    }
+
+    return le_dls_Pop(&requestResponsePtr->localBuffers);
+}
+#endif
 
 #ifndef RPC_PROXY_LOCAL_SERVICE
 //--------------------------------------------------------------------------------------------------
@@ -2656,11 +2711,6 @@ void rpcProxy_DisconnectSessions
                         LE_INFO("======= Cleaning up Request-Response record for service Id [%" PRIu32 "]",
                                 requestResponsePtr->commonHeader.serviceId);
 
-#ifdef RPC_PROXY_LOCAL_SERVICE
-                        // Clean-up Local Message memory allocation associated with this Proxy Message ID
-                        rpcProxy_CleanUpLocalMessageResources(requestResponsePtr->commonHeader.id);
-#endif
-
                         // Remove entry from hash-map, using the Proxy Message Id
                         le_hashmap_Remove(RequestResponseRefByProxyId,
                                           (void*)(uintptr_t) requestResponsePtr->commonHeader.id);
@@ -2764,6 +2814,10 @@ le_result_t le_rpcProxy_InitializeOnce
                                                   ProxyClientRequestResponseRecordPool,
                                                   RPC_PROXY_MSG_REFERENCE_MAX_NUM,
                                                   sizeof(rpcProxy_ClientRequestResponseRecord_t));
+#ifdef RPC_PROXY_LOCAL_SERVICE
+    le_mem_SetDestructor(ProxyClientRequestResponseRecordPoolRef,
+                         DestructRequestResponse);
+#endif
 
     rpcFStream_InitFileStreamPool();
 
