@@ -228,7 +228,7 @@ LE_FULL_API le_json_ParsingSessionRef_t le_json_Parse
  * @return Reference to the JSON parsing session started by this function call.
  */
 //--------------------------------------------------------------------------------------------------
-le_json_ParsingSessionRef_t le_json_ParseString
+LE_API_JSON le_json_ParsingSessionRef_t le_json_ParseString
 (
     const char *jsonString, ///< JSON string to parse.
     le_json_EventHandler_t  eventHandler,   ///< Function to call when normal parsing events happen.
@@ -243,7 +243,7 @@ le_json_ParsingSessionRef_t le_json_ParseString
  * @warning Be sure to stop parsing before closing the file descriptor.
  */
 //--------------------------------------------------------------------------------------------------
-void le_json_Cleanup
+LE_API_JSON void le_json_Cleanup
 (
     le_json_ParsingSessionRef_t session ///< The parsing session to clean up (see le_json_Parse()).
 );
@@ -256,7 +256,7 @@ void le_json_Cleanup
  * @warning This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
-void le_json_SetEventHandler
+LE_API_JSON void le_json_SetEventHandler
 (
     le_json_EventHandler_t  callbackFunc  ///< Function to call when parsing events happen.
 );
@@ -291,7 +291,7 @@ le_json_ContextType_t;
  * @warning This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
-le_json_ContextType_t le_json_GetContextType
+LE_API_JSON le_json_ContextType_t le_json_GetContextType
 (
     void
 );
@@ -304,7 +304,7 @@ le_json_ContextType_t le_json_GetContextType
  * @warning This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
-void le_json_SetOpaquePtr
+LE_API_JSON void le_json_SetOpaquePtr
 (
     void* ptr    ///< Opaque pointer to be fetched using le_json_GetOpaquePtr().
 );
@@ -320,7 +320,7 @@ void le_json_SetOpaquePtr
  * @warning This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
-void* le_json_GetOpaquePtr
+LE_API_JSON void* le_json_GetOpaquePtr
 (
     void
 );
@@ -333,7 +333,7 @@ void* le_json_GetOpaquePtr
  * @warning This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
-void le_json_SetErrorHandler
+LE_API_JSON void le_json_SetErrorHandler
 (
     le_json_ErrorHandler_t  callbackFunc    ///< Function to call when parsing errors happen.
 );
@@ -349,7 +349,7 @@ void le_json_SetErrorHandler
  *          or LE_JSON_STRING events are being handled.
  */
 //--------------------------------------------------------------------------------------------------
-const char* le_json_GetString
+LE_API_JSON const char* le_json_GetString
 (
     void
 );
@@ -363,7 +363,7 @@ const char* le_json_GetString
  *          being handled.
  */
 //--------------------------------------------------------------------------------------------------
-double le_json_GetNumber
+LE_API_JSON double le_json_GetNumber
 (
     void
 );
@@ -374,7 +374,7 @@ double le_json_GetNumber
  * @return Human readable string containing the name of a given JSON parsing event.
  */
 //--------------------------------------------------------------------------------------------------
-const char* le_json_GetEventName
+LE_API_JSON const char* le_json_GetEventName
 (
     le_json_Event_t event
 );
@@ -385,7 +385,7 @@ const char* le_json_GetEventName
  * @return Human readable string containing the name of a given JSON parsing context.
  */
 //--------------------------------------------------------------------------------------------------
-const char* le_json_GetContextName
+LE_API_JSON const char* le_json_GetContextName
 (
     le_json_ContextType_t context
 );
@@ -396,7 +396,7 @@ const char* le_json_GetContextName
  * @return The number of bytes that have been read from the input stream so far.
  */
 //--------------------------------------------------------------------------------------------------
-size_t le_json_GetBytesRead
+LE_API_JSON size_t le_json_GetBytesRead
 (
     le_json_ParsingSessionRef_t session ///< Parsing session.
 );
@@ -412,7 +412,7 @@ size_t le_json_GetBytesRead
  * @warning This function can only be called inside event or error handlers.
  */
 //--------------------------------------------------------------------------------------------------
-le_json_ParsingSessionRef_t le_json_GetSession
+LE_API_JSON le_json_ParsingSessionRef_t le_json_GetSession
 (
     void
 );

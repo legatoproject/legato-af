@@ -268,6 +268,13 @@ config MEM_POOLS
   track the allocations and de-allocations at the cost of potential memory
   fragmentation.
 
+config ENABLE_LE_JSON_API
+  bool "Include le_json APIs"
+  default y
+  ---help---
+  Include le_json APIs in liblegato. Disabling this config will make
+  le_json APIs unavailable.
+
 config MAX_EVENT_POOL_SIZE
   int "Maximum event pool size"
   depends on MEM_POOLS

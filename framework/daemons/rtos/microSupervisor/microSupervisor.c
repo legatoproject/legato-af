@@ -127,7 +127,9 @@ static void InitLegatoFramework
     atomFile_Init();    // Uses memory pools.
     fs_Init();          // Uses memory pools and safe references and path manipulation.
     fd_Init();
+#if LE_CONFIG_ENABLE_LE_JSON_API
     json_Init();
+#endif
     pathIter_Init();    // Uses memory pools and safe references.
 
     // Init space for all services.

@@ -8,6 +8,7 @@
 
 #include "legato.h"
 
+#if LE_CONFIG_ENABLE_LE_JSON_API
 
 /// Maximum number of bytes allowed in a string value, object member name, or number's text
 /// including the null terminator.
@@ -1448,3 +1449,5 @@ le_json_ParsingSessionRef_t le_json_GetSession
 {
     return GetCurrentParser(__func__);
 }
+
+#endif // LE_CONFIG_ENABLE_LE_JSON_API

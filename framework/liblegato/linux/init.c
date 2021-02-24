@@ -68,7 +68,9 @@ __attribute__((constructor)) void _legato_InitFramework
     msg_Init();         // Uses event loop.
     kill_Init();        // Uses memory pools and timers.
     properties_Init();  // Uses memory pools and safe references.
+#if LE_CONFIG_ENABLE_LE_JSON_API
     json_Init();        // Uses memory pools.
+#endif
     pipeline_Init();    // Uses memory pools and FD Monitors.
     atomFile_Init();    // Uses memory pools.
     fs_Init();          // Uses memory pools and safe references.
