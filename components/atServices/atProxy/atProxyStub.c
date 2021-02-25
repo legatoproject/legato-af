@@ -462,34 +462,3 @@ void le_atServer_SetVerboseErrorCode
     le_atServer_SetVerboseErrorCodeRespond(cmdRef, LE_FAULT);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS
 }
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function allows the user to register a le_atServer_GetTextCallback_t callback
- * to retrieve text and sends a prompt <CR><LF>><SPACE> on the current command's device.
- *
- * @return
- *      - LE_OK             The function succeeded.
- *      - LE_BAD_PARAMETER  Invalid device or command reference.
- *      - LE_UNSUPPORTED    if unsupported
- */
-//--------------------------------------------------------------------------------------------------
-le_result_t le_atServer_GetTextAsync
-(
-    le_atServer_CmdRef_t cmdRef,
-    le_atServer_GetTextCallbackFunc_t callback,
-    void *ctxPtr
-)
-{
-#if LE_CONFIG_ATSERVER_TEXT_API
-    // Do something
-    return LE_UNSUPPORTED;
-#else
-    LE_UNUSED(cmdRef);
-    LE_UNUSED(callback);
-    LE_UNUSED(ctxPtr);
-    LE_WARN("Not implemented!");
-    return LE_UNSUPPORTED;
-#endif // LE_CONFIG_ATSERVER_TEXT_API
-}
-
