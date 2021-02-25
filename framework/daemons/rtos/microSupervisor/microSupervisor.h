@@ -144,4 +144,13 @@ LE_SHARED le_result_t microSupervisor_RunCliCommand
     const char*             argv[]          ///< [IN] Command argument list
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+* Returns the name of task as defined in _le_supervisor_SystemApps
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED const char* le_microSupervisor_GetTaskName
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+);
 #endif /* LEGATO_SRC_MICROSUPERVISOR_INTERN_INCLUDE_GUARD */

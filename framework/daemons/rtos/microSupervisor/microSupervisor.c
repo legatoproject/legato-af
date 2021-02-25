@@ -1032,3 +1032,29 @@ LE_SHARED bool le_microSupervisor_GetManualStart
 
     return false;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Returns task's name as defined in _le_supervisor_SystemApps
+*/
+//--------------------------------------------------------------------------------------------------
+LE_SHARED const char* le_microSupervisor_GetTaskName
+(
+    pthread_t threadId ///< [IN] thread to find in the app list
+)
+{
+    int32_t taskCount = -1;
+    const App_t* currentAppPtr;
+    // Iterate over all looking for the app to start.  App list is terminated by a NULL entry.
+    for (currentAppPtr = _le_supervisor_GetSystemApps();
+         currentAppPtr->appNameStr != NULL;
+         ++currentAppPtr)
+    {
+        taskCount = GetAppTaskCount(currentAppPtr, threadId);
+        if (taskCount != -1)
+        {
+            return currentAppPtr->taskList[taskCount].nameStr;
+        }
+    }
+    return NULL;
+}

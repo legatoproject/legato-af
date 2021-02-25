@@ -15,7 +15,6 @@ config WDOG_FRAMEWORK
 
 config WDOG_HASHTABLE_SIZE
   int "Watchdog hashtable size"
-  depends on WDOG_FRAMEWORK
   range 1 65535
   default 31
   ---help---
