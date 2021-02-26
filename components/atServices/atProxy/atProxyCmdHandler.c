@@ -232,18 +232,9 @@ static le_result_t PackParameterList
         return LE_OVERFLOW;
     }
 
-    // Declare a char* to the Parameter List element
-    char* paramStr = atCmdPtr->atCmdParameterList[atCmdPtr->parameterIndex];
-
     // Store the parameter in the parameter list
-    strncpy(paramStr, &parameters[startIndex], parameterLength);
-
-    // NULL Terminate the parameter string.
-    paramStr[parameterLength] = 0;
-
-    LE_DEBUG("Parameter #%"PRIu32" = [%s]",
-             atCmdPtr->parameterIndex,
-             atCmdPtr->atCmdParameterList[atCmdPtr->parameterIndex]);
+    atCmdPtr->parameterList[atCmdPtr->parameterIndex].parameter = &parameters[startIndex];
+    atCmdPtr->parameterList[atCmdPtr->parameterIndex].length = parameterLength;
 
     // Increment the parameter index (count)
     atCmdPtr->parameterIndex++;
@@ -275,8 +266,9 @@ static le_result_t CreateParameterList
     // Declare a char* to the start of the parameters
     char* parameters = NULL;
 
-    // Initialize parameter index (number)
+    // Initialize parameter index (number) and the AT Command Parameter list
     atCmdPtr->parameterIndex = 0;
+    memset(atCmdPtr->parameterList, 0, sizeof(atCmdPtr->parameterList));
 
     struct le_atProxy_StaticCommand* atCmdRegistryPtr = atProxy_GetCmdRegistry();
 

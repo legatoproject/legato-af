@@ -477,7 +477,7 @@ void le_atServer_GetParameter
 )
 {
     le_result_t result = LE_OK;
-    const char* parameter = NULL;
+    char parameter[LE_ATDEFS_PARAMETER_MAX_BYTES] = {0};
 
     struct le_atProxy_AtCommandSession* atCmdSessionPtr =
         le_ref_Lookup(atCmdSessionRefMap, commandRef);
@@ -488,16 +488,27 @@ void le_atServer_GetParameter
         LE_ERROR("AT Command Session reference pointer is NULL");
         result = LE_FAULT;
     }
-    else if (parameterSize <=
-             strnlen(atCmdSessionPtr->atCmdParameterList[index], LE_ATDEFS_PARAMETER_MAX_BYTES - 1))
+    else if (parameterSize <= atCmdSessionPtr->parameterList[index].length)
     {
         LE_ERROR("Parameter buffer too small");
         result = LE_OVERFLOW;
     }
+    else if (sizeof(parameter) <= atCmdSessionPtr->parameterList[index].length)
+    {
+        LE_ERROR("Internal parameter buffer too small");
+        result = LE_OVERFLOW;
+    }
     else
     {
-        // Set pointer to response parameter
-        parameter = atCmdSessionPtr->atCmdParameterList[index];
+        // Create a NULL-terminated paramemter string for the client response
+        strncpy(parameter,
+                atCmdSessionPtr->parameterList[index].parameter,
+                atCmdSessionPtr->parameterList[index].length);
+
+        // NULL terminated parameter string
+        parameter[atCmdSessionPtr->parameterList[index].length] = 0;
+
+        LE_DEBUG("parameters = %s", parameter);
     }
 
     // Send response to client

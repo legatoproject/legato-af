@@ -50,6 +50,15 @@ typedef enum
 
 } le_atProxy_RxParserState_t;
 
+// AT Proxy Command Parameter List structure
+typedef struct atProxy_CmdParameterList
+{
+    char   *parameter;  ///< Pointer to parameter string in the Command Session buffer
+                        ///< NOTE: (Does not include a NULL terminator)
+    size_t  length;     ///< Parameter string length
+} atProxy_CmdParameterList_t;
+
+
 // AT Proxy Command Session structure
 typedef struct le_atProxy_AtCommandSession
 {
@@ -62,8 +71,7 @@ typedef struct le_atProxy_AtCommandSession
     le_atServer_Type_t type;  ///< AT Command type (i.e. Action, parameter, read, or test)
     bool local;               ///< Indicates if this is a "local" or "remote" AT Command
     uint32_t registryIndex;   ///< For "local" commands, index of AT Cmd in Registry
-    char atCmdParameterList[AT_PROXY_PARAMETER_LIST_MAX][LE_ATDEFS_PARAMETER_MAX_BYTES];
-                              ///< Parameter list
+    atProxy_CmdParameterList_t parameterList[AT_PROXY_PARAMETER_LIST_MAX]; ///< Parameter list
     uint32_t parameterIndex;  ///< Parameter index (count)
     bool active;              ///< Indicates if this session is active (i.e., in processing)
     bool dataMode;            ///< Indicates if current session is in data mode
