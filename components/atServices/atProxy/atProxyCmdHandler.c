@@ -217,10 +217,11 @@ static le_result_t PackParameterList
         parameterLength -= 2;
     }
 
+    LE_DEBUG("Parameter length = %d", parameterLength);
+
     if (parameterLength > LE_ATDEFS_PARAMETER_MAX_LEN)
     {
-        LE_ERROR("Parameter is too long, length [%" PRIu16 "]",
-                    parameterLength);
+        LE_ERROR("Parameter is too long, length [%" PRIu16 "]", parameterLength);
         return LE_OVERFLOW;
     }
 
@@ -271,9 +272,8 @@ static le_result_t CreateParameterList
     bool openQuote = false;
     bool stringParam = false;
 
-    // Declare a string to hold the parameter
-    char parameters[LE_ATDEFS_PARAMETER_MAX_BYTES];
-    memset(parameters, 0, sizeof(parameters));
+    // Declare a char* to the start of the parameters
+    char* parameters = NULL;
 
     // Initialize parameter index (number)
     atCmdPtr->parameterIndex = 0;
@@ -292,9 +292,7 @@ static le_result_t CreateParameterList
 
         // Extract the complete list of parameters starting at the operator.
         // NOTE: The operator includes the first part of the parameter
-        strncpy(parameters,
-                &atCmdPtr->buffer[atCmdPtr->operatorIndex],
-                LE_ATDEFS_PARAMETER_MAX_LEN);
+        parameters = &atCmdPtr->buffer[atCmdPtr->operatorIndex];
     }
     else
     {
@@ -307,12 +305,12 @@ static le_result_t CreateParameterList
 
         // Extract the complete list of parameters from the AT Command string
         // following the operator
-        strncpy(parameters,
-                &atCmdPtr->buffer[atCmdPtr->operatorIndex + 1],
-                LE_ATDEFS_PARAMETER_MAX_LEN);
+        parameters = &atCmdPtr->buffer[atCmdPtr->operatorIndex + 1];
     }
 
+    LE_DEBUG("buffer = %s", atCmdPtr->buffer);
     LE_DEBUG("parameters = %s", parameters);
+    LE_DEBUG("parameters length = %d", strlen(parameters));
 
     // Traverse the entire parameter list string,
     // one character at a time, and separate it into individual parameters.
