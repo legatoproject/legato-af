@@ -36,5 +36,6 @@ extern:
     fwupdateDaemon.fwupdateDaemon.le_dualsys
     fwupdateDaemon.fwupdateDaemon.le_flash
 #endif
+    fwupdateDaemon.watchdogChain.le_wdog
 }
 

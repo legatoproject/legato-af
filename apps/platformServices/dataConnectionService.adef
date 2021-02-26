@@ -83,4 +83,5 @@ extern:
 #if ${LE_CONFIG_LINUX} = y
     dcsDaemon.clockSync.le_clkSync
 #endif
+    dcsDaemon.watchdogChain.le_wdog
 }
