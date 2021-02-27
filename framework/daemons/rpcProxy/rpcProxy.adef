@@ -20,6 +20,9 @@ processes:
     {
         (rpcDaemon)
     }
+#if ${LE_CONFIG_TARGET_HL78MCU} = y
+    maxStackBytes: 2560
+#endif
 
     faultAction: restart
 }
