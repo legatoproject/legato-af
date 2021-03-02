@@ -308,6 +308,7 @@ LE_DECLARE_INLINE le_thread_Ref_t le_thread_Create
     void*                   context
 )
 {
+    LE_UNUSED(name);
     return _le_thread_Create(mainFunc, context);
 }
 #endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
@@ -707,6 +708,7 @@ LE_DECLARE_INLINE void le_thread_InitLegatoThreadData
     const char* name
 )
 {
+    LE_UNUSED(name);
     _le_thread_InitLegatoThreadData();
 }
 #endif /* end LE_CONFIG_THREAD_NAMES_ENABLED */
