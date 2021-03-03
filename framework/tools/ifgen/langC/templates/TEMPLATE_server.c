@@ -688,12 +688,10 @@ void {{apiName}}_{{function.name}}Respond
     // And copy any output parameter buffers
     {%- for parameter in function.parameters
                           if parameter is OutParameter and
-                             (parameter is ArrayParameter or parameter is StringParameter) %}
+                             (parameter is OptimizableArray or parameter is StringParameter) %}
     if (_cmdRef->outputBuffers[{{loop.index0}}])
     {
         {%- if parameter is StringParameter %}
-        LE_ASSERT(_cmdRef->bufferSize[{{loop.index0}}] >=
-                  strlen(_cmdRef->outputBuffers[{{loop.index0}}]));
         strncpy(_cmdRef->outputBuffers[{{loop.index0}}],
                 {{parameter|FormatParameterName}},
                 _cmdRef->bufferSize[{{loop.index0}}]);
