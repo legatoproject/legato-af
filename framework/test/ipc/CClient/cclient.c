@@ -293,12 +293,13 @@ static void TestArrayNull(void)
 static void TestSmallByteString(void)
 {
     uint8_t inArray = 42;
+    uint8_t expectedOut = ~inArray;
     uint8_t outArray[32];
     size_t outArraySize = 32;
 
     ipcTest_NotByteString(&inArray, 1, outArray, &outArraySize);
     LE_TEST_OK(outArraySize == 1, "small byte string size %"PRIuS"", outArraySize);
-    LE_TEST_OK((uint8_t)(~inArray) == outArray[0],
+    LE_TEST_OK(expectedOut == outArray[0],
                "small byte string element 0: %"PRIu8"", outArray[0]);
 }
 
@@ -328,7 +329,8 @@ static void TestCborByteString(void)
                "CBOR size is correct (expected:%"PRIuS" actual:%"PRIuS")", inSize, outSize);
     for (i = 0; i < inSize; ++i)
     {
-        LE_TEST_OK((uint8_t)(~(inArray[i])) == outArray[i],
+        uint8_t expectedOut = (uint8_t)(~(inArray[i]));
+        LE_TEST_OK(expectedOut == outArray[i],
                    "CBOR array element %"PRIuS " matches (in: %02x, out: %02x)",
                    i, inArray[i], outArray[i]);
     }

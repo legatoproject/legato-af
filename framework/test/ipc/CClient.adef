@@ -1,0 +1,23 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+start: manual
+
+executables:
+{
+    client = ( CClient )
+}
+
+processes:
+{
+    run:
+    {
+        ( client )
+    }
+}
+
+extern:
+{
+    client.CClient.ipcTest
+}

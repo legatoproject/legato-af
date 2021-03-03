@@ -1,0 +1,23 @@
+/*
+ * Copyright (C) Sierra Wireless Inc.
+ */
+
+executables:
+{
+    server = ( CServer )
+}
+
+processes:
+{
+    run:
+    {
+        ( server )
+    }
+
+    faultAction: restart
+}
+
+extern:
+{
+    server.CServer.ipcTest
+}
