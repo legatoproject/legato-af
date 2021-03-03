@@ -662,10 +662,9 @@ void le_atServer_SendFinalResultCode
         case LE_ATSERVER_ERROR:
             if ((MODE_DISABLED == ErrorCodesMode) || (0 == patternLen))
             {
-                snprintf(buffer, LE_ATDEFS_RESPONSE_MAX_BYTES, "ERROR");
                 pa_port_Write(atCmdSessionPtr->port,
-                              buffer,
-                              strnlen(buffer, LE_ATDEFS_RESPONSE_MAX_LEN));
+                              LE_AT_PROXY_ERROR,
+                              strlen(LE_AT_PROXY_ERROR));
                 break;
             }
 
@@ -679,7 +678,7 @@ void le_atServer_SendFinalResultCode
                 LE_DEBUG("Extended mode");
                 snprintf(buffer + patternLen,
                          LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                         "%"PRIu32,
+                         "%"PRIu32"\r\n",
                          errorCode);
             }
             else if (MODE_VERBOSE == ErrorCodesMode)
@@ -693,15 +692,16 @@ void le_atServer_SendFinalResultCode
                     const char* msgPtr = GetStdVerboseMsg(errorCode, pattern);
                     if (NULL != msgPtr)
                     {
-                        strncpy(buffer + patternLen,
-                                msgPtr,
-                                LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen);
+                        snprintf(buffer + patternLen,
+                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
+                                 "%s\r\n",
+                                 msgPtr);
                     }
                     else
                     {
                         snprintf(buffer + patternLen,
                                  LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                                 "%"PRIu32,
+                                 "%"PRIu32"\r\n",
                                  errorCode);
                     }
                 }
@@ -710,7 +710,7 @@ void le_atServer_SendFinalResultCode
                     // TODO: Add custom error codes (per product) handling
                     snprintf(buffer + patternLen,
                              LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                             "%" PRIu32,
+                             "%"PRIu32"\r\n",
                              errorCode);
                 }
             }
