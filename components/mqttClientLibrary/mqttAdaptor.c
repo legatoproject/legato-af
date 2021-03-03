@@ -202,6 +202,7 @@ void NetworkInit
 le_result_t NetworkConnect
 (
     struct Network*       net,         /// [IN] Network structure
+    uint32_t              profileNum,  /// [IN] PDP profile number
     char*                 addr,        /// [IN] Remote server address
     int                   port,        /// [IN] Remote server port
     int                   timeoutMs,   /// [IN] Connection timeout in milliseconds
@@ -217,8 +218,8 @@ le_result_t NetworkConnect
         return LE_BAD_PARAMETER;
     }
 
-    // use default profile
-    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile((uint32_t)LE_MDC_DEFAULT_PROFILE);
+    // Get profile reference
+    le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile(profileNum);
     if(!profileRef)
     {
         LE_ERROR("le_mdc_GetProfile cannot get default profile");

@@ -120,6 +120,7 @@ void NetworkInit
 le_result_t NetworkConnect
 (
     struct Network*       net,         /// [IN] Network structure
+    uint32_t              profileNum,  /// [IN] PDP profile number
     char*                 addr,        /// [IN] Remote server address
     int                   port,        /// [IN] Remote server port
     int                   timeoutMs,   /// [IN] Connection timeout in milliseconds

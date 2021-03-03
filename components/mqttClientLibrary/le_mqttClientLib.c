@@ -37,6 +37,7 @@ enum NetworkStatus
 //--------------------------------------------------------------------------------------------------
 struct le_mqttClient_Session
 {
+    uint32_t profileNum;                     ///< PDP profile number
     struct Network network;                  ///< Network adaptor record
     enum NetworkStatus networkStatus;        ///< Network status (connected or disconnected)
     MQTTClient client;                       ///< Paho MQTT Client record
@@ -272,6 +273,7 @@ static void SessionTimerExpiryHandler
 )
 {
     le_mqttClient_SessionRef_t  sessionRef;
+    int result;
 
     LE_INFO("[%s] MQTT Client Keep-Alive triggered",
             __FUNCTION__);
@@ -286,15 +288,33 @@ static void SessionTimerExpiryHandler
     }
 
     /* Send Keep-Alive packet to brokerage server */
-    int result = MQTTKeepAlive(&sessionRef->client);
-
-    if (result != SUCCESS)
+    if (sessionRef->client.isconnected)
     {
-        LE_ERROR("Error calling MQTTKeepAlive, result %d", ConvertResultCode(result));
+        result = MQTTKeepAlive(&sessionRef->client);
+
+        if (result != SUCCESS)
+        {
+            LE_ERROR("Error calling MQTTKeepAlive, result %d", ConvertResultCode(result));
+            goto discon;
+        }
+    }
+    else
+    {
+        goto discon;
     }
 
     // Kick off the timer again
-    le_timer_Start(timerRef);
+    le_timer_Restart(timerRef);
+
+    return;
+
+discon:
+    // Call the client's message handler
+    sessionRef->handlerFunc(sessionRef,
+                            LE_MQTT_CLIENT_CONNECTION_DOWN,
+                            NULL,
+                            NULL,
+                            sessionRef->contextPtr);
 }
 
 
@@ -382,6 +402,7 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
 
     /* Store the MQTT Client Session's broker hostname, port number,
      * connection timeout, network status, and security settings. */
+    sessionRef->profileNum = configPtr->profileNum;
     strncpy(sessionRef->host, configPtr->host, LE_MQTT_CLIENT_HOSTNAME_MAX_LEN);
     sessionRef->port = configPtr->port;
     sessionRef->connectionTimeoutMs = configPtr->connectionTimeoutMs;
@@ -460,6 +481,7 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     /* Connect the MQTT Client Session's to the broker server */
     le_result_t result =
         NetworkConnect(&sessionRef->network,
+                       sessionRef->profileNum,
                        sessionRef->host,
                        sessionRef->port,
                        sessionRef->connectionTimeoutMs,

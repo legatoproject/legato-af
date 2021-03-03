@@ -60,6 +60,7 @@ enum le_mqttClient_QoS_t
 // MQTT Client Session Configuration Data
 struct le_mqttClient_Configuration
 {
+    uint32_t         profileNum;            ///< PDP profile number
     char            *host;                  ///< Host name or IP address of target
                                             ///  MQTT broker.
     uint16_t         port;                  ///< MQTT broker server control port.
