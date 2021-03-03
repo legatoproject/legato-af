@@ -74,7 +74,7 @@ static void CheckString
 
     ResetBuffer(bufferPtr, sizeof(buffer));
 
-    LE_TEST_INFO("'%s' - [%zd] buffer[%zd] maxString[%d]:\n",
+    LE_TEST_INFO("'%s' - [%"PRIuS"] buffer[%"PRIuS"] maxString[%"PRIu32"]:\n",
             stringPtr,
             stringLen,
             reportedBufferSz,

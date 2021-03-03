@@ -7,6 +7,8 @@
 #include "legato.h"
 #include "interfaces.h"
 
+#include "utils.h"
+
 #include <string.h>
 
 #define MAX_VALUE_SIZE  257
@@ -26,63 +28,63 @@ le_mem_PoolRef_t OutArrayInfoPool;
 le_mem_PoolRef_t TheStructPool;
 
 
-void AsyncServer_EchoSimpleRespond
+void AsyncServer_AddOneSimpleRespond
 (
     void* serverCmdPtr,
-    void* valuePtr
+    void *valuePtr
 )
 {
     // Weird cast avoids warnings on Ubuntu 14.04
-    ipcTest_EchoSimpleRespond(serverCmdPtr,
-                              (uint32_t)((size_t)valuePtr));
+    ipcTest_AddOneSimpleRespond(serverCmdPtr,
+                                (uint32_t)((size_t)valuePtr + 1));
 }
 
-void ipcTest_EchoSimple
+void ipcTest_AddOneSimple
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     int32_t InValue
 )
 {
     // Weird cast avoids warnings on Ubuntu 14.04
-    le_event_QueueFunction(AsyncServer_EchoSimpleRespond,
+    le_event_QueueFunction(AsyncServer_AddOneSimpleRespond,
                            serverCmdPtr,
                            (void*)((size_t)InValue));
 }
 
-void AsyncServer_EchoSmallEnumRespond
+void AsyncServer_AddOneSmallEnumRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoSmallEnumRespond(serverCmdPtr,
-                                 (ipcTest_SmallEnum_t)((uintptr_t)valuePtr));
+    ipcTest_AddOneSmallEnumRespond(serverCmdPtr,
+                                   util_IncSmallEnum((ipcTest_SmallEnum_t)((uintptr_t)valuePtr)));
 }
 
-void ipcTest_EchoSmallEnum
+void ipcTest_AddOneSmallEnum
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     ipcTest_SmallEnum_t InValue
 )
 {
-    le_event_QueueFunction(AsyncServer_EchoSmallEnumRespond,
+    le_event_QueueFunction(AsyncServer_AddOneSmallEnumRespond,
                            serverCmdPtr,
                            (void*)InValue);
 }
 
-void AsyncServer_EchoLargeEnumRespond
+void AsyncServer_AddOneLargeEnumRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoLargeEnumRespond(serverCmdPtr,
-                                 *(ipcTest_LargeEnum_t*)valuePtr);
+    ipcTest_AddOneLargeEnumRespond(serverCmdPtr,
+                                   util_IncLargeEnum(*(ipcTest_LargeEnum_t*)valuePtr));
     le_mem_Release(valuePtr);
 }
 
 
-void ipcTest_EchoLargeEnum
+void ipcTest_AddOneLargeEnum
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     ipcTest_LargeEnum_t InValue
@@ -91,47 +93,47 @@ void ipcTest_EchoLargeEnum
     ipcTest_LargeEnum_t* valuePtr = le_mem_AssertAlloc(ValuePool);
     *valuePtr = InValue;
 
-    le_event_QueueFunction(AsyncServer_EchoLargeEnumRespond,
+    le_event_QueueFunction(AsyncServer_AddOneLargeEnumRespond,
                            serverCmdPtr,
                            valuePtr);
 }
 
 
-void AsyncServer_EchoSmallBitMaskRespond
+void AsyncServer_NotSmallBitMaskRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoSmallBitMaskRespond(serverCmdPtr,
-                                    (ipcTest_SmallBitMask_t)((uintptr_t)valuePtr));
+    ipcTest_NotSmallBitMaskRespond(serverCmdPtr,
+                                   (ipcTest_SmallBitMask_t)(~(uintptr_t)valuePtr));
 }
 
 
-void ipcTest_EchoSmallBitMask
+void ipcTest_NotSmallBitMask
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     ipcTest_SmallBitMask_t InValue
 )
 {
-    le_event_QueueFunction(AsyncServer_EchoSmallBitMaskRespond,
+    le_event_QueueFunction(AsyncServer_NotSmallBitMaskRespond,
                            serverCmdPtr,
                            (void*)((uintptr_t)InValue));
 }
 
-void AsyncServer_EchoLargeBitMaskRespond
+void AsyncServer_NotLargeBitMaskRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoLargeBitMaskRespond(serverCmdPtr,
-                                    *(ipcTest_LargeBitMask_t*)valuePtr);
+    ipcTest_NotLargeBitMaskRespond(serverCmdPtr,
+                                   ~*(ipcTest_LargeBitMask_t*)valuePtr);
     le_mem_Release(valuePtr);
 }
 
 
-void ipcTest_EchoLargeBitMask
+void ipcTest_NotLargeBitMask
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     ipcTest_LargeBitMask_t InValue
@@ -140,106 +142,107 @@ void ipcTest_EchoLargeBitMask
     ipcTest_LargeBitMask_t* valuePtr = le_mem_AssertAlloc(ValuePool);
     *valuePtr = InValue;
 
-    le_event_QueueFunction(AsyncServer_EchoLargeBitMaskRespond,
+    le_event_QueueFunction(AsyncServer_NotLargeBitMaskRespond,
                            serverCmdPtr,
                            valuePtr);
 }
 
-void AsyncServer_EchoBooleanRespond
+void AsyncServer_NotBooleanRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoBooleanRespond(serverCmdPtr, (bool)valuePtr);
+    ipcTest_NotBooleanRespond(serverCmdPtr, !(bool)valuePtr);
 }
 
-void ipcTest_EchoBoolean
+void ipcTest_NotBoolean
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     bool InValue
 )
 {
-    le_event_QueueFunction(AsyncServer_EchoBooleanRespond,
+    le_event_QueueFunction(AsyncServer_NotBooleanRespond,
                            serverCmdPtr,
                            (void*) InValue);
 }
 
 
-void AsyncServer_EchoResultRespond
+void AsyncServer_NextResultRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoResultRespond(serverCmdPtr, (le_result_t)((intptr_t) valuePtr));
+    ipcTest_NextResultRespond(serverCmdPtr, util_IncResult((le_result_t)((intptr_t) valuePtr)));
 }
 
-void ipcTest_EchoResult
+void ipcTest_NextResult
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     le_result_t InValue
 )
 {
-    le_event_QueueFunction(AsyncServer_EchoResultRespond,
+    le_event_QueueFunction(AsyncServer_NextResultRespond,
                            serverCmdPtr,
                            (void*) InValue);
 }
 
-void AsyncServer_ReturnResultRespond
+void AsyncServer_ReturnNextResultRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_ReturnResultRespond(serverCmdPtr, (le_result_t)((intptr_t) valuePtr));
+    ipcTest_ReturnNextResultRespond(serverCmdPtr,
+                                    util_IncResult((le_result_t)((intptr_t) valuePtr)));
 }
 
 
-void ipcTest_ReturnResult
+void ipcTest_ReturnNextResult
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     le_result_t InValue
 )
 {
-    le_event_QueueFunction(AsyncServer_ReturnResultRespond,
+    le_event_QueueFunction(AsyncServer_ReturnNextResultRespond,
                            serverCmdPtr,
                            (void*) InValue);
 }
 
 
-void AsyncServer_EchoOnOffRespond
+void AsyncServer_NotOnOffRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoOnOffRespond(serverCmdPtr, (le_onoff_t)((uintptr_t)valuePtr));
+    ipcTest_NotOnOffRespond(serverCmdPtr, util_NotOnOff((le_onoff_t)((uintptr_t)valuePtr)));
 }
 
-void ipcTest_EchoOnOff
+void ipcTest_NotOnOff
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     le_onoff_t InValue
 )
 {
-    le_event_QueueFunction(AsyncServer_EchoOnOffRespond,
+    le_event_QueueFunction(AsyncServer_NotOnOffRespond,
                            serverCmdPtr,
                            (void*) InValue);
 }
 
 
-void AsyncServer_EchoDoubleRespond
+void AsyncServer_AddOneDoubleRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoDoubleRespond(serverCmdPtr, *(double*)valuePtr);
+    ipcTest_AddOneDoubleRespond(serverCmdPtr, *(double*)valuePtr + 1);
     le_mem_Release(valuePtr);
 }
 
-void ipcTest_EchoDouble
+void ipcTest_AddOneDouble
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     double InValue
@@ -247,46 +250,58 @@ void ipcTest_EchoDouble
 {
     double* valuePtr = le_mem_AssertAlloc(ValuePool);
     *valuePtr = InValue;
-    le_event_QueueFunction(AsyncServer_EchoDoubleRespond,
+    le_event_QueueFunction(AsyncServer_AddOneDoubleRespond,
                            serverCmdPtr,
                            (void*) valuePtr);
 }
 
-void AsyncServer_EchoReferenceRespond
+void AsyncServer_AddFourReferenceRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoReferenceRespond(serverCmdPtr,
-                                 valuePtr);
+    if (valuePtr)
+    {
+        ipcTest_AddFourReferenceRespond(serverCmdPtr,
+                                        (void *)((uint8_t *)valuePtr + 4));
+    }
+    else
+    {
+        ipcTest_AddFourReferenceRespond(serverCmdPtr,
+                                        NULL);
+    }
 }
 
 
-void ipcTest_EchoReference
+void ipcTest_AddFourReference
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     ipcTest_SimpleRef_t InRef
 )
 {
-    le_event_QueueFunction(AsyncServer_EchoReferenceRespond,
+    le_event_QueueFunction(AsyncServer_AddFourReferenceRespond,
                            serverCmdPtr,
                            InRef);
 }
 
-void AsyncServer_EchoStringRespond
+void AsyncServer_ROT13StringRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
-    ipcTest_EchoStringRespond(serverCmdPtr,
-                              valuePtr);
-    le_mem_Release(valuePtr);
+    ipcTest_ROT13StringRespond(serverCmdPtr,
+                               valuePtr);
+
+    if (valuePtr)
+    {
+        le_mem_Release(valuePtr);
+    }
 }
 
 
-void ipcTest_EchoString
+void ipcTest_ROT13String
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     const char* InString,
@@ -296,28 +311,37 @@ void ipcTest_EchoString
     // Cap output string size at maximum size of buffer
     if (OutStringSize > MAX_VALUE_SIZE) { OutStringSize = MAX_VALUE_SIZE; }
 
-    char* OutString = le_mem_AssertAlloc(ValuePool);
-    strncpy(OutString, InString, OutStringSize);
-    OutString[OutStringSize-1] = '\0';
-    le_event_QueueFunction(AsyncServer_EchoStringRespond,
+    char* OutString = NULL;
+
+    OutString = le_mem_AssertAlloc(ValuePool);
+    if (InString)
+    {
+        util_ROT13String(InString, OutString, MAX_VALUE_SIZE);
+    }
+    else
+    {
+        OutString[0] = '\0';
+    }
+
+    le_event_QueueFunction(AsyncServer_ROT13StringRespond,
                            serverCmdPtr,
                            OutString);
 }
 
-void AsyncServer_EchoArrayRespond
+void AsyncServer_AddOneArrayRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
     OutArrayInfo_t* arrayInfoPtr = (OutArrayInfo_t*) valuePtr;
-    ipcTest_EchoArrayRespond(serverCmdPtr, (int64_t*) arrayInfoPtr->arrayPtr,
-                             arrayInfoPtr->outArraySize);
+    ipcTest_AddOneArrayRespond(serverCmdPtr, (int64_t*) arrayInfoPtr->arrayPtr,
+                               arrayInfoPtr->outArraySize);
     le_mem_Release(arrayInfoPtr->arrayPtr);
     le_mem_Release(arrayInfoPtr);
 }
 
-void ipcTest_EchoArray
+void ipcTest_AddOneArray
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     const int64_t* InArrayPtr,
@@ -325,31 +349,37 @@ void ipcTest_EchoArray
     size_t OutArraySize
 )
 {
+    uint64_t* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
+    size_t i;
 
-    char* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
-    memcpy(OutArrayPtr, InArrayPtr, InArraySize * sizeof(int64_t));
+    for (i = 0; i < InArraySize && i < OutArraySize; ++i)
+    {
+        OutArrayPtr[i] = InArrayPtr[i] + 1;
+    }
+
     OutArrayInfo_t* arrayInfoPtr = le_mem_AssertAlloc(OutArrayInfoPool);
     arrayInfoPtr->arrayPtr = OutArrayPtr;
-    arrayInfoPtr->outArraySize = OutArraySize;
-    le_event_QueueFunction(AsyncServer_EchoArrayRespond,
+    arrayInfoPtr->outArraySize = i;
+
+    le_event_QueueFunction(AsyncServer_AddOneArrayRespond,
                            serverCmdPtr,
                            arrayInfoPtr);
 }
 
-void AsyncServer_EchoByteStringRespond
+void AsyncServer_NotByteStringRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
     OutArrayInfo_t* arrayInfoPtr = (OutArrayInfo_t*) valuePtr;
-    ipcTest_EchoByteStringRespond(serverCmdPtr, (uint8_t*) arrayInfoPtr->arrayPtr,
-                                  arrayInfoPtr->outArraySize);
+    ipcTest_NotByteStringRespond(serverCmdPtr, (uint8_t*) arrayInfoPtr->arrayPtr,
+                                 arrayInfoPtr->outArraySize);
     le_mem_Release(arrayInfoPtr->arrayPtr);
     le_mem_Release(arrayInfoPtr);
 }
 
-void ipcTest_EchoByteString
+void ipcTest_NotByteString
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     const uint8_t* InArrayPtr,
@@ -358,55 +388,65 @@ void ipcTest_EchoByteString
 )
 {
     char* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
-    memcpy(OutArrayPtr, InArrayPtr, InArraySize * sizeof(int64_t));
+    size_t i;
+
+    for (i = 0; i < InArraySize && i < OutArraySize; ++i)
+    {
+        OutArrayPtr[i] = ~InArrayPtr[i];
+    }
+
     OutArrayInfo_t* arrayInfoPtr = le_mem_AssertAlloc(OutArrayInfoPool);
     arrayInfoPtr->arrayPtr = OutArrayPtr;
-    arrayInfoPtr->outArraySize = OutArraySize;
-    le_event_QueueFunction(AsyncServer_EchoByteStringRespond,
+    arrayInfoPtr->outArraySize = i;
+
+    le_event_QueueFunction(AsyncServer_NotByteStringRespond,
                            serverCmdPtr,
                            arrayInfoPtr);
 }
 
-void AsyncServer_EchoStructRespond
+void AsyncServer_AddOneROT13StructRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
     ipcTest_TheStruct_t* outStructPtr = (ipcTest_TheStruct_t*) valuePtr;
-    ipcTest_EchoStructRespond(serverCmdPtr, outStructPtr);
+    ipcTest_AddOneROT13StructRespond(serverCmdPtr, outStructPtr);
     le_mem_Release(outStructPtr);
 }
 
-void ipcTest_EchoStruct
+void ipcTest_AddOneROT13Struct
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     const ipcTest_TheStruct_t * LE_NONNULL InStructPtr
 )
 {
     ipcTest_TheStruct_t* OutStructPtr = le_mem_AssertAlloc(TheStructPool);
-    memcpy(OutStructPtr, InStructPtr, sizeof(ipcTest_TheStruct_t));
-    le_event_QueueFunction(AsyncServer_EchoStructRespond,
+
+    OutStructPtr->index = InStructPtr->index + 1;
+    util_ROT13String(InStructPtr->name, OutStructPtr->name, sizeof(OutStructPtr->name));
+
+    le_event_QueueFunction(AsyncServer_AddOneROT13StructRespond,
                            serverCmdPtr,
                            OutStructPtr);
 
 }
 
 
-void AsyncServer_EchoStructArrayRespond
+void AsyncServer_AddOneROT13StructArrayRespond
 (
     void* serverCmdPtr,
     void* valuePtr
 )
 {
     OutArrayInfo_t* arrayInfoPtr = (OutArrayInfo_t*) valuePtr;
-    ipcTest_EchoStructArrayRespond(serverCmdPtr, arrayInfoPtr->arrayPtr,
-                                   arrayInfoPtr->outArraySize);
+    ipcTest_AddOneROT13StructArrayRespond(serverCmdPtr, arrayInfoPtr->arrayPtr,
+                                          arrayInfoPtr->outArraySize);
     le_mem_Release(arrayInfoPtr->arrayPtr);
     le_mem_Release(arrayInfoPtr);
 }
 
-void ipcTest_EchoStructArray
+void ipcTest_AddOneROT13StructArray
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     const ipcTest_TheStruct_t* InStructArrayPtr,
@@ -415,11 +455,20 @@ void ipcTest_EchoStructArray
 )
 {
     ipcTest_TheStruct_t* OutArrayPtr = le_mem_AssertAlloc(ValuePool);
-    memcpy(OutArrayPtr, InStructArrayPtr, InStructArraySize * sizeof(ipcTest_TheStruct_t));
+    size_t i;
+
+    for (i = 0; i < InStructArraySize && i < OutStructArraySize; ++i)
+    {
+        OutArrayPtr[i].index = InStructArrayPtr[i].index + 1;
+        util_ROT13String(InStructArrayPtr[i].name,
+                         OutArrayPtr[i].name, sizeof(OutArrayPtr[i].name));
+    }
+
     OutArrayInfo_t* arrayInfoPtr = le_mem_AssertAlloc(OutArrayInfoPool);
     arrayInfoPtr->arrayPtr = OutArrayPtr;
-    arrayInfoPtr->outArraySize = OutStructArraySize;
-    le_event_QueueFunction(AsyncServer_EchoStructArrayRespond,
+    arrayInfoPtr->outArraySize = i;
+
+    le_event_QueueFunction(AsyncServer_AddOneROT13StructArrayRespond,
                            serverCmdPtr,
                            arrayInfoPtr);
 
@@ -437,54 +486,54 @@ void ipcTest_ExitServer
 /**
  * Storage for pointer to Complex event handlers
  */
-static ipcTest_EchoComplexHandlerFunc_t EchoEventHandlerComplexPtr = NULL;
-static void* EchoComplexEventContextPtr = NULL;
-size_t EchoComplexEventRef=1;
+static ipcTest_AddOneROT13HandlerFunc_t EventHandlerComplexPtr = NULL;
+static void* ComplexEventContextPtr = NULL;
+size_t ComplexEventRef=1;
 
-ipcTest_EchoComplexEventHandlerRef_t ipcTest_AddEchoComplexEventHandler
+ipcTest_AddOneROT13EventHandlerRef_t ipcTest_AddAddOneROT13EventHandler
 (
-    ipcTest_EchoComplexHandlerFunc_t handlerPtr,
+    ipcTest_AddOneROT13HandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     // For simplicity, only allow a single event handler
-    if (EchoEventHandlerComplexPtr)
+    if (EventHandlerComplexPtr)
     {
         return NULL;
     }
 
-    EchoEventHandlerComplexPtr = handlerPtr;
-    EchoComplexEventContextPtr = contextPtr;
+    EventHandlerComplexPtr = handlerPtr;
+    ComplexEventContextPtr = contextPtr;
 
-    return (ipcTest_EchoComplexEventHandlerRef_t)EchoComplexEventRef;
+    return (ipcTest_AddOneROT13EventHandlerRef_t)ComplexEventRef;
 }
 
-void ipcTest_RemoveEchoComplexEventHandler
+void ipcTest_RemoveAddOneROT13EventHandler
 (
-    ipcTest_EchoComplexEventHandlerRef_t handlerRef
+    ipcTest_AddOneROT13EventHandlerRef_t handlerRef
 )
 {
     // Remove if this is the current handler.
-    if ((size_t)handlerRef == EchoComplexEventRef)
+    if ((size_t)handlerRef == ComplexEventRef)
     {
-        EchoComplexEventRef += 2;
-        EchoEventHandlerComplexPtr = NULL;
-        EchoComplexEventContextPtr = NULL;
+        ComplexEventRef += 2;
+        EventHandlerComplexPtr = NULL;
+        ComplexEventContextPtr = NULL;
     }
 }
 
-void AsyncServer_EchoTriggerComplexEventRespond
+void AsyncServer_TriggerAddOneROT13EventRespond
 (
     void* serverCmdPtr,
     void* context
 )
 {
     LE_UNUSED(context);
-    ipcTest_EchoTriggerComplexEventRespond(serverCmdPtr);
+    ipcTest_TriggerAddOneROT13EventRespond(serverCmdPtr);
 }
 
 
-void ipcTest_EchoTriggerComplexEvent
+void ipcTest_TriggerAddOneROT13Event
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     int32_t cookie,
@@ -493,13 +542,23 @@ void ipcTest_EchoTriggerComplexEvent
     size_t cookieArraySize
 )
 {
-    if (EchoEventHandlerComplexPtr)
+    if (EventHandlerComplexPtr)
     {
-        EchoEventHandlerComplexPtr(cookie, cookieString, cookieArrayPtr, cookieArraySize,
-                                   EchoComplexEventContextPtr);
+        char outString[16];
+        int16_t outArray[10];
+        size_t i;
+
+        util_ROT13String(cookieString, outString, sizeof(outString));
+        for (i = 0; i < cookieArraySize && i < NUM_ARRAY_MEMBERS(outArray); ++i)
+        {
+            outArray[i] = cookieArrayPtr[i] + 1;
+        }
+
+        EventHandlerComplexPtr(cookie + 1, outString, outArray, i,
+                               ComplexEventContextPtr);
     }
 
-    le_event_QueueFunction(AsyncServer_EchoTriggerComplexEventRespond,
+    le_event_QueueFunction(AsyncServer_TriggerAddOneROT13EventRespond,
                            serverCmdPtr,
                            NULL);
 }
@@ -507,63 +566,63 @@ void ipcTest_EchoTriggerComplexEvent
 /**
  * Storage for pointer to event handlers
  */
-static ipcTest_EchoHandlerFunc_t EchoEventHandlerPtr = NULL;
-static void* EchoEventContextPtr = NULL;
-size_t EchoEventRef=1;
+static ipcTest_AddOneHandlerFunc_t EventHandlerPtr = NULL;
+static void* EventContextPtr = NULL;
+size_t EventRef=1;
 
-ipcTest_EchoEventHandlerRef_t ipcTest_AddEchoEventHandler
+ipcTest_AddOneEventHandlerRef_t ipcTest_AddAddOneEventHandler
 (
-    ipcTest_EchoHandlerFunc_t handlerPtr,
+    ipcTest_AddOneHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     // For simplicity, only allow a single event handler
-    if (EchoEventHandlerPtr)
+    if (EventHandlerPtr)
     {
         return NULL;
     }
 
-    EchoEventHandlerPtr = handlerPtr;
-    EchoEventContextPtr = contextPtr;
+    EventHandlerPtr = handlerPtr;
+    EventContextPtr = contextPtr;
 
-    return (ipcTest_EchoEventHandlerRef_t)EchoEventRef;
+    return (ipcTest_AddOneEventHandlerRef_t)EventRef;
 }
 
-void ipcTest_RemoveEchoEventHandler
+void ipcTest_RemoveAddOneEventHandler
 (
-    ipcTest_EchoEventHandlerRef_t handlerRef
+    ipcTest_AddOneEventHandlerRef_t handlerRef
 )
 {
     // Remove if this is the current handler.
-    if ((size_t)handlerRef == EchoEventRef)
+    if ((size_t)handlerRef == EventRef)
     {
-        EchoEventRef += 2;
-        EchoEventHandlerPtr = NULL;
-        EchoEventContextPtr = NULL;
+        EventRef += 2;
+        EventHandlerPtr = NULL;
+        EventContextPtr = NULL;
     }
 }
 
-void AsyncServer_EchoTriggerEventRespond
+void AsyncServer_TriggerAddOneEventRespond
 (
     void* serverCmdPtr,
     void* context
 )
 {
     LE_UNUSED(context);
-    ipcTest_EchoTriggerEventRespond(serverCmdPtr);
+    ipcTest_TriggerAddOneEventRespond(serverCmdPtr);
 }
 
-void ipcTest_EchoTriggerEvent
+void ipcTest_TriggerAddOneEvent
 (
     ipcTest_ServerCmdRef_t serverCmdPtr,
     int32_t cookie
 )
 {
-    if (EchoEventHandlerPtr)
+    if (EventHandlerPtr)
     {
-        EchoEventHandlerPtr(cookie, EchoEventContextPtr);
+        EventHandlerPtr(cookie + 1, EventContextPtr);
     }
-    le_event_QueueFunction(AsyncServer_EchoTriggerEventRespond,
+    le_event_QueueFunction(AsyncServer_TriggerAddOneEventRespond,
                            serverCmdPtr,
                            NULL);
 }

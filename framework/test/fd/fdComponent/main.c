@@ -986,6 +986,7 @@ static void *FifoReadMain(void *context)
         }
         else if (errno == EAGAIN)
         {
+            // Necessary for cooperative scheduling RTOSes
             sched_yield();
         }
     }

@@ -95,46 +95,46 @@ BITMASK LargeBitMask {
 
 REFERENCE Simple;
 
-FUNCTION EchoSimple(int32 InValue IN,
+FUNCTION AddOneSimple(int32 InValue IN,
                     int32 OutValue OUT);
 
-FUNCTION EchoSmallEnum(SmallEnum InValue IN,
+FUNCTION AddOneSmallEnum(SmallEnum InValue IN,
                        SmallEnum OutValue OUT);
 
-FUNCTION EchoLargeEnum(LargeEnum InValue IN,
+FUNCTION AddOneLargeEnum(LargeEnum InValue IN,
                        LargeEnum OutValue OUT);
 
-FUNCTION EchoSmallBitMask(SmallBitMask InValue IN,
-                          SmallBitMask OutValue OUT);
+FUNCTION NotSmallBitMask(SmallBitMask InValue IN,
+                         SmallBitMask OutValue OUT);
 
-FUNCTION EchoLargeBitMask(LargeBitMask InValue IN,
-                          LargeBitMask OutValue OUT);
+FUNCTION NotLargeBitMask(LargeBitMask InValue IN,
+                         LargeBitMask OutValue OUT);
 
-FUNCTION EchoBoolean(bool InValue IN,
+FUNCTION NotBoolean(bool InValue IN,
                      bool OutValue OUT);
 
-FUNCTION EchoResult(le_result_t InValue IN,
+FUNCTION NextResult(le_result_t InValue IN,
                     le_result_t OutValue OUT);
 
-FUNCTION le_result_t ReturnResult(le_result_t InValue IN);
+FUNCTION le_result_t ReturnNextResult(le_result_t InValue IN);
 
-FUNCTION EchoOnOff(le_onoff_t InValue IN,
-                   le_onoff_t OutValue OUT);
+FUNCTION NotOnOff(le_onoff_t InValue IN,
+                  le_onoff_t OutValue OUT);
 
-FUNCTION EchoDouble(double InValue IN,
+FUNCTION AddOneDouble(double InValue IN,
                     double OutValue OUT);
 
-FUNCTION EchoReference(Simple InRef IN,
-                       Simple OutRef OUT);
+FUNCTION AddFourReference(Simple InRef IN,
+                          Simple OutRef OUT);
 
-FUNCTION EchoString(string InString[256] IN,
-                    string OutString[256] OUT);
+FUNCTION ROT13String(string InString[256] IN,
+                     string OutString[256] OUT);
 
-FUNCTION EchoArray(int64 InArray[32] IN,
-                   int64 OutArray[32] OUT);
+FUNCTION AddOneArray(int64 InArray[32] IN,
+                     int64 OutArray[32] OUT);
 
-FUNCTION EchoByteString(uint8 InArray[32] IN,
-                        uint8 OutArray[32] OUT);
+FUNCTION NotByteString(uint8 InArray[32] IN,
+                       uint8 OutArray[32] OUT);
 
 STRUCT TheStruct
 {
@@ -142,26 +142,26 @@ STRUCT TheStruct
     int8 index;
 };
 
-FUNCTION EchoStruct(TheStruct InStruct IN,
-                    TheStruct OutStruct OUT);
+FUNCTION AddOneROT13Struct(TheStruct InStruct IN,
+                           TheStruct OutStruct OUT);
 
-FUNCTION EchoStructArray(TheStruct InStructArray[5] IN,
-                         TheStruct OutStructArray[5] OUT);
+FUNCTION AddOneROT13StructArray(TheStruct InStructArray[5] IN,
+                                TheStruct OutStructArray[5] OUT);
 
-HANDLER EchoHandler(int32 cookie);
+HANDLER AddOneHandler(int32 cookie);
 
-HANDLER EchoComplexHandler(int32 cookie,
-                    string cookieString[15],
-                    int16 cookieArray[10]);
+HANDLER AddOneROT13Handler(int32 cookie,
+                           string cookieString[15],
+                           int16 cookieArray[10]);
 
-EVENT EchoEvent(EchoHandler handler);
+EVENT AddOneEvent(AddOneHandler handler);
 
-EVENT EchoComplexEvent(EchoComplexHandler handler);
+EVENT AddOneROT13Event(AddOneROT13Handler handler);
 
-FUNCTION EchoTriggerComplexEvent(int32 cookie,
-                          string cookieString[15],
-                          int16 cookieArray[10]);
+FUNCTION TriggerAddOneROT13Event(int32 cookie,
+                                 string cookieString[15],
+                                 int16 cookieArray[10]);
 
-FUNCTION EchoTriggerEvent(int32 cookie);
+FUNCTION TriggerAddOneEvent(int32 cookie);
 
 FUNCTION ExitServer();

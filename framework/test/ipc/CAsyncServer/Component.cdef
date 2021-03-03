@@ -10,9 +10,15 @@ provides:
     }
 }
 
+cflags:
+{
+    -I$CURDIR/../utils
+}
+
 sources:
 {
     casyncserver.c
+    ../utils/utils.c
 }
 
 pools:

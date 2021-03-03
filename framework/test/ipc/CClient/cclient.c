@@ -5,6 +5,8 @@
 #include "legato.h"
 #include "interfaces.h"
 
+#include "utils.h"
+
 #include <setjmp.h>
 #include <string.h>
 
@@ -19,236 +21,247 @@
  */
 static le_timer_Ref_t TestTimeoutTimerRef;
 
+
+
 /*
  * Tests -- test a number of types can be passed over IPC, as well as testing a selection of
  * values with NULL outputs.
  */
 
-static void TestEchoSimple(void)
+static void TestSimple(void)
 {
     int32_t inValue = 42;
     int32_t outValue;
-    ipcTest_EchoSimple(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo simple positive value: want %"PRId32", got %"PRId32"",
+    ipcTest_AddOneSimple(inValue, &outValue);
+    LE_TEST_OK(inValue + 1 == outValue,
+               "add one to simple positive value: in %"PRId32", out %"PRId32"",
                inValue, outValue);
 
     inValue = -50;
-    ipcTest_EchoSimple(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo simple negative value: want %"PRId32", got %"PRId32"",
+    ipcTest_AddOneSimple(inValue, &outValue);
+    LE_TEST_OK(inValue + 1 == outValue,
+               "add one to simple negative value: in %"PRId32", out %"PRId32"",
                inValue, outValue);
 
     inValue = -50000000;
-    ipcTest_EchoSimple(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo simple large negative value: want %"PRId32", got %"PRId32"",
+    ipcTest_AddOneSimple(inValue, &outValue);
+    LE_TEST_OK(inValue + 1 == outValue,
+               "add one to simple large negative value: in %"PRId32", out %"PRId32"",
                inValue, outValue);
 
     inValue = 5000000;
-    ipcTest_EchoSimple(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo simple large positive value: want %"PRId32", got %"PRId32"",
+    ipcTest_AddOneSimple(inValue, &outValue);
+    LE_TEST_OK(inValue + 1 == outValue,
+               "add one to simple large positive value: in %"PRId32", out %"PRId32"",
                inValue, outValue);
 
     inValue = -5;
-    ipcTest_EchoSimple(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo tiny negative value: want %"PRId32", got %"PRId32"",
+    ipcTest_AddOneSimple(inValue, &outValue);
+    LE_TEST_OK(inValue + 1 == outValue,
+               "add one to tiny negative value: in %"PRId32", out %"PRId32"",
                inValue, outValue);
 
     inValue = 5;
-    ipcTest_EchoSimple(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo tiny positive value: want %"PRId32", got %"PRId32"",
+    ipcTest_AddOneSimple(inValue, &outValue);
+    LE_TEST_OK(inValue + 1 == outValue,
+               "add one to tiny positive value: in %"PRId32", out %"PRId32"",
                inValue, outValue);
 }
 
-static void TestEchoSimpleNull(void)
+static void TestSimpleNull(void)
 {
     const int32_t inValue = 42;
-    ipcTest_EchoSimple(inValue, NULL);
-    LE_TEST_OK(true, "echo to null destination");
+    ipcTest_AddOneSimple(inValue, NULL);
+    LE_TEST_OK(true, "add one with null destination");
 }
 
-static void TestEchoSmallEnum(void)
+static void TestSmallEnum(void)
 {
     const ipcTest_SmallEnum_t inValue = IPCTEST_SE_VALUE4;
     ipcTest_SmallEnum_t outValue = IPCTEST_SE_VALUE1;
-    ipcTest_EchoSmallEnum(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo small enum (in: %"PRIu32", out; %"PRIu32")",
+    ipcTest_AddOneSmallEnum(inValue, &outValue);
+    LE_TEST_OK(util_IncSmallEnum(inValue) == outValue,
+               "increment small enum (in: %"PRIu32", out: %"PRIu32")",
                (uint32_t)inValue, (uint32_t)outValue);
 }
 
-static void TestEchoLargeEnum(void)
+static void TestLargeEnum(void)
 {
     const ipcTest_LargeEnum_t inValue = IPCTEST_LE_LARGE_VALUE1;
     ipcTest_LargeEnum_t outValue = IPCTEST_LE_VALUE1;
 
-    ipcTest_EchoLargeEnum(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo large enum (in: %"PRIu64", out: %"PRIu64")",
+    ipcTest_AddOneLargeEnum(inValue, &outValue);
+    LE_TEST_OK(util_IncLargeEnum(inValue) == outValue,
+               "increment large enum (in: %"PRIu64", out: %"PRIu64")",
                (uint64_t)inValue, (uint64_t)outValue);
 }
 
-static void TestEchoSmallBitMask(void)
+static void TestSmallBitMask(void)
 {
     const ipcTest_SmallBitMask_t inValue = IPCTEST_SBM_VALUE1 | IPCTEST_SBM_VALUE3;
     ipcTest_SmallBitMask_t outValue = 0;
 
-    ipcTest_EchoSmallBitMask(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo small bitmask (in: %"PRIu32", out; %"PRIu32")",
+    ipcTest_NotSmallBitMask(inValue, &outValue);
+    LE_TEST_OK(~inValue == outValue,
+               "not small bitmask (in: %"PRIu32", out; %"PRIu32")",
                (uint32_t)inValue, (uint32_t)outValue);
 }
 
-static void TestEchoLargeBitMask(void)
+static void TestLargeBitMask(void)
 {
     const ipcTest_LargeBitMask_t inValue = IPCTEST_LBM_VALUE64 | IPCTEST_LBM_VALUE9;
     ipcTest_LargeBitMask_t outValue = 0;
 
-    ipcTest_EchoLargeBitMask(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue,
-               "echo large bitmask (in: %"PRIu64", out; %"PRIu64")",
+    ipcTest_NotLargeBitMask(inValue, &outValue);
+    LE_TEST_OK(~inValue == outValue,
+               "not large bitmask (in: %"PRIu64", out; %"PRIu64")",
                (uint64_t)inValue, (uint64_t)outValue);
 }
 
-static void TestEchoBoolean(void)
+static void TestBoolean(void)
 {
     const bool inValue = false;
-    bool outValue = true;
-    ipcTest_EchoBoolean(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue, "simple boolean test");
+    bool outValue = false;
+    ipcTest_NotBoolean(inValue, &outValue);
+    LE_TEST_OK(!inValue == outValue, "simple boolean test");
 }
 
-static void TestEchoResult(void)
+static void TestResult(void)
 {
     const le_result_t inValue = LE_IO_ERROR;
     le_result_t outValue = LE_OK;
-    ipcTest_EchoResult(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue, "simple result test");
+    ipcTest_NextResult(inValue, &outValue);
+    LE_TEST_OK(util_IncResult(inValue) == outValue, "simple result test");
 }
 
 static void TestReturnedResult(void)
 {
     const le_result_t inValue = LE_IO_ERROR;
-    LE_TEST_OK(ipcTest_ReturnResult(inValue) == inValue, "simple return test");
+    LE_TEST_OK(ipcTest_ReturnNextResult(inValue) == util_IncResult(inValue), "simple return test");
 }
 
-static void TestEchoOnOff(void)
+static void TestOnOff(void)
 {
     const le_onoff_t inValue = LE_OFF;
-    le_onoff_t outValue = LE_ON;
-    ipcTest_EchoOnOff(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue, "simple onoff test");
+    le_onoff_t outValue = LE_OFF;
+    ipcTest_NotOnOff(inValue, &outValue);
+    LE_TEST_OK(util_NotOnOff(inValue) == outValue, "simple onoff test");
 }
 
-static void TestEchoDouble(void)
+static void TestDouble(void)
 {
     double inValue = 3.1415161718;
     double outValue = 0;
-    ipcTest_EchoDouble(inValue, &outValue);
-    LE_TEST_OK(inValue == outValue, "echo double value: want %f, got %f", inValue, outValue);
+    ipcTest_AddOneDouble(inValue, &outValue);
+    LE_TEST_OK(util_IsDoubleEqual(inValue + 1, outValue),
+               "increment double value: in %f, out %f", inValue, outValue);
 
     inValue = NAN;
-    ipcTest_EchoDouble(inValue, &outValue);
-    LE_TEST_OK(isnan(outValue) != 0, "echo double NAN");
+    ipcTest_AddOneDouble(inValue, &outValue);
+    LE_TEST_OK(isnan(outValue) != 0, "add one double NAN");
 
     inValue = INFINITY;
-    ipcTest_EchoDouble(inValue, &outValue);
-    LE_TEST_OK(isinf(outValue) == 1, "echo double pos INF");
+    ipcTest_AddOneDouble(inValue, &outValue);
+    LE_TEST_OK(isinf(outValue) == 1, "add one double pos INF");
 
     inValue = -INFINITY;
-    ipcTest_EchoDouble(inValue, &outValue);
-    LE_TEST_OK(isinf(outValue) == -1, "echo double neg INF");
+    ipcTest_AddOneDouble(inValue, &outValue);
+    LE_TEST_OK(isinf(outValue) == -1, "add one double neg INF");
 }
 
-static void TestEchoReference(void)
+static void TestReference(void)
 {
-    const ipcTest_SimpleRef_t inRef = (ipcTest_SimpleRef_t)0x10000051;
+    const static ipcTest_SimpleRef_t inRef = (ipcTest_SimpleRef_t)0x10000051;
+    const static ipcTest_SimpleRef_t expectedOutRef = (ipcTest_SimpleRef_t)0x10000055;
     ipcTest_SimpleRef_t outRef = NULL;
 
-    ipcTest_EchoReference(inRef, &outRef);
-    LE_TEST_OK(inRef == outRef,
-               "echo simple reference (in: %p, out: %p)",
+    ipcTest_AddFourReference(inRef, &outRef);
+    LE_TEST_OK(expectedOutRef == outRef,
+               "add four simple reference (in: %p, out: %p)",
                inRef, outRef);
 }
 
-static void TestEchoErrorReference(void)
+static void TestErrorReference(void)
 {
     const ipcTest_SimpleRef_t inRef = (ipcTest_SimpleRef_t)0;
     ipcTest_SimpleRef_t outRef = NULL;
 
-    ipcTest_EchoReference(inRef, &outRef);
+    ipcTest_AddFourReference(inRef, &outRef);
     LE_TEST_OK(inRef == outRef,
                "echo error reference (in: %p, out: %p)",
                inRef, outRef);
 }
 
-static void TestEchoReferenceNull(void)
+static void TestReferenceNull(void)
 {
     const ipcTest_SimpleRef_t inRef = (ipcTest_SimpleRef_t)0x10000051;
 
-    ipcTest_EchoReference(inRef, NULL);
-    LE_TEST_OK(true, "echo null reference");
+    ipcTest_AddFourReference(inRef, NULL);
+    LE_TEST_OK(true, "null reference");
 }
 
-static void TestEchoSmallString(void)
+static void TestSmallString(void)
 {
     static const char *inString = "Hello World";
+    char expectedOutString[257];
     char outString[257];
 
-    ipcTest_EchoString(inString, outString, sizeof(outString));
+    util_ROT13String(inString, expectedOutString, sizeof(expectedOutString));
 
-    LE_TEST_OK(strcmp(inString, outString) == 0,
-               "echo small string (in: \"%s\", out: \"%s\")",
+    ipcTest_ROT13String(inString, outString, sizeof(outString));
+
+    LE_TEST_OK(strcmp(expectedOutString, outString) == 0,
+               "rot13 small string (in: \"%s\", out: \"%s\")",
                inString, outString);
 }
 
-static void TestEchoMaxString(void)
+static void TestMaxString(void)
 {
     char inString[257];
     char outString[257];
+    char expectedOutString[257];
     memset(inString, 'a', 256);
+    memset(outString, 0xde, sizeof(outString));
     inString[256] = '\0';
+    util_ROT13String(inString, expectedOutString, sizeof(expectedOutString));
 
-    ipcTest_EchoString(inString, outString, sizeof(outString));
+    ipcTest_ROT13String(inString, outString, sizeof(outString));
 
-    LE_TEST_OK(strcmp(inString, outString) == 0,
-               "echo max string (in: len %"PRIuS", out: len %"PRIuS")",
+    LE_TEST_OK(strcmp(expectedOutString, outString) == 0,
+               "rot13 max string (in: len %"PRIuS", out: len %"PRIuS")",
                strlen(inString), strlen(outString));
 }
 
-static void TestEchoStringNull(void)
+static void TestStringNull(void)
 {
     static const char *inString = "Hello NULL World";
 
-    ipcTest_EchoString(inString, NULL, 0);
-    LE_TEST_OK(true, "echo null string");
+    ipcTest_ROT13String(inString, NULL, 0);
+    LE_TEST_OK(true, "rot13 null string");
 }
 
-static void TestEchoEmptyString(void)
+static void TestEmptyString(void)
 {
     static const char* inString = "";
-    char outString[257] = { 0xed };
+    char outString[257];
+    memset(outString, 0xde, sizeof(outString));
 
-    ipcTest_EchoString(inString, outString, sizeof(outString));
-    LE_TEST_OK(strnlen(outString, sizeof(outString)) == 0, "echo empty string");
+    ipcTest_ROT13String(inString, outString, sizeof(outString));
+    LE_TEST_OK(strnlen(outString, sizeof(outString)) == 0, "rot13 empty string");
 }
 
-static void TestEchoSmallArray(void)
+static void TestSmallArray(void)
 {
     int64_t inArray = 42;
     int64_t outArray[32];
     size_t outArraySize = 32;
 
-    ipcTest_EchoArray(&inArray, 1, outArray, &outArraySize);
+    ipcTest_AddOneArray(&inArray, 1, outArray, &outArraySize);
     LE_TEST_OK(outArraySize == 1, "small array size is %"PRIuS"", outArraySize);
-    LE_TEST_OK(inArray == outArray[0], "small array element 0: %"PRIu64"", outArray[0]);
+    LE_TEST_OK(inArray + 1 == outArray[0], "small array element 0: %"PRIu64"", outArray[0]);
 }
 
-static void TestEchoMaxArray(void)
+static void TestMaxArray(void)
 {
     int64_t inArray[32];
     int64_t outArray[32];
@@ -260,57 +273,104 @@ static void TestEchoMaxArray(void)
         inArray[i] = 0x8000000000000000ull >> i;
     }
 
-    ipcTest_EchoArray(inArray, 32, outArray, &outArraySize);
+    ipcTest_AddOneArray(inArray, 32, outArray, &outArraySize);
     LE_TEST_OK(outArraySize == 32, "exit max array correct size: %"PRIuS"", outArraySize);
 
     for (i = 0; i < 32; ++i)
     {
-        LE_TEST_OK(inArray[i] == outArray[i], "max array element %d", i);
+        LE_TEST_OK(inArray[i] + 1 == outArray[i], "max array element %d", i);
     }
 }
 
-static void TestEchoArrayNull(void)
+static void TestArrayNull(void)
 {
     int64_t inArray = 42;
 
-    ipcTest_EchoArray(&inArray, 1, NULL, 0);
+    ipcTest_AddOneArray(&inArray, 1, NULL, 0);
     LE_TEST_OK(true, "echo null array");
 }
 
-static void TestEchoSmallByteString(void)
+static void TestSmallByteString(void)
 {
     uint8_t inArray = 42;
     uint8_t outArray[32];
     size_t outArraySize = 32;
 
-    ipcTest_EchoByteString(&inArray, 1, outArray, &outArraySize);
+    ipcTest_NotByteString(&inArray, 1, outArray, &outArraySize);
     LE_TEST_OK(outArraySize == 1, "small byte string size %"PRIuS"", outArraySize);
-    LE_TEST_OK(inArray == outArray[0], "small byte string element 0: %"PRIu8"", outArray[0]);
+    LE_TEST_OK((uint8_t)(~inArray) == outArray[0],
+               "small byte string element 0: %"PRIu8"", outArray[0]);
 }
 
-static void TestEchoStruct(void)
+/**
+ * Test echoing a short CBOR string in a byte array.
+ *
+ * This string includes embedded NULLs in both forward and reverse direction to test for
+ * using string functions on byte strings.
+ *
+ * Test for regression of LE-15906
+ */
+static void TestCborByteString(void)
 {
-    ipcTest_TheStruct_t inStruct = {.name = "echo", .index = -7};
-    ipcTest_TheStruct_t outStruct;
-    ipcTest_EchoStruct(&inStruct, &outStruct);
-    LE_TEST_OK(outStruct.index == -7 , "simple struct member");
-    LE_TEST_OK(strcmp(outStruct.name, "echo") == 0, "string struct member");
+    static const uint8_t inArray[32] =
+        { 0x1B, 0x00, 0x00, 0x01, 0x77, 0x86, 0x93, 0xCA,
+          0x72, 0x7F, 'T',  'h',  'i',  's',  ' ',  'i',
+          's',  ' ',  'a',  ' ',  't',  'e',  's',  't',
+          0xFF, 0x73, 0x74 };
+    static const size_t inSize = 26;
+    uint8_t outArray[32];
+    size_t outSize = 32;
+    size_t i;
+
+    ipcTest_NotByteString(inArray, inSize, outArray, &outSize);
+
+    LE_TEST_OK(inSize == outSize,
+               "CBOR size is correct (expected:%"PRIuS" actual:%"PRIuS")", inSize, outSize);
+    for (i = 0; i < inSize; ++i)
+    {
+        LE_TEST_OK((uint8_t)(~(inArray[i])) == outArray[i],
+                   "CBOR array element %"PRIuS " matches (in: %02x, out: %02x)",
+                   i, inArray[i], outArray[i]);
+    }
 }
 
-static void TestEchoStructArray(void)
+static void TestStruct(void)
 {
-    ipcTest_TheStruct_t inStructArray[2] = {{"echo1", -7} , {"echo2", 7}};
-    ipcTest_TheStruct_t outStructArray[2];
+    static const ipcTest_TheStruct_t inStruct = {.name = "echo", .index = -7};
+    ipcTest_TheStruct_t outStruct, expectedOutStruct;
+
+    util_ROT13String(inStruct.name, expectedOutStruct.name, sizeof(expectedOutStruct.name));
+    expectedOutStruct.index = inStruct.index + 1;
+
+    ipcTest_AddOneROT13Struct(&inStruct, &outStruct);
+    LE_TEST_OK(outStruct.index == expectedOutStruct.index , "simple struct member");
+    LE_TEST_OK(strcmp(outStruct.name, expectedOutStruct.name) == 0, "string struct member");
+}
+
+static void TestStructArray(void)
+{
+    static const ipcTest_TheStruct_t inStructArray[2] = {{"echo1", -7} , {"echo2", 7}};
+    ipcTest_TheStruct_t outStructArray[2], expectedOutStructArray[2];
     size_t outStructArraySize = NUM_ARRAY_MEMBERS(outStructArray);
+    size_t i;
 
-    ipcTest_EchoStructArray(inStructArray, NUM_ARRAY_MEMBERS(inStructArray), outStructArray,
-                            &outStructArraySize);
+    for (i = 0; i < NUM_ARRAY_MEMBERS(inStructArray); ++i)
+    {
+        util_ROT13String(inStructArray[i].name,
+                         expectedOutStructArray[i].name,
+                         sizeof(expectedOutStructArray[i].name));
+        expectedOutStructArray[i].index = inStructArray[i].index + 1;
+    }
+
+    ipcTest_AddOneROT13StructArray(inStructArray, NUM_ARRAY_MEMBERS(inStructArray),
+                                   outStructArray, &outStructArraySize);
 
     LE_TEST_OK(outStructArraySize == NUM_ARRAY_MEMBERS(inStructArray), "struct array size");
-    for(int i = 0; i < NUM_ARRAY_MEMBERS(inStructArray); i++)
+    for(size_t i = 0; i < NUM_ARRAY_MEMBERS(inStructArray); i++)
     {
-        LE_TEST_OK(outStructArray[i].index == inStructArray[i].index, "simple member struct array");
-        LE_TEST_OK(strcmp(outStructArray[i].name , inStructArray[i].name) == 0,
+        LE_TEST_OK(outStructArray[i].index == expectedOutStructArray[i].index,
+                   "simple member struct array");
+        LE_TEST_OK(strcmp(outStructArray[i].name , expectedOutStructArray[i].name) == 0,
                    "string member struct array");
     }
 }
@@ -356,10 +416,14 @@ static void CallbackTimeout
 }
 
 
-static ipcTest_EchoComplexEventHandlerRef_t complexHandler;
-static ipcTest_EchoEventHandlerRef_t handler;
+static ipcTest_AddOneROT13EventHandlerRef_t complexHandler;
+static ipcTest_AddOneEventHandlerRef_t handler;
 
-void EchoComplexEventHandler
+static const int32_t InEventValue = 42;
+static const char *InEventString = "Triggered";
+static const int16_t InEventArray[] = {45,-45,0,-1};
+
+void ComplexEventHandler
 (
     int32_t value,
     const char* LE_NONNULL cookieString,
@@ -368,18 +432,25 @@ void EchoComplexEventHandler
     void* context
 )
 {
-    LE_TEST_OK(value == 40, "echo event");
     LE_UNUSED(context);
 
-    LE_TEST_OK(strcmp(cookieString, "Triggered") == 0, "echo event string");
-    for (int i = 0 ; i < cookieArraySize; i++)
+    char expectedEventString[16];
+
+    util_ROT13String(InEventString, expectedEventString, sizeof(expectedEventString));
+
+    LE_TEST_OK(value == InEventValue + 1, "complex event value");
+    LE_TEST_OK(strcmp(cookieString, expectedEventString) == 0, "complex event string");
+    LE_TEST_OK(cookieArraySize == NUM_ARRAY_MEMBERS(InEventArray), "complex cookie array size");
+    for (size_t i = 0 ; i < cookieArraySize; i++)
     {
-        LE_TEST_OK(cookieArrayPtr[i] == 45, "echo event array item %d",i);
+        LE_TEST_OK(cookieArrayPtr[i] == InEventArray[i] + 1,
+                   "complex event array item %"PRIuS" (in: %"PRIi16" out: %"PRIi16")",
+                   i, InEventArray[i], cookieArrayPtr[i]);
     }
 
     le_timer_Stop(TestTimeoutTimerRef);
 
-    ipcTest_RemoveEchoComplexEventHandler(complexHandler);
+    ipcTest_RemoveAddOneROT13EventHandler(complexHandler);
 
     LE_TEST_EXIT;
 }
@@ -391,17 +462,18 @@ void EchoEventHandler
 )
 {
     LE_UNUSED(context);
-    LE_TEST_OK(value == 42, "echo event");
+
+    LE_TEST_OK(value == InEventValue + 1, "event value");
     le_timer_Stop(TestTimeoutTimerRef);
 
-    ipcTest_RemoveEchoEventHandler(handler);
+    ipcTest_RemoveAddOneEventHandler(handler);
 
-    complexHandler = ipcTest_AddEchoComplexEventHandler(EchoComplexEventHandler, NULL);
+    complexHandler = ipcTest_AddAddOneROT13EventHandler(ComplexEventHandler, NULL);
 
     le_timer_Start(TestTimeoutTimerRef);
-    char name[] = "Triggered";
-    int16_t a[]={45,45,45,45};
-    ipcTest_EchoTriggerComplexEvent(40, name, a, NUM_ARRAY_MEMBERS(a));
+
+    ipcTest_TriggerAddOneROT13Event(InEventValue, InEventString,
+                                    InEventArray, NUM_ARRAY_MEMBERS(InEventArray));
 }
 
 // Test IPC callbacks
@@ -416,8 +488,8 @@ static void TestCallback
     le_timer_SetMsInterval(TestTimeoutTimerRef, TEST_CALLBACK_TIMEOUT);
     le_timer_Start(TestTimeoutTimerRef);
 
-    handler = ipcTest_AddEchoEventHandler(EchoEventHandler, NULL);
-    ipcTest_EchoTriggerEvent(42);
+    handler = ipcTest_AddAddOneEventHandler(EchoEventHandler, NULL);
+    ipcTest_TriggerAddOneEvent(InEventValue);
 }
 
 COMPONENT_INIT
@@ -427,34 +499,35 @@ COMPONENT_INIT
     le_arg_SetFlagVar(&skipExitTest, NULL, "skip-exit");
     le_arg_Scan();
 
-    LE_TEST_PLAN(14);
+    LE_TEST_PLAN(LE_TEST_NO_PLAN);
     ipcTest_ConnectService();
     LE_TEST_INFO("Connected to server");
 
-    TestEchoSimple();
-    TestEchoSimpleNull();
-    TestEchoSmallEnum();
-    TestEchoLargeEnum();
-    TestEchoSmallBitMask();
-    TestEchoLargeBitMask();
-    TestEchoBoolean();
-    TestEchoResult();
+    TestSimple();
+    TestSimpleNull();
+    TestSmallEnum();
+    TestLargeEnum();
+    TestSmallBitMask();
+    TestLargeBitMask();
+    TestBoolean();
+    TestResult();
     TestReturnedResult();
-    TestEchoOnOff();
-    TestEchoDouble();
-    TestEchoReference();
-    TestEchoErrorReference();
-    TestEchoReferenceNull();
-    TestEchoSmallString();
-    TestEchoMaxString();
-    TestEchoSmallByteString();
-    TestEchoStringNull();
-    TestEchoEmptyString();
-    TestEchoSmallArray();
-    TestEchoMaxArray();
-    TestEchoArrayNull();
-    TestEchoStruct();
-    TestEchoStructArray();
+    TestOnOff();
+    TestDouble();
+    TestReference();
+    TestErrorReference();
+    TestReferenceNull();
+    TestSmallString();
+    TestMaxString();
+    TestSmallByteString();
+    TestCborByteString();
+    TestStringNull();
+    TestEmptyString();
+    TestSmallArray();
+    TestMaxArray();
+    TestArrayNull();
+    TestStruct();
+    TestStructArray();
     LE_TEST_BEGIN_SKIP(!LE_CONFIG_LINUX || skipExitTest, 1);
     TestServerExit();
     LE_TEST_END_SKIP();

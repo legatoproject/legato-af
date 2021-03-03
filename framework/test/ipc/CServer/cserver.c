@@ -9,7 +9,9 @@
 
 #include <string.h>
 
-void ipcTest_EchoSimple
+#include "utils.h"
+
+void ipcTest_AddOneSimple
 (
     int32_t InValue,
     int32_t *OutValuePtr
@@ -17,11 +19,11 @@ void ipcTest_EchoSimple
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = InValue + 1;
     }
 }
 
-void ipcTest_EchoSmallEnum
+void ipcTest_AddOneSmallEnum
 (
     ipcTest_SmallEnum_t InValue,
     ipcTest_SmallEnum_t* OutValuePtr
@@ -29,11 +31,11 @@ void ipcTest_EchoSmallEnum
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = util_IncSmallEnum(InValue);
     }
 }
 
-void ipcTest_EchoLargeEnum
+void ipcTest_AddOneLargeEnum
 (
     ipcTest_LargeEnum_t InValue,
     ipcTest_LargeEnum_t* OutValuePtr
@@ -41,11 +43,11 @@ void ipcTest_EchoLargeEnum
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = util_IncLargeEnum(InValue);
     }
 }
 
-void ipcTest_EchoSmallBitMask
+void ipcTest_NotSmallBitMask
 (
     ipcTest_SmallBitMask_t InValue,
     ipcTest_SmallBitMask_t* OutValuePtr
@@ -53,11 +55,11 @@ void ipcTest_EchoSmallBitMask
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = ~InValue;
     }
 }
 
-void ipcTest_EchoLargeBitMask
+void ipcTest_NotLargeBitMask
 (
     ipcTest_LargeBitMask_t InValue,
     ipcTest_LargeBitMask_t* OutValuePtr
@@ -65,11 +67,11 @@ void ipcTest_EchoLargeBitMask
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = ~InValue;
     }
 }
 
-void ipcTest_EchoBoolean
+void ipcTest_NotBoolean
 (
     bool InValue,
     bool* OutValuePtr
@@ -77,11 +79,11 @@ void ipcTest_EchoBoolean
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = !InValue;
     }
 }
 
-void ipcTest_EchoResult
+void ipcTest_NextResult
 (
     le_result_t InValue,
     le_result_t* OutValuePtr
@@ -89,19 +91,19 @@ void ipcTest_EchoResult
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = util_IncResult(InValue);
     }
 }
 
-le_result_t ipcTest_ReturnResult
+le_result_t ipcTest_ReturnNextResult
 (
     le_result_t InValue
 )
 {
-    return InValue;
+    return util_IncResult(InValue);
 }
 
-void ipcTest_EchoOnOff
+void ipcTest_NotOnOff
 (
     le_onoff_t InValue,
     le_onoff_t* OutValuePtr
@@ -109,11 +111,11 @@ void ipcTest_EchoOnOff
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = util_NotOnOff(InValue);
     }
 }
 
-void ipcTest_EchoDouble
+void ipcTest_AddOneDouble
 (
     double InValue,
     double* OutValuePtr
@@ -121,11 +123,11 @@ void ipcTest_EchoDouble
 {
     if (OutValuePtr)
     {
-        *OutValuePtr = InValue;
+        *OutValuePtr = InValue + 1;
     }
 }
 
-void ipcTest_EchoReference
+void ipcTest_AddFourReference
 (
     ipcTest_SimpleRef_t InRef,
     ipcTest_SimpleRef_t *OutRef
@@ -133,11 +135,18 @@ void ipcTest_EchoReference
 {
     if (OutRef)
     {
-        *OutRef = InRef;
+        if (InRef)
+        {
+            *OutRef = (ipcTest_SimpleRef_t)((uintptr_t)InRef + 4);
+        }
+        else
+        {
+            *OutRef = NULL;
+        }
     }
 }
 
-void ipcTest_EchoString
+void ipcTest_ROT13String
 (
     const char *InString,
     char *OutString,
@@ -146,12 +155,11 @@ void ipcTest_EchoString
 {
     if (OutString)
     {
-        strncpy(OutString, InString, OutStringSize);
-        OutString[OutStringSize-1] = '\0';
+        util_ROT13String(InString, OutString, OutStringSize);
     }
 }
 
-void ipcTest_EchoArray
+void ipcTest_AddOneArray
 (
     const int64_t* InArrayPtr,
     size_t InArraySize,
@@ -161,20 +169,19 @@ void ipcTest_EchoArray
 {
     if (OutArrayPtr)
     {
-        if (InArraySize <= *OutArraySizePtr)
+        size_t i;
+
+        for (i = 0; i < InArraySize && i < *OutArraySizePtr; ++i)
         {
-            memcpy(OutArrayPtr, InArrayPtr, InArraySize*sizeof(int64_t));
-            *OutArraySizePtr = InArraySize;
+            OutArrayPtr[i] = InArrayPtr[i] + 1;
         }
-        else
-        {
-            memcpy(OutArrayPtr, InArrayPtr, (*OutArraySizePtr)*sizeof(int64_t));
-        }
+
+        *OutArraySizePtr = i;
     }
 }
 
 
-void ipcTest_EchoByteString
+void ipcTest_NotByteString
 (
     const uint8_t* InArrayPtr,
     size_t InArraySize,
@@ -184,19 +191,18 @@ void ipcTest_EchoByteString
 {
     if (OutArrayPtr)
     {
-        if (InArraySize <= *OutArraySizePtr)
+        size_t i;
+
+        for (i = 0; i < InArraySize && i < *OutArraySizePtr; ++i)
         {
-            memcpy(OutArrayPtr, InArrayPtr, InArraySize*sizeof(uint8_t));
-            *OutArraySizePtr = InArraySize;
+            OutArrayPtr[i] = ~(InArrayPtr[i]);
         }
-        else
-        {
-            memcpy(OutArrayPtr, InArrayPtr, (*OutArraySizePtr)*sizeof(uint8_t));
-        }
+
+        *OutArraySizePtr = i;
     }
 }
 
-void ipcTest_EchoStruct
+void ipcTest_AddOneROT13Struct
 (
     const ipcTest_TheStruct_t * LE_NONNULL InStructPtr,
     ipcTest_TheStruct_t * OutStructPtr
@@ -204,11 +210,12 @@ void ipcTest_EchoStruct
 {
     if (OutStructPtr)
     {
-        memcpy(OutStructPtr, InStructPtr, sizeof(ipcTest_TheStruct_t));
+        OutStructPtr->index = InStructPtr->index + 1;
+        util_ROT13String(InStructPtr->name, OutStructPtr->name, sizeof(OutStructPtr->name));
     }
 }
 
-void ipcTest_EchoStructArray
+void ipcTest_AddOneROT13StructArray
 (
     const ipcTest_TheStruct_t* InStructArrayPtr,
     size_t InStructArraySize,
@@ -218,17 +225,17 @@ void ipcTest_EchoStructArray
 {
     if (OutStructArrayPtr)
     {
-        if (InStructArraySize <= *OutStructArraySizePtr)
+        size_t i;
+
+        for (i = 0; i < InStructArraySize && i < *OutStructArraySizePtr; ++i)
         {
-            memcpy(OutStructArrayPtr, InStructArrayPtr,
-                   InStructArraySize * sizeof(ipcTest_TheStruct_t));
-            *OutStructArraySizePtr = InStructArraySize;
+            OutStructArrayPtr[i].index = InStructArrayPtr[i].index + 1;
+            util_ROT13String(InStructArrayPtr[i].name,
+                             OutStructArrayPtr[i].name,
+                             sizeof(OutStructArrayPtr[i].name));
         }
-        else
-        {
-            memcpy(OutStructArrayPtr, InStructArrayPtr,
-                   (*OutStructArraySizePtr) * sizeof(ipcTest_TheStruct_t));
-        }
+
+        *OutStructArraySizePtr = i;
     }
 }
 
@@ -243,53 +250,53 @@ void ipcTest_ExitServer
 /**
  * Storage for pointer to event handlers
  */
-static ipcTest_EchoHandlerFunc_t EchoEventHandlerPtr = NULL;
-static void* EchoEventContextPtr = NULL;
-size_t EchoEventRef=1;
+static ipcTest_AddOneHandlerFunc_t EventHandlerPtr = NULL;
+static void* EventContextPtr = NULL;
+static size_t EventRef=1;
 
-ipcTest_EchoEventHandlerRef_t ipcTest_AddEchoEventHandler
+ipcTest_AddOneEventHandlerRef_t ipcTest_AddAddOneEventHandler
 (
-    ipcTest_EchoHandlerFunc_t handlerPtr,
+    ipcTest_AddOneHandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     LE_INFO("Adding Event Handler");
     // For simplicity, only allow a single event handler
-    if (EchoEventHandlerPtr)
+    if (EventHandlerPtr)
     {
         return NULL;
     }
 
-    EchoEventHandlerPtr = handlerPtr;
-    EchoEventContextPtr = contextPtr;
+    EventHandlerPtr = handlerPtr;
+    EventContextPtr = contextPtr;
 
-    return (ipcTest_EchoEventHandlerRef_t)EchoEventRef;
+    return (ipcTest_AddOneEventHandlerRef_t)EventRef;
 }
 
-void ipcTest_RemoveEchoEventHandler
+void ipcTest_RemoveAddOneEventHandler
 (
-    ipcTest_EchoEventHandlerRef_t handlerRef
+    ipcTest_AddOneEventHandlerRef_t handlerRef
 )
 {
     LE_INFO("Removing event handler");
     // Remove if this is the current handler.
-    if ((size_t)handlerRef == EchoEventRef)
+    if ((size_t)handlerRef == EventRef)
     {
-        EchoEventRef += 2;
-        EchoEventHandlerPtr = NULL;
-        EchoEventContextPtr = NULL;
+        EventRef += 2;
+        EventHandlerPtr = NULL;
+        EventContextPtr = NULL;
     }
 }
 
-void ipcTest_EchoTriggerEvent
+void ipcTest_TriggerAddOneEvent
 (
     int32_t cookie ///< [IN]
 )
 {
     LE_INFO("Triggering an Event");
-    if (EchoEventHandlerPtr)
+    if (EventHandlerPtr)
     {
-        EchoEventHandlerPtr(cookie, EchoEventContextPtr);
+        EventHandlerPtr(cookie + 1, EventContextPtr);
     }
 }
 
@@ -297,44 +304,44 @@ void ipcTest_EchoTriggerEvent
 /**
  * Storage for pointer to Complex event handlers
  */
-static ipcTest_EchoComplexHandlerFunc_t EchoComplexEventHandlerPtr = NULL;
-static void* EchoComplexEventContextPtr = NULL;
-size_t EchoComplexEventRef=1;
+static ipcTest_AddOneROT13HandlerFunc_t ComplexEventHandlerPtr = NULL;
+static void* ComplexEventContextPtr = NULL;
+size_t ComplexEventRef=1;
 
-ipcTest_EchoComplexEventHandlerRef_t ipcTest_AddEchoComplexEventHandler
+ipcTest_AddOneROT13EventHandlerRef_t ipcTest_AddAddOneROT13EventHandler
 (
-    ipcTest_EchoComplexHandlerFunc_t handlerPtr,
+    ipcTest_AddOneROT13HandlerFunc_t handlerPtr,
     void* contextPtr
 )
 {
     LE_INFO("Adding Complex Event Handler");
     // For simplicity, only allow a single event handler
-    if (EchoComplexEventHandlerPtr)
+    if (ComplexEventHandlerPtr)
     {
         return NULL;
     }
 
-    EchoComplexEventHandlerPtr = handlerPtr;
-    EchoComplexEventContextPtr = contextPtr;
+    ComplexEventHandlerPtr = handlerPtr;
+    ComplexEventContextPtr = contextPtr;
 
-    return (ipcTest_EchoComplexEventHandlerRef_t)EchoComplexEventRef;
+    return (ipcTest_AddOneROT13EventHandlerRef_t)EventRef;
 }
 
-void ipcTest_RemoveEchoComplexEventHandler
+void ipcTest_RemoveAddOneROT13EventHandler
 (
-    ipcTest_EchoComplexEventHandlerRef_t handlerRef
+    ipcTest_AddOneROT13EventHandlerRef_t handlerRef
 )
 {
     // Remove if this is the current handler.
-    if ((size_t)handlerRef == EchoComplexEventRef)
+    if ((size_t)handlerRef == ComplexEventRef)
     {
-        EchoComplexEventRef += 2;
-        EchoComplexEventHandlerPtr = NULL;
-        EchoComplexEventContextPtr = NULL;
+        ComplexEventRef += 2;
+        ComplexEventHandlerPtr = NULL;
+        ComplexEventContextPtr = NULL;
     }
 }
 
-void ipcTest_EchoTriggerComplexEvent
+void ipcTest_TriggerAddOneROT13Event
 (
     int32_t cookie,
     const char* LE_NONNULL cookieString,
@@ -343,10 +350,20 @@ void ipcTest_EchoTriggerComplexEvent
 )
 {
     LE_INFO("Triggering a complex Event");
-    if (EchoComplexEventHandlerPtr)
+    if (ComplexEventHandlerPtr)
     {
-        EchoComplexEventHandlerPtr(cookie, cookieString, cookieArrayPtr, cookieArraySize,
-                            EchoComplexEventContextPtr);
+        char outString[16];
+        int16_t outArray[10];
+        size_t i;
+
+        util_ROT13String(cookieString, outString, sizeof(outString));
+        for (i = 0; i < cookieArraySize && i < NUM_ARRAY_MEMBERS(outArray); ++i)
+        {
+            outArray[i] = cookieArrayPtr[i] + 1;
+        }
+
+        ComplexEventHandlerPtr(cookie + 1, outString, outArray, i,
+                               ComplexEventContextPtr);
     }
 }
 

@@ -15,9 +15,15 @@ provides:
     }
 }
 
+cflags:
+{
+    -I$CURDIR/../utils
+}
+
 sources:
 {
     cserver.c
+    ../utils/utils.c
 }
 
 pools:

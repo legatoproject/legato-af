@@ -10,7 +10,13 @@ requires:
     }
 }
 
+cflags:
+{
+    -I$CURDIR/../utils
+}
+
 sources:
 {
     cclient.c
+    ../utils/utils.c
 }

@@ -27,7 +27,10 @@ apps:
     memPool/test_MemPool
     hashMap/test_HashMap
     lists/test_Lists
+#if ${LE_CONFIG_RTOS} = y
+#else
     clock/test_Clock
+#endif
     thread/test_Thread
     eventLoop/test_EventLoop
     timer/test_Timer
