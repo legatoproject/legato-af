@@ -539,10 +539,6 @@ the @b @c [optional] option can be used.  Use of @c [optional] also implies @c [
 Also, if @c [optional] is used on an interface that would normally get automatically bound
 (le_cfg.api or le_wdog.api) the automatic binding will be suppressed.
 
-At runtime, the component can try to use the interface by calling the @c TryConnectService()
-function for the interface.  If the interface is not bound to anything, an error code will be
-returned.
-
 @code
 requires:
 {
@@ -552,6 +548,32 @@ requires:
     }
 }
 @endcode
+
+At runtime, the component can try to use the interface by calling the @c TryConnectService()
+function for the interface.  If the interface is not bound to anything, an @c LE_NOT_PERMITTED
+code will be returned; if the interface is bound but the server is not yet started @c LE_UNAVAILABLE
+will be returned.
+
+Typically a client will first call @c TryConnectService() on an optional API.  If @c LE_UNAVAILABLE
+is returned, it will call @c ConnectService() to wait for the server to start.  If, however,
+@c LE_NOT_PERMITTED is returned it will know the service is not bound.  See the sample code below,
+which connects to the @c baz API if it is bound.
+
+@code
+le_result_t result = baz_TryConnectService();
+
+// If this is a temporary failure, wait until server is available
+if (result == LE_UNAVAILABLE)
+{
+    baz_ConnectService();
+    result = LE_OK;
+}
+
+bool HaveBaz = (result == LE_OK);
+@endcode
+
+The variable @c HaveBaz can then be checked to know if the @c baz API is available and can be used.
+
 
 @subsection defFilesCdef_requiresFile file
 
