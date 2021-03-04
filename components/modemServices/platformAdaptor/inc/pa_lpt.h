@@ -167,6 +167,22 @@ LE_SHARED le_result_t pa_lpt_GetNetworkProvidedPagingTimeWindow
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the lowest power saving mode that the module can enter.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    Operation is not supported.
+ *      - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_lpt_SetPmMode
+(
+    le_lpt_PMMode_t mode    ///< [IN] Power saving mode
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
 * This function must be called to initialize the LPT module.
 *
 * @return

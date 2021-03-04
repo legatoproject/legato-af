@@ -98,6 +98,19 @@ ENUM EDrxRat
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Power management mode enum
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM PMMode
+{
+    PMMODE_SLEEP,           ///< Sleep
+    PMMODE_LITEHIBERNATE,   ///< Lite hibernation
+    PMMODE_HIBERNATE,       ///< Hibernate
+    PMMODE_MAX              ///< Invalid
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the eDRX activation state for the given Radio Access Technology.
  *
  * @return
@@ -215,4 +228,20 @@ HANDLER EDrxParamsChangeHandler
 EVENT EDrxParamsChange
 (
     EDrxParamsChangeHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the lowest power management mode that the module can enter.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    Operation is not supported.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPmMode
+(
+    PMMode mode
 );

@@ -322,6 +322,25 @@ void le_lpt_RemoveEDrxParamsChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the lowest power saving mode that the module can enter.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    Operation is not supported.
+ *      - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_lpt_SetPmMode
+(
+    le_lpt_PMMode_t mode    ///< [IN] Power saving mode
+)
+{
+    return pa_lpt_SetPmMode(mode);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the LPT component.
  */
 //--------------------------------------------------------------------------------------------------
