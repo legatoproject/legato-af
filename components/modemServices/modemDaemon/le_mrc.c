@@ -676,6 +676,13 @@ static le_event_Id_t NetRegRejectId;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Event ID for New Rank indicate change notification.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_event_Id_t RankChangeId;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Static memory pool for signal metrics data.
  */
 //--------------------------------------------------------------------------------------------------
@@ -959,6 +966,45 @@ static void FirstLayerPSChangeHandler
     le_mem_Release(reportPtr);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer Rank indicate Change Handler.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void FirstLayerRankChangeHandler
+(
+    void* reportPtr,
+    void* secondLayerHandlerFunc
+)
+{
+    pa_mrc_RankIndication_t*    rankPtr = (pa_mrc_RankIndication_t*)reportPtr;
+    le_mrc_RankChangeHandlerFunc_t clientHandlerFunc =
+        (le_mrc_RankChangeHandlerFunc_t)secondLayerHandlerFunc;
+
+    clientHandlerFunc(rankPtr->rank, le_event_GetContextPtr());
+
+    // The reportPtr is a reference counted object, so need to release it
+    le_mem_Release(reportPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rank Change handler function.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static void RankChangeHandler
+(
+    pa_mrc_RankIndication_t* rankPtr
+)
+{
+    LE_INFO("Rank Ind Handler called with Rank.%" PRIi32,
+             rankPtr->rank);
+
+    // Notify all the registered client's handlers
+    le_event_ReportWithRefCounting(RankChangeId, rankPtr);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -976,7 +1022,6 @@ static void RatChangeHandler
     // Notify all the registered client's handlers
     le_event_ReportWithRefCounting(RatChangeId, ratPtr);
 }
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2146,6 +2191,12 @@ void le_mrc_Init
     // Create an event Id for network reject indication
     NetRegRejectId = le_event_CreateIdWithRefCounting("NetRegReject");
 
+    // Create an event Id for Rank indicate change notification
+    RankChangeId = le_event_CreateIdWithRefCounting("RankChange");
+
+    // Register a handler function for new Rank indicate change indication
+    pa_mrc_AddRankChangeHandler(RankChangeHandler);
+
     // Register a handler function for network reject indication
     pa_mrc_AddNetworkRejectIndHandler(NetRegRejectHandler, NULL);
 
@@ -3255,6 +3306,70 @@ void le_mrc_RemovePacketSwitchedChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to register an handler for Rank Indicate changes.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_mrc_RankChangeHandlerRef_t le_mrc_AddRankChangeHandler
+(
+    le_mrc_RankChangeHandlerFunc_t  handlerFuncPtr, ///< [IN] The handler function.
+    void*                         contextPtr      ///< [IN] The handler's context.
+)
+{
+    le_event_HandlerRef_t        handlerRef;
+
+    if (handlerFuncPtr == NULL)
+    {
+        LE_KILL_CLIENT("Handler function is NULL !");
+        return NULL;
+    }
+
+    handlerRef = le_event_AddLayeredHandler("RankChangeHandler",
+                                            RankChangeId,
+                                            FirstLayerRankChangeHandler,
+                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+
+    le_event_SetContextPtr(handlerRef, contextPtr);
+
+    return (le_mrc_RankChangeHandlerRef_t)(handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to remove an handler for Rank Indicator Technology changes.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mrc_RemoveRankChangeHandler
+(
+    le_mrc_RankChangeHandlerRef_t    handlerRef ///< [IN] The handler reference.
+)
+{
+    le_event_RemoveHandler((le_event_HandlerRef_t)handlerRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable monitoring on Rank change indicate . By default, monitoring is disabled.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_UNSUPPORTED   The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_SetRankChangeMonitoring
+(
+    bool enable       ///< [IN] If monitoring should be enabled.
+)
+{
+    return pa_mrc_SetRankChangeMonitoring(enable);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the power of the Radio Module.
  *
  * @return LE_BAD_PARAMETER Bad power mode specified.
@@ -3349,6 +3464,38 @@ le_result_t le_mrc_GetRadioAccessTechInUse
     }
 
     if (pa_mrc_GetRadioAccessTechInUse(ratPtr) == LE_OK)
+    {
+        return LE_OK;
+    }
+    else
+    {
+        return LE_FAULT;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to get the current Radio Band in use.
+ *
+ * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid parameter.
+ * @return LE_FAULT         Function failed to get the Radio Band.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetRadioBandInUse
+(
+    uint32_t*   bandPtr  ///< [OUT] The Radio Access Technology.
+)
+{
+    if (bandPtr == NULL)
+    {
+        LE_KILL_CLIENT("bandPtr is NULL !");
+        return LE_FAULT;
+    }
+
+    if (pa_mrc_GetRadioBandInUse(bandPtr) == LE_OK)
     {
         return LE_OK;
     }
@@ -6120,4 +6267,75 @@ le_mrc_PciScanInformationRef_t le_mrc_GetNextPciScanInfo
 #else
     return NULL;
 #endif
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This command gets LTE data_mcs
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetLteEmbmsInfo
+(
+    uint8_t* mcs
+)
+{
+    if(mcs == NULL)
+    {
+        LE_KILL_CLIENT("mcs is NULL !");
+        return LE_FAULT;
+    }
+    return pa_mrc_GetLteEmbmsInfo(mcs);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This command gets Tx Power
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetTxPowerInfo
+(
+    int32_t* txPwr
+)
+{
+    if(txPwr == NULL)
+    {
+        LE_KILL_CLIENT("txPwr is NULL !");
+        return LE_FAULT;
+    }
+
+    return pa_mrc_GetTxPowerInfo(txPwr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This command gets LTE CQI
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mrc_GetLteCqi
+(
+    uint32_t* cqi
+)
+{
+    if(cqi == NULL)
+    {
+        LE_KILL_CLIENT("cqi is NULL !");
+        return LE_FAULT;
+    }
+    return pa_mrc_GetLteCqi(cqi);
 }

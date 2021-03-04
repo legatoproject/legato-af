@@ -244,7 +244,7 @@ typedef struct
     };
 }
 pa_mrc_SignalMetrics_t;
-
+                                                                                                                                                                                                
 //--------------------------------------------------------------------------------------------------
 /**
  * Signal Strength change indication structure.
@@ -256,6 +256,17 @@ typedef struct {
     int32_t       ss;           ///< Signal strength in dBm
 }
 pa_mrc_SignalStrengthIndication_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Rank Indicator change indication structure.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct {
+    int32_t       rank;           ///< rank indicate
+}
+pa_mrc_RankIndication_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -331,6 +342,18 @@ typedef void (*pa_mrc_NetworkRegHdlrFunc_t)
 typedef void (*pa_mrc_RatChangeHdlrFunc_t)
 (
     le_mrc_Rat_t* ratPtr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Prototype for handler functions used to report the Rank Indicator change.
+ *
+ * @param rankPtr The Rank Indicate.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_mrc_RankChangeHdlrFunc_t)
+(
+    pa_mrc_RankIndication_t* rankPtr
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -433,6 +456,31 @@ LE_SHARED le_event_HandlerRef_t pa_mrc_SetRatChangeHandler
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED void pa_mrc_RemoveRatChangeHandler
+(
+    le_event_HandlerRef_t handlerRef
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Rank Indicator change handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_event_HandlerRef_t pa_mrc_AddRankChangeHandler
+(
+    pa_mrc_RankChangeHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Rank Indicator change handling.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_mrc_RemoveRIChangeHandler
 (
     le_event_HandlerRef_t handlerRef
 );
@@ -774,6 +822,19 @@ LE_SHARED le_result_t pa_mrc_SetAutomaticNetworkRegistration
 LE_SHARED le_result_t pa_mrc_GetRadioAccessTechInUse
 (
     le_mrc_Rat_t*   ratPtr    ///< [OUT] The Radio Access Technology.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Radio Band currently in use.
+ *
+ * @return LE_FAULT The function failed to get the Radio Band.
+ * @return LE_OK    The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetRadioBandInUse
+(
+    uint32_t*   bandPtr    ///< [OUT] The Radio Band.
 );
 
 //--------------------------------------------------------------------------------------------------
@@ -1329,4 +1390,64 @@ LE_SHARED uint16_t pa_mrc_GetPhysicalServingLteCellId
 (
     void
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the LTE data_mcs.
+ *
+ * @return
+ * - LE_FAULT         The function failed to get the value.
+ * - LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetLteEmbmsInfo
+(
+    uint8_t* mcs
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Tx Power value
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetTxPowerInfo
+(
+    int32_t* txPwr
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This command gets LTE CQI
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_GetLteCqi
+(
+    uint32_t* cqi
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable monitoring on Rank change indicate . By default, monitoring is disabled.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mrc_SetRankChangeMonitoring
+(
+    bool activation    ///< [IN] Indication activation request
+);
+
 #endif // LEGATO_PARC_INCLUDE_GUARD

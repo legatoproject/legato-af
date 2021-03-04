@@ -944,6 +944,29 @@ EVENT RatChange
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Handler for Rank indicate Technology changes.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+HANDLER RankChangeHandler
+(
+    int32 rank    ///< Parameter ready to receive the Rank Indicate.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This event provides information on Rank indicate changes.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+EVENT RankChange
+(
+    RankChangeHandler handler
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for Packet Switched service state changes.
  *
  */
@@ -1983,6 +2006,25 @@ FUNCTION le_result_t GetRadioAccessTechInUse
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function must be called to get the current Radio Band in use.
+ *
+ * @return LE_OK            Function succeeded.
+ * @return LE_BAD_PARAMETER Invalid parameter.
+ * @return LE_FAULT         Function failed to get the Radio Band.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ *
+ * @note <b>multi-app safe</b>
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRadioBandInUse
+(
+    uint32   band  OUT     ///< The Radio Band.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to retrieve the Neighboring Cells information. It creates and
  * returns a reference to the Neighboring Cells information.
  *
@@ -2694,4 +2736,71 @@ FUNCTION le_result_t GetNeighborCellGsmBsic
 (
     CellInfo     ngbrCellInfoRef   IN,   ///< The cell information reference.
     uint8        bsic              OUT   ///< The BSIC value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the LTE Data modulation and coding scheme for the physical multicast channel.
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The mcs is not available. The mcs value is set to UINT8_MAX.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLteEmbmsInfo
+(
+    uint8       mcs     OUT ///< The mcs value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TX power
+ *
+ * @return LE_OK            The function succeeded.
+ * @return LE_FAULT         The function failed.
+ * @return LE_UNAVAILABLE   The TX power is not available. The TX power value is set to INT32_MAX.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTxPowerInfo
+(
+    int32        tx_pwr   OUT ///< The TX power value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This command gets LTE CQI
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ *
+ * @note If the caller is passing a bad pointer into this function, it's a fatal error, the
+ *       function won't return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLteCqi
+(
+    uint32        cqi   OUT ///< The CQI value
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable monitoring on Rank change indicate . By default, monitoring is disabled.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed.
+ *      - LE_UNSUPPORTED   The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetRankChangeMonitoring
+(
+    bool        enable    IN   ///< If monitoring should be enabled
 );

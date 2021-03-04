@@ -1204,3 +1204,132 @@ uint16_t pa_mrc_GetPhysicalServingLteCellId
 {
     return UINT16_MAX;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable monitoring on Rank change indicate . By default, monitoring is disabled.
+ *
+ * @return
+ * - LE_FAULT         The function failed.
+ * - LE_OK            The function succeeded.
+ * - LE_UNSUPPORTED   The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_SetRankChangeMonitoring
+(
+    bool activation    ///< [IN] Indication activation request
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to register a handler for Rank Indicator change handling.
+ *
+ * @return A handler reference, which is only needed for later removal of the handler.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+le_event_HandlerRef_t pa_mrc_AddRankChangeHandler
+(
+    pa_mrc_RankChangeHdlrFunc_t handlerFuncPtr ///< [IN] The handler function.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function must be called to unregister the handler for Rank Indicator change
+ * handling.
+ *
+ * @note Doesn't return on failure, so there's no need to check the return value for errors.
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_mrc_RemoveRankChangeHandler
+(
+    le_event_HandlerRef_t handlerRef
+)
+{
+    LE_ERROR("Unsupported function called");
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function gets the Radio Band currently in use.
+ *
+ * @return
+ * - LE_OK              On success
+ * - LE_FAULT           On failure
+ * - LE_LE_UNSUPPORTED  The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetRadioBandInUse
+(
+    uint32_t*   bandPtr    ///< [OUT] The Radio Band.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieves the LTE eMBMS statistics
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetLteEmbmsInfo
+(
+    uint8_t* mcs
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieves Retrieves the detailed Tx power information.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetTxPowerInfo
+(
+    int32_t* txPwr
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This command gets LTE CQI
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_FAULT          The function failed.
+ *  - LE_UNSUPPORTED    The feature is not supported.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_mrc_GetLteCqi
+(
+    uint32_t* cqi
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
