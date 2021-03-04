@@ -10,6 +10,7 @@
 #define LE_AT_PROXY_H_INCLUDE_GUARD
 
 #include "interfaces.h"
+#include "pa_port.h"
 
 // Final response.
 #define LE_AT_PROXY_ERROR       "\r\nERROR\r\n"
@@ -23,6 +24,10 @@
 
 // Intermediate response.
 #define LE_AT_PROXY_CONNECT     "\r\nCONNECT\r\n"
+
+// Commonly used CME Error Codes
+#define LE_AT_PROXY_CME_ERROR_OPER_NOT_ALLOWED     3
+#define LE_AT_PROXY_CME_ERROR_OPER_NOT_SUPPORTED   4
 
 
 // Bit-mask for Static Commands
@@ -99,6 +104,39 @@ void atProxy_EnableExtendedErrorCodes
 void atProxy_DisableExtendedErrorCodes
 (
     void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function retrieves the current error codes mode on the selected device
+ *
+ * @return
+ *      - MODE_EXTENDED  If extended error code is enabled
+ *      - MODE_VERBOSE   If extended verbose error code is enabled (NOTE: Not Supported)
+ *      - MODE_DISABLED  If extended error code is disabled
+ */
+//--------------------------------------------------------------------------------------------------
+ErrorCodesMode_t atProxy_GetExtendedErrorCodes
+(
+    void
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Helper function to generate and send the final result code.
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxy_SendFinalResultCode
+(
+    le_atProxy_PortRef_t portRef,       ///< [IN] Port Reference
+    uint32_t errorCode,                 ///< [IN] CME Error Code
+    ErrorCodesMode_t errorCodeMode,     ///< [IN] Error Code Mode
+    le_atServer_FinalRsp_t finalResult, ///< [IN] Final Response Result
+    const char* pattern,                ///< [IN] Pattern string indicating type of verbose error
+    size_t patternLen                   ///< [IN] Pattern string length
 );
 
 #endif /* LE_AT_PROXY_H_INCLUDE_GUARD */

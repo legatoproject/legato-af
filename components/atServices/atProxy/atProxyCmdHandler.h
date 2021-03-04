@@ -220,4 +220,17 @@ le_result_t atProxyCmdHandler_FlushStoredURC
     le_atServer_CmdRef_t cmdRef     ///< [IN] AT Command Session Reference
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function generates an error response output
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void atProxyCmdHandler_GenerateErrorOutputResponse
+(
+    le_atProxy_PortRef_t portRef,  ///< [IN] Port Reference
+    uint32_t errorCode             ///< [IN] CME Error Code
+);
+
 #endif /* LE_AT_PROXY_CMD_HANDLER_H_INCLUDE_GUARD */

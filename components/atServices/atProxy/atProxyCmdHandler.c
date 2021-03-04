@@ -444,10 +444,9 @@ static void ProcessAtCmd
         if (result != LE_OK)
         {
             // Send an error to the Serial UART
-            pa_port_Write(
+            atProxyCmdHandler_GenerateErrorOutputResponse(
                 atCmdPtr->port,
-                LE_AT_PROXY_ERROR,
-                sizeof(LE_AT_PROXY_ERROR));
+                LE_AT_PROXY_CME_ERROR_OPER_NOT_ALLOWED);
 
             LE_ERROR("Error parsing parameter list, result [%d]", result);
             return;
@@ -755,10 +754,9 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
     if (atCmdPtr->index >= LE_ATDEFS_COMMAND_MAX_LEN)
     {
         // Send an error to the Serial UART
-        pa_port_Write(
+        atProxyCmdHandler_GenerateErrorOutputResponse(
             atCmdPtr->port,
-            LE_AT_PROXY_ERROR,
-            sizeof(LE_AT_PROXY_ERROR));
+            LE_AT_PROXY_CME_ERROR_OPER_NOT_SUPPORTED);
 
         LE_ERROR("AT Command string is too long, maximum supported length is %d",
                  LE_ATDEFS_COMMAND_MAX_LEN);
@@ -997,6 +995,36 @@ le_result_t atProxyCmdHandler_FlushStoredURC
 
     return ProcessStoredURC(atCmdSessionPtr);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function generates an error response output
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void atProxyCmdHandler_GenerateErrorOutputResponse
+(
+    le_atProxy_PortRef_t portRef,  ///< [IN] Port Reference
+    uint32_t errorCode             ///< [IN] CME Error Code
+)
+{
+    // Get the current Extended Error Code mode
+    ErrorCodesMode_t errorCodeMode = atProxy_GetExtendedErrorCodes();
+
+    // Set the pattern string
+    const char* pattern = LE_ATDEFS_CME_ERROR;
+
+    // Send the AT Server Error result code
+    atProxy_SendFinalResultCode(
+        portRef,
+        errorCode,
+        errorCodeMode,
+        LE_ATSERVER_ERROR,
+        pattern,
+        strlen(pattern));
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

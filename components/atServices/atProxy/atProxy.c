@@ -86,7 +86,7 @@ extern le_ref_MapRef_t  atCmdSessionRefMap;
  * Error codes current mode
  */
 //--------------------------------------------------------------------------------------------------
-static ErrorCodesMode_t ErrorCodesMode = MODE_DISABLED;
+static ErrorCodesMode_t ErrorCodesMode = MODE_EXTENDED;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -346,6 +346,123 @@ static const char* GetStdVerboseMsg
     return NULL;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Helper function to generate and send the final result code.
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void atProxy_SendFinalResultCode
+(
+    le_atProxy_PortRef_t portRef,       ///< [IN] Port Reference
+    uint32_t errorCode,                 ///< [IN] CME Error Code
+    ErrorCodesMode_t errorCodeMode,     ///< [IN] Error Code Mode
+    le_atServer_FinalRsp_t finalResult, ///< [IN] Final Response Result
+    const char* pattern,                ///< [IN] Pattern string indicating type of verbose error
+    size_t patternLen                   ///< [IN] Pattern string length
+)
+{
+    char buffer[LE_ATDEFS_RESPONSE_MAX_BYTES];
+
+    switch (finalResult)
+    {
+        case LE_ATSERVER_OK:
+            pa_port_Write(portRef,
+                          LE_AT_PROXY_OK,
+                          strlen(LE_AT_PROXY_OK));
+            break;
+
+        case LE_ATSERVER_NO_CARRIER:
+            pa_port_Write(portRef,
+                          LE_AT_PROXY_NO_CARRIER,
+                          strlen(LE_AT_PROXY_NO_CARRIER));
+            break;
+
+        case LE_ATSERVER_NO_DIALTONE:
+            pa_port_Write(portRef,
+                          LE_AT_PROXY_NO_DIALTONE,
+                          strlen(LE_AT_PROXY_NO_DIALTONE));
+            break;
+
+        case LE_ATSERVER_BUSY:
+            pa_port_Write(portRef,
+                          LE_AT_PROXY_BUSY,
+                          strlen(LE_AT_PROXY_BUSY));
+            break;
+
+        case LE_ATSERVER_ERROR:
+            if ((MODE_DISABLED == errorCodeMode) || (0 == patternLen))
+            {
+                pa_port_Write(portRef,
+                              LE_AT_PROXY_ERROR,
+                              strlen(LE_AT_PROXY_ERROR));
+                break;
+            }
+
+            // Compose the pattern part for the response
+            strncpy(buffer, pattern, LE_ATDEFS_RESPONSE_MAX_LEN);
+            buffer[LE_ATDEFS_RESPONSE_MAX_LEN] = '\0';
+
+            // Compose the code part for the response
+            if (MODE_EXTENDED == errorCodeMode)
+            {
+                LE_DEBUG("Extended mode");
+                snprintf(buffer + patternLen,
+                         LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
+                         "%"PRIu32"\r\n",
+                         errorCode);
+            }
+            else if (MODE_VERBOSE == errorCodeMode)
+            {
+                // This verbose mode section is added for implementing extented error codes handling
+                // for atProxy on all platforms.
+                // Since this verbose mode is not supported on HL78 and thus not tested.
+                LE_DEBUG("Verbose mode");
+                if (errorCode < STD_ERROR_CODE_SIZE)
+                {
+                    const char* msgPtr = GetStdVerboseMsg(errorCode, pattern);
+                    if (NULL != msgPtr)
+                    {
+                        snprintf(buffer + patternLen,
+                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
+                                 "%s\r\n",
+                                 msgPtr);
+                    }
+                    else
+                    {
+                        snprintf(buffer + patternLen,
+                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
+                                 "%"PRIu32"\r\n",
+                                 errorCode);
+                    }
+                }
+                else
+                {
+                    // TODO: Add custom error codes (per product) handling
+                    snprintf(buffer + patternLen,
+                             LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
+                             "%"PRIu32"\r\n",
+                             errorCode);
+                }
+            }
+
+            pa_port_Write(portRef,
+                          buffer,
+                          strnlen(buffer, LE_ATDEFS_RESPONSE_MAX_LEN));
+            break;
+
+        default:
+            snprintf(buffer, LE_ATDEFS_RESPONSE_MAX_LEN, "%s%lu\r\n", pattern, errorCode);
+            pa_port_Write(portRef,
+                          buffer,
+                          strnlen(buffer, LE_ATDEFS_RESPONSE_MAX_LEN));
+            break;
+    }
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Function to retrieve the AT Command Registry
@@ -598,6 +715,7 @@ void le_atServer_SendIntermediateResponse
     le_atServer_SendIntermediateResponseRespond(cmdRef, result);
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function can be used to send the final result code.
@@ -618,8 +736,6 @@ void le_atServer_SendFinalResultCode
 )
 {
     le_result_t result = LE_OK;
-    char buffer[LE_ATDEFS_RESPONSE_MAX_BYTES];
-
     le_atProxy_AtCommandSession_t* atCmdSessionPtr = le_ref_Lookup(atCmdSessionRefMap, commandRef);
 
     size_t patternLen = strnlen(pattern, LE_ATDEFS_RESPONSE_MAX_LEN);
@@ -633,100 +749,14 @@ void le_atServer_SendFinalResultCode
         return;
     }
 
-    switch (finalResult)
-    {
-        case LE_ATSERVER_OK:
-            pa_port_Write(atCmdSessionPtr->port,
-                          LE_AT_PROXY_OK,
-                          strlen(LE_AT_PROXY_OK));
-            break;
-
-        case LE_ATSERVER_NO_CARRIER:
-            pa_port_Write(atCmdSessionPtr->port,
-                          LE_AT_PROXY_NO_CARRIER,
-                          strlen(LE_AT_PROXY_NO_CARRIER));
-            break;
-
-        case LE_ATSERVER_NO_DIALTONE:
-            pa_port_Write(atCmdSessionPtr->port,
-                          LE_AT_PROXY_NO_DIALTONE,
-                          strlen(LE_AT_PROXY_NO_DIALTONE));
-            break;
-
-        case LE_ATSERVER_BUSY:
-            pa_port_Write(atCmdSessionPtr->port,
-                          LE_AT_PROXY_BUSY,
-                          strlen(LE_AT_PROXY_BUSY));
-            break;
-
-        case LE_ATSERVER_ERROR:
-            if ((MODE_DISABLED == ErrorCodesMode) || (0 == patternLen))
-            {
-                pa_port_Write(atCmdSessionPtr->port,
-                              LE_AT_PROXY_ERROR,
-                              strlen(LE_AT_PROXY_ERROR));
-                break;
-            }
-
-            // Compose the pattern part for the response
-            strncpy(buffer, pattern, LE_ATDEFS_RESPONSE_MAX_LEN);
-            buffer[LE_ATDEFS_RESPONSE_MAX_LEN] = '\0';
-
-            // Compose the code part for the response
-            if (MODE_EXTENDED == ErrorCodesMode)
-            {
-                LE_DEBUG("Extended mode");
-                snprintf(buffer + patternLen,
-                         LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                         "%"PRIu32"\r\n",
-                         errorCode);
-            }
-            else if (MODE_VERBOSE == ErrorCodesMode)
-            {
-                // This verbose mode section is added for implementing extented error codes handling
-                // for atProxy on all platforms.
-                // Since this verbose mode is not supported on HL78 and thus not tested.
-                LE_DEBUG("Verbose mode");
-                if (errorCode < STD_ERROR_CODE_SIZE)
-                {
-                    const char* msgPtr = GetStdVerboseMsg(errorCode, pattern);
-                    if (NULL != msgPtr)
-                    {
-                        snprintf(buffer + patternLen,
-                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                                 "%s\r\n",
-                                 msgPtr);
-                    }
-                    else
-                    {
-                        snprintf(buffer + patternLen,
-                                 LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                                 "%"PRIu32"\r\n",
-                                 errorCode);
-                    }
-                }
-                else
-                {
-                    // TODO: Add custom error codes (per product) handling
-                    snprintf(buffer + patternLen,
-                             LE_ATDEFS_RESPONSE_MAX_BYTES - patternLen,
-                             "%"PRIu32"\r\n",
-                             errorCode);
-                }
-            }
-
-            pa_port_Write(atCmdSessionPtr->port,
-                          buffer,
-                          strnlen(buffer, LE_ATDEFS_RESPONSE_MAX_LEN));
-            break;
-
-        default:
-            snprintf(buffer, LE_ATDEFS_RESPONSE_MAX_LEN, "%s%lu\r\n", pattern, errorCode);
-            pa_port_Write(atCmdSessionPtr->port,
-                          buffer,
-                          strnlen(buffer, LE_ATDEFS_RESPONSE_MAX_LEN));
-            break;
-    }
+    // Send the AT Server Error result code
+    atProxy_SendFinalResultCode(
+        atCmdSessionPtr->port,
+        errorCode,
+        ErrorCodesMode,
+        finalResult,
+        pattern,
+        patternLen);
 
     le_atServer_SendFinalResultCodeRespond(cmdRef, result);
 
@@ -938,6 +968,24 @@ LE_SHARED void atProxy_DisableExtendedErrorCodes
 )
 {
     ErrorCodesMode = MODE_DISABLED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function retrieves the current error codes mode on the selected device
+ *
+ * @return
+ *      - MODE_EXTENDED  If extended error code is enabled
+ *      - MODE_VERBOSE   If extended verbose error code is enabled (NOTE: Not Supported)
+ *      - MODE_DISABLED  If extended error code is disabled
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED ErrorCodesMode_t atProxy_GetExtendedErrorCodes
+(
+    void
+)
+{
+    return ErrorCodesMode;
 }
 
 //-------------------------------------------------------------------------------------------------
