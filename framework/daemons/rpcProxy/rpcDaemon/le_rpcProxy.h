@@ -105,18 +105,6 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The direction of a parameter, either input or output
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum
-{
-    DIR_IN,
-    DIR_OUT
-}
-rpcProxy_Direction_t;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * RPC Proxy Common Message Header Structure
  * NOTE:  Must be defined as first parameter in each RPC Proxy Message structure
  */
@@ -218,9 +206,6 @@ typedef struct rpcProxy_ClientRequestResponseRecord
 
     uint32_t  msgId;                                      ///< Legato Msg-ID
     char      systemName[LIMIT_MAX_SYSTEM_NAME_BYTES];  ///< Source of the request
-#ifdef RPC_PROXY_LOCAL_SERVICE
-    le_dls_List_t localBuffers;
-#endif
 }
 rpcProxy_ClientRequestResponseRecord_t;
 
@@ -230,14 +215,14 @@ rpcProxy_ClientRequestResponseRecord_t;
  * RPC Proxy Local-Message Structure
  */
 //--------------------------------------------------------------------------------------------------
-typedef struct rpcProxy_LocalBuffer
+typedef struct rpcProxy_LocalMessage
 {
+    uint32_t                id;       ///< Proxy Message Id, uniquely identifies each RPC Message.
+    le_pack_SemanticTag_t   tagId;    ///< Tag ID of the link-list element
+    uint8_t*                dataPtr;  ///< Pointer to String and Array Parameters
     le_dls_Link_t           link;
-    rpcProxy_Direction_t    dir;           ///< Is this parameter an output
-    size_t                  dataSz;        ///< Size of data parameter
-    uint8_t                 bufferData[];  ///< Contents of buffer data
 }
-rpcProxy_LocalBuffer_t;
+rpcProxy_LocalMessage_t;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -512,16 +497,6 @@ le_result_t rpcProxy_SendVariableLengthMsgBody
 );
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
-//--------------------------------------------------------------------------------------------------
-/**
- * Retrieve and remove the next parameter buffer for a request response call
- */
-//--------------------------------------------------------------------------------------------------
-le_dls_Link_t *rpcProxy_PopNextParameter
-(
-    uint32_t serviceId
-);
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Cleans up local message resources associated with a proxy message id

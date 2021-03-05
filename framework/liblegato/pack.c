@@ -113,8 +113,7 @@ LE_DEFINE_INLINE bool le_pack_PackTaggedIndefArrayHeader(uint8_t** bufferPtr,
 LE_DEFINE_INLINE bool le_pack_PackTaggedByteString(uint8_t** bufferPtr, void* byteStringPtr,
                                                    uint32_t byteStringCount);
 
-LE_DEFINE_INLINE bool le_pack_CheckSemanticTag(uint8_t** bufferPtr,
-                                                le_pack_SemanticTag_t expectedTagId);
+
 LE_DEFINE_INLINE bool le_pack_UnpackUint8(uint8_t** bufferPtr, uint8_t* valuePtr);
 LE_DEFINE_INLINE bool le_pack_UnpackUint16(uint8_t** bufferPtr, uint16_t* valuePtr);
 LE_DEFINE_INLINE bool le_pack_UnpackUint32(uint8_t** bufferPtr, uint32_t* valuePtr);
@@ -124,24 +123,6 @@ LE_DEFINE_INLINE bool le_pack_UnpackInt16(uint8_t** bufferPtr, int16_t* valuePtr
 LE_DEFINE_INLINE bool le_pack_UnpackInt32(uint8_t** bufferPtr, int32_t* valuePtr);
 LE_DEFINE_INLINE bool le_pack_UnpackInt64(uint8_t** bufferPtr, int64_t* valuePtr);
 LE_DEFINE_INLINE bool le_pack_UnpackSize(uint8_t **bufferPtr, size_t* valuePtr);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedUint8(uint8_t** bufferPtr, uint8_t* valuePtr,
-                                                le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedUint16(uint8_t** bufferPtr, uint16_t* valuePtr,
-                                                 le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedUint32(uint8_t** bufferPtr, uint32_t* valuePtr,
-                                                 le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedUint64(uint8_t** bufferPtr, uint64_t* valuePtr,
-                                                 le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedInt8(uint8_t** bufferPtr, int8_t* valuePtr,
-                                               le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedInt16(uint8_t** bufferPtr, int16_t* valuePtr,
-                                                le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedInt32(uint8_t** bufferPtr, int32_t* valuePtr,
-                                                le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedInt64(uint8_t** bufferPtr, int64_t* valuePtr,
-                                                le_pack_SemanticTag_t tagId);
-LE_DEFINE_INLINE bool le_pack_UnpackTaggedSize(uint8_t **bufferPtr, size_t* valuePtr,
-                                               le_pack_SemanticTag_t tagId);
 LE_DEFINE_INLINE bool le_pack_UnpackBool(uint8_t** bufferPtr, bool* valuePtr);
 LE_DEFINE_INLINE bool le_pack_UnpackChar(uint8_t** bufferPtr, char* valuePtr);
 LE_DEFINE_INLINE bool le_pack_UnpackDouble(uint8_t** bufferPtr, double* valuePtr);
@@ -337,7 +318,6 @@ bool  _le_pack_unpackPositiveInteger
     }
 }
 
-#if LE_CONFIG_RPC
 //--------------------------------------------------------------------------------------------------
 /**
  * Pack a TagID into a buffer, incrementing the buffer pointer and decrementing the
@@ -379,12 +359,6 @@ bool le_pack_UnpackSemanticTag
     *tagIdPtr = (le_pack_SemanticTag_t) value;
     return true;
 }
-#else
-LE_DEFINE_INLINE bool le_pack_PackSemanticTag(uint8_t **bufferPtr, le_pack_SemanticTag_t value);
-LE_DEFINE_INLINE bool le_pack_UnpackSemanticTag(uint8_t **bufferPtr,
-        le_pack_SemanticTag_t *tagIdPtr);
-#endif
-
 
 //--------------------------------------------------------------------------------------------------
 /**

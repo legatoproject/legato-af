@@ -119,8 +119,6 @@ typedef struct StreamState
     uint32_t asyncMsgId;             ///< Stores message id for async messages
 #ifdef RPC_PROXY_LOCAL_SERVICE
     uint8_t slotIndex;               ///< Slot index for optimization of local service messages
-    le_dls_List_t localBuffers;      ///< List of local buffers which have been created for
-                                     ///< optimizaiton of local messages
 #endif
 } StreamState_t;
 

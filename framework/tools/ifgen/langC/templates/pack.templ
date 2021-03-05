@@ -425,18 +425,10 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- for parameter in parameterList if parameter is OutParameter %}
     {%- if args.localService and initiatorWaits and parameter is StringParameter %}
 
-    /* Pack parameter marker for RPC for parameter {{parameter.name}} if needed */
-    if ({{parameter|FormatParameterName}})
-    {
-        LE_ASSERT(le_pack_PackSemanticTag( &_msgBufPtr, LE_PACK_OUT_STRING_RESPONSE));
-    }
+    /* No packing needed for {{parameter.name}} */
     {%- elif args.localService and initiatorWaits and parameter is OptimizableArray %}
-    if ({{parameter|FormatParameterName}})
-    {
-        LE_ASSERT(le_pack_PackTaggedSize( &_msgBufPtr,
-                                          {{parameter|GetParameterCount}},
-                                          LE_PACK_OUT_BYTE_STR_RESPONSE ));
-    }
+    LE_ASSERT(le_pack_PackSize( &_msgBufPtr,
+                               {{parameter|GetParameterCount}} ));
     /* No data packing needed for {{parameter.name}} */
     {%- elif parameter is StringParameter %}
     if ({{parameter|FormatParameterName}})
@@ -499,22 +491,10 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
     {%- for parameter in parameterList if parameter is OutParameter %}
     {%- if args.localService and initiatorWaits and parameter is StringParameter %}
 
-    /* Pack parameter marker for RPC for parameter {{parameter.name}} if needed */
-    if ({{parameter|FormatParameterName}} &&
-        !le_pack_CheckSemanticTag( &_msgBufPtr, LE_PACK_OUT_STRING_RESPONSE))
-    {
-        {{- caller() }}
-    }
+    /* No unpacking needed for {{parameter.name}} */
     {%- elif args.localService and initiatorWaits and parameter is OptimizableArray %}
-    if ({{parameter|FormatParameterName}})
-    {
-        if (!le_pack_UnpackTaggedSize( &_msgBufPtr,
-                                       {{parameter|GetParameterCountPtr}},
-                                       LE_PACK_OUT_BYTE_STR_RESPONSE) )
-        {
-            {{- caller() }}
-        }
-    }
+    LE_ASSERT(le_pack_UnpackSize( &_msgBufPtr,
+                               {{parameter|GetParameterCountPtr}} ));
     /* No data unpacking needed for {{parameter.name}} */
     {%- elif parameter is StringParameter %}
     if ({{parameter|FormatParameterName}} &&

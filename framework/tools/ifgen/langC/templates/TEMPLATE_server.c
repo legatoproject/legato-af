@@ -702,7 +702,7 @@ void {{apiName}}_{{function.name}}Respond
         {%- else %}
         memcpy(_cmdRef->outputBuffers[{{loop.index0}}],
                {{parameter|FormatParameterName}},
-               {{parameter|GetParameterCount}}*sizeof({{parameter.apiType|FormatType}}));
+               {{parameter|GetParameterCount}}*sizeof(parameter.apiType));
         {%- endif %}
     }
     {%- endfor %}
@@ -762,9 +762,9 @@ static void Handle_{{apiName}}_{{function.name}}
     // And save any destination buffers
     {%- for parameter in function.parameters
                           if parameter is OutParameter and
-                             (parameter is OptimizableArray or parameter is StringParameter) %}
+                             (parameter is ArrayParameter or parameter is StringParameter) %}
     _serverCmdPtr->outputBuffers[{{loop.index0}}] = {{parameter|FormatParameterName}};
-    _serverCmdPtr->bufferSize[{{loop.index0}}] = {{parameter.name}}Size;
+    _serverCmdPtr->bufferSize[{{loop.index0}}] = {{parameter|GetParameterCount}};
     {%- endfor %}
     {%- endif %}
 
@@ -784,6 +784,8 @@ static void Handle_{{apiName}}_{{function.name}}
 
 error_unpack:
     le_mem_Release(_serverCmdPtr);
+
+    LE_KILL_CLIENT("Error unpacking inputs");
     {%- endif %}
     {%- endwith %}
 }

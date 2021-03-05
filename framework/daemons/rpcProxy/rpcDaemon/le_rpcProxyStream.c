@@ -38,7 +38,6 @@ typedef enum SendState
     SEND_EXPECTING_OPT_STR_HDR = 3,
     SEND_EXPECTING_OPT_STR_SIZE = 4,
     SEND_EXPECTING_OPT_STR_POINTER = 5,
-    SEND_EXPECTING_OPT_BSTR_RESPONSE_SIZE = 6,
 #endif
     SEND_NUM_STATES
 } SendState_t;
@@ -78,7 +77,6 @@ static void ReferenceCallback(void* context, uint64_t value);
 static void OptStringHeaderCallback(void* context, size_t size);
 static void OptStringSizeCallback(void* context, uint64_t value);
 static void OptStringPointerCallback(void* context, uint64_t value);
-static void OptByteStringResponseCallback(void* context, uint64_t value);
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -197,32 +195,6 @@ static void OptStringUint32SizeCallback(void* context, uint32_t value)
 static void OptStringUint64SizeCallback(void* context, uint64_t value)
 {
     OptStringSizeCallback(context, value);
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  libcbor callbacks that will treat a positive integer as size of an optimized string:
- */
-//--------------------------------------------------------------------------------------------------
-static void OptBStrRespUint8SizeCallback(void* context, uint8_t value)
-{
-    OptByteStringResponseCallback(context, value);
-}
-
-static void OptBStrRespUint16SizeCallback(void* context, uint16_t value)
-{
-    OptByteStringResponseCallback(context, value);
-}
-
-static void OptBStrRespUint32SizeCallback(void* context, uint32_t value)
-{
-    OptByteStringResponseCallback(context, value);
-}
-
-static void OptBStrRespUint64SizeCallback(void* context, uint64_t value)
-{
-    OptByteStringResponseCallback(context, value);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -464,41 +436,6 @@ static const struct cbor_callbacks ExpectingOptStringPointerStateCallbacks =
   .boolean = BooleanErrorCallback,
   .indef_break = SimpleErrorCallback,
 };
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  List of callbacks defining expected items in the expecting opt byte string response state:
- *  in the expecting opt string size state only a positive integer is expected.
- *  Everything else is considered a format error.
- */
-//--------------------------------------------------------------------------------------------------
-static const struct cbor_callbacks ExpectingOptByteStringRespStateCallbacks =
-{
-  .indef_array_start = SimpleErrorCallback,
-  .uint8 = OptBStrRespUint8SizeCallback,
-  .uint16 = OptBStrRespUint16SizeCallback,
-  .uint32 = OptBStrRespUint32SizeCallback,
-  .uint64 = OptBStrRespUint64SizeCallback,
-  .negint64 = Uint64ErrorCallback,
-  .negint32 = Uint32ErrorCallback,
-  .negint16 = Uint16ErrorCallback,
-  .negint8 = Uint8ErrorCallback,
-  .byte_string_start = SimpleErrorCallback,
-  .byte_string = StringErrorCallback,
-  .string = StringErrorCallback,
-  .string_start = SimpleErrorCallback,
-  .array_start = CollectionStartErrorCallback,
-  .indef_map_start = SimpleErrorCallback,
-  .map_start = CollectionStartErrorCallback,
-  .tag = Uint64ErrorCallback,
-  .float2 = FloatErrorCallback,
-  .float4 = FloatErrorCallback,
-  .float8 = DoubleErrorCallback,
-  .undefined = SimpleErrorCallback,
-  .null = SimpleErrorCallback,
-  .boolean = BooleanErrorCallback,
-  .indef_break = SimpleErrorCallback,
-};
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -518,21 +455,31 @@ static const struct cbor_callbacks* StateToCallbacksTable[SEND_NUM_STATES] =
     [SEND_EXPECTING_OPT_STR_HDR] = &ExpectingOptStringHeaderStateCallbacks,
     [SEND_EXPECTING_OPT_STR_SIZE] = &ExpectingOptStringSizeStateCallbacks,
     [SEND_EXPECTING_OPT_STR_POINTER] = &ExpectingOptStringPointerStateCallbacks,
-    [SEND_EXPECTING_OPT_BSTR_RESPONSE_SIZE] = &ExpectingOptByteStringRespStateCallbacks,
 #endif
 };
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
 //--------------------------------------------------------------------------------------------------
 /**
+ * This pool is used to allocate memory for local message pointers to String and Array Parameters.
+ * Initialized in rpcProxy_InitializeStreamingMemPools().
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(MessageDataPtrParentPool,
+                          RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM,
+                          RPC_LOCAL_MAX_LARGE_OUT_PARAMETER_SIZE);
+static le_mem_PoolRef_t MessageDataPtrPoolRef = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This pool is used to allocate memory for local message linked list.
  * Initialized in rpcProxy_InitializeStreamingMemPools().
  */
 //--------------------------------------------------------------------------------------------------
-LE_MEM_DEFINE_STATIC_POOL(LocalBufferPool,
-                          RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM,
-                          sizeof(rpcProxy_LocalBuffer_t) + RPC_LOCAL_MAX_LARGE_OUT_PARAMETER_SIZE);
-static le_mem_PoolRef_t LocalBufferPoolRef = NULL;
+LE_MEM_DEFINE_STATIC_POOL(LocalMessagePool,
+                          RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
+                          sizeof(rpcProxy_LocalMessage_t));
+static le_mem_PoolRef_t LocalMessagePoolRef = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -552,6 +499,13 @@ ResponseParameterArray_t;
 //--------------------------------------------------------------------------------------------------
 LE_HASHMAP_DEFINE_STATIC(ResponseParameterArrayHashMap, RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM);
 static le_hashmap_Ref_t ResponseParameterArrayByProxyId = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Doubly linked list to track outstanding local message memory allocation
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dls_List_t LocalMessageList = LE_DLS_LIST_INIT;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -588,22 +542,6 @@ static inline bool IsTagLocalServiceOpt
 {
    return (tag == LE_PACK_IN_STRING_POINTER || tag == LE_PACK_OUT_STRING_POINTER ||
        tag == LE_PACK_IN_BYTE_STR_POINTER  || tag == LE_PACK_OUT_BYTE_STR_POINTER);
-}
-
-static inline bool IsTagLocalStrResponse
-(
-    le_pack_SemanticTag_t tag                  ///< [IN] Semantic tag value
-)
-{
-    return tag == LE_PACK_OUT_STRING_RESPONSE;
-}
-
-static inline bool IsTagLocalByteStrResponse
-(
-    le_pack_SemanticTag_t tag                  ///< [IN] Semantic tag value
-)
-{
-    return tag == LE_PACK_OUT_BYTE_STR_RESPONSE;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -671,25 +609,6 @@ static inline bool IsTagOutParamSize
     return (tag == LE_PACK_OUT_STRING_SIZE || tag == LE_PACK_OUT_BYTE_STR_SIZE);
 }
 
-
-/**
- * Get the direction an array parameter is traveling from the last seen semantic tag.
- */
-static inline rpcProxy_Direction_t GetParamDirection
-(
-    le_pack_SemanticTag_t tag
-)
-{
-    if (tag == LE_PACK_OUT_STRING_SIZE || tag == LE_PACK_OUT_BYTE_STR_SIZE)
-    {
-        return DIR_OUT;
-    }
-    else
-    {
-        return DIR_IN;
-    }
-}
-
 #ifdef RPC_PROXY_LOCAL_SERVICE
 //--------------------------------------------------------------------------------------------------
 /**
@@ -731,40 +650,26 @@ static le_result_t RepackStoreResponsePointer
         return LE_OVERFLOW;
     }
 
-    // If the item is passed in, store it in the response pointer array.
-    // If the item is NULL, just ignore it as it will not be received in the
-    // response message
-    if (pointer)
-    {
-        // Store the response pointer in the array, using the slot Id
-        arrayPtr->pointer[*slotIndexPtr] = pointer;
+    // Store the response pointer in the array, using the slot Id
+    arrayPtr->pointer[*slotIndexPtr] = pointer;
 
-        LE_DEBUG("Storing response pointer, proxy id [%" PRIu32 "], "
-                 "slot id [%" PRIu8 "], pointer [%" PRIiPTR "]",
-                 proxyMessagePtr->commonHeader.id,
-                 *slotIndexPtr,
-                 pointer);
+    LE_DEBUG("Storing response pointer, proxy id [%" PRIu32 "], "
+             "slot id [%" PRIu8 "], pointer [%" PRIiPTR "]",
+             proxyMessagePtr->commonHeader.id,
+             *slotIndexPtr,
+             pointer);
 
-        // Store the array of memory pointer until
-        // the server response is received, using the proxy message Id
-        le_hashmap_Put(ResponseParameterArrayByProxyId,
-                       (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
-                       arrayPtr);
+    // Store the array of memory pointer until
+    // the server response is received, using the proxy message Id
+    le_hashmap_Put(ResponseParameterArrayByProxyId,
+                   (void*)(uintptr_t) proxyMessagePtr->commonHeader.id,
+                   arrayPtr);
 
-        // Increment the slotIndex
-        *slotIndexPtr = *slotIndexPtr + 1;
-    }
-    else
-    {
-        LE_DEBUG("Discarding null response pointer, proxy id [%" PRIu32 "], "
-                 "slot id [%" PRIu8 "]",
-                 proxyMessagePtr->commonHeader.id,
-                 *slotIndexPtr);
-    }
+    // Increment the slotIndex
+    *slotIndexPtr = *slotIndexPtr + 1;
 
     return LE_OK;
 }
-
 
 
 //--------------------------------------------------------------------------------------------------
@@ -778,6 +683,35 @@ void rpcProxy_CleanUpLocalMessageResources
     uint32_t proxyMsgId                  ///< [IN] proxy message id field in the common header.
 )
 {
+    //
+    // Clean-up local message memory allocation associated with this Proxy message ID
+    //
+    le_dls_Link_t* linkPtr = le_dls_Peek(&LocalMessageList);
+
+    while (linkPtr != NULL)
+    {
+        rpcProxy_LocalMessage_t* localMessagePtr = CONTAINER_OF(linkPtr, rpcProxy_LocalMessage_t, link);
+
+        // Move the linkPtr to the next node in the list now, in case we have to remove
+        // the node it currently points to.
+        linkPtr = le_dls_PeekNext(&LocalMessageList, linkPtr);
+
+        // Verify if this is associated with our Proxy Message
+        if (localMessagePtr->id == proxyMsgId)
+        {
+            LE_DEBUG("Cleaning up local-message resources, proxy id [%" PRIu32 "]", proxyMsgId);
+
+            // Remove entry from linked list
+            le_dls_Remove(&LocalMessageList, &(localMessagePtr->link));
+
+            // Free memory allocated for the data pointer
+            le_mem_Release(localMessagePtr->dataPtr);
+
+            // Free memory allocated for this Local Message memory
+            le_mem_Release(localMessagePtr);
+        }
+    }
+
     //
     // Clean-up the Response "out" parameter hashmap
     //
@@ -798,6 +732,62 @@ void rpcProxy_CleanUpLocalMessageResources
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Write any outstring for server responses:
+ *  TODO: This can result in the wrong order in some cases: LE-15447
+ */
+//--------------------------------------------------------------------------------------------------
+static void WriteOutStringOrArrays
+(
+    SendContext_t* sendContextPtr                 ///< [IN] pointer to send state structure
+)
+{
+    if (sendContextPtr->messagePtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE)
+    {
+        LE_DEBUG("Writing any \"out\" string or array");
+        le_dls_Link_t* linkPtr = le_dls_Peek(&LocalMessageList);
+        while (linkPtr != NULL)
+        {
+            rpcProxy_LocalMessage_t* localMessagePtr =
+                CONTAINER_OF(linkPtr, rpcProxy_LocalMessage_t, link);
+
+            // Move the linkPtr to the next node in the list now.
+            linkPtr = le_dls_PeekNext(&LocalMessageList, linkPtr);
+
+            // Set the size
+            size_t size = le_mem_GetBlockSize(localMessagePtr->dataPtr);
+            LE_DEBUG("Found a local msg optimization Item for rpc id: %lu", localMessagePtr->id);
+
+            // Verify if this is associated with our Proxy Message
+            if (localMessagePtr->id == sendContextPtr->messagePtr->commonHeader.id)
+            {
+                LE_DEBUG("Found a LocalMessage Item for tag: %d", localMessagePtr->tagId);
+                if (localMessagePtr->tagId == LE_PACK_OUT_STRING_SIZE)
+                {
+                    LE_DEBUG("String [%s]", (const char *)localMessagePtr->dataPtr);
+
+                    uint8_t tempBuff[1 + sizeof(uint64_t)];
+                    int stringSize = strlen((const char*)localMessagePtr->dataPtr);
+                    size_t encoded_size = cbor_encode_string_start(stringSize, tempBuff, sizeof(tempBuff));
+                    le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
+                    le_comm_Send(sendContextPtr->handle, localMessagePtr->dataPtr, stringSize);
+                }
+                else if (localMessagePtr->tagId == LE_PACK_OUT_BYTE_STR_SIZE)
+                {
+                    uint8_t tempBuff[1 + sizeof(uint64_t)];
+                    size_t encoded_size = cbor_encode_bytestring_start(size, tempBuff, sizeof(tempBuff));
+                    le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
+                    le_comm_Send(sendContextPtr->handle, localMessagePtr->dataPtr, size);
+                }
+                else
+                {
+                    // Ignore
+                }
+            }
+        } // End of while
+    }
+}
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -837,56 +827,19 @@ static void WriteMetaData
         size_t encoded_size = cbor_encode_tag(LE_PACK_FILESTREAM_ID, tempBuff, sizeof(tempBuff));
         le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
 
-        encoded_size = cbor_encode_uint(sendContextPtr->messagePtr->metaData.fileStreamId, tempBuff, sizeof(tempBuff));
+        encoded_size = cbor_encode_uint16(sendContextPtr->messagePtr->metaData.fileStreamId, tempBuff, sizeof(tempBuff));
         le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
 
         // pack flags:
         encoded_size = cbor_encode_tag(LE_PACK_FILESTREAM_FLAG, tempBuff, sizeof(tempBuff));
         le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
 
-        encoded_size = cbor_encode_uint(sendContextPtr->messagePtr->metaData.fileStreamFlags, tempBuff, sizeof(tempBuff));
+        encoded_size = cbor_encode_uint16(sendContextPtr->messagePtr->metaData.fileStreamFlags, tempBuff, sizeof(tempBuff));
         le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
     }
 }
 
 #ifdef RPC_PROXY_LOCAL_SERVICE
-/**
- * Get the next output parameter for this message.
- */
-static rpcProxy_LocalBuffer_t *PopNextOutputParameter
-(
-    uint32_t serviceId
-)
-{
-    le_dls_Link_t *paramItem = NULL;
-    rpcProxy_LocalBuffer_t *paramBuffer = NULL;
-
-    // Find the next output parameter
-    do
-    {
-        paramItem = rpcProxy_PopNextParameter(serviceId);
-        if (!paramItem)
-        {
-            return NULL;
-        }
-
-        paramBuffer = CONTAINER_OF(paramItem,
-                                   rpcProxy_LocalBuffer_t,
-                                   link);
-
-        if (paramBuffer->dir == DIR_IN)
-        {
-            // Just free input parameters.
-            // Since function has returned, we don't need them anymore.
-            le_mem_Release(paramBuffer);
-            paramItem = NULL;
-        }
-    } while (!paramItem);
-
-    return paramBuffer;
-}
-
-
 //--------------------------------------------------------------------------------------------------
 /**
  *  Write a size as string header to the le_comm
@@ -927,16 +880,15 @@ static void WriteByteStringHeader
 static void WriteOutStringSize
 (
     SendContext_t* sendContextPtr,        ///< [IN] pointer to send state structure
-    size_t length,                        ///< [IN] length of string.
-    uint32_t tag                          ///< [IN] tag to encode
+    size_t length                         ///< [IN] length of string.
 )
 {
     // This is when we're writing the size for the outstring:
     uint8_t tempBuff [1 + sizeof(uint64_t)];
-    size_t encoded_size = cbor_encode_tag(tag, tempBuff, sizeof(tempBuff));
+    size_t encoded_size = cbor_encode_tag(LE_PACK_OUT_STRING_SIZE, tempBuff, sizeof(tempBuff));
     le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
 
-    encoded_size = cbor_encode_uint(length, tempBuff, sizeof(tempBuff));
+    encoded_size = cbor_encode_uint32(length, tempBuff, sizeof(tempBuff));
     le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
 }
 
@@ -955,45 +907,6 @@ static void WriteBufferedData
 
     uint8_t* buff = (uint8_t*) pointer;
     le_comm_Send(sendContextPtr->handle, buff, length);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Write the out string data over the wire.
- *
- * This occurs in response to seeing a semantic tag indicating an optimized string has been removed
- * at this point.
- */
-//--------------------------------------------------------------------------------------------------
-static void WriteStringResponse
-(
-    SendContext_t* sendContextPtr         ///< [IN] pointer to send state structure
-)
-{
-    size_t length, encodedSize;
-    rpcProxy_LocalBuffer_t *paramBuffer =
-        PopNextOutputParameter(sendContextPtr->messagePtr->commonHeader.id);
-    uint8_t tempBuff [1 + sizeof(uint64_t)];
-
-    LE_ASSERT(paramBuffer);
-
-    // skip NULL output parameters
-    if (paramBuffer->dataSz)
-    {
-        length = strnlen((char *)paramBuffer->bufferData, paramBuffer->dataSz);
-
-        LE_DEBUG("Writing string '%s': max len %d, actual len %d",
-                 (char *)paramBuffer->bufferData,
-                 paramBuffer->dataSz,
-                 length);
-
-        encodedSize = cbor_encode_tag(LE_PACK_OUT_STRING_RESPONSE, tempBuff, sizeof(tempBuff));
-        le_comm_Send(sendContextPtr->handle, tempBuff, encodedSize);
-        WriteStringHeader(sendContextPtr, length);
-        WriteBufferedData(sendContextPtr, (uintptr_t)paramBuffer->bufferData, length);
-    }
-
-    le_mem_Release(paramBuffer);
 }
 #endif
 
@@ -1017,35 +930,16 @@ static void SemanticTagCallback
     SendContext_t* sendContextPtr = (SendContext_t*) context;
     le_pack_SemanticTag_t tagId = (le_pack_SemanticTag_t) value;
 
-    sendContextPtr->lastTag = tagId;
     if (IsTagLocalServiceOpt(tagId))
     {
+        sendContextPtr->lastTag = tagId;
         sendContextPtr->state = SEND_EXPECTING_OPT_STR_HDR;
         sendContextPtr->squelchThisItem = true;
     }
-    else if (IsTagLocalStrResponse(tagId))
-    {
-
-        WriteStringResponse(sendContextPtr);
-        sendContextPtr->squelchThisItem = true;
-
-        // clear the tag now:
-        sendContextPtr->lastTag = 0;
-        sendContextPtr->state = SEND_NORMAL_STATE;
-    }
-    else if (IsTagLocalByteStrResponse(tagId))
-    {
-        sendContextPtr->state = SEND_EXPECTING_OPT_BSTR_RESPONSE_SIZE;
-    }
     else if (IsTagEventHandler(tagId))
     {
+        sendContextPtr->lastTag = tagId;
         sendContextPtr->state = SEND_EXPECTING_REFERENCE;
-    }
-    else
-    {
-        // Unrecognized tag -- pass through
-        sendContextPtr->lastTag = 0;
-        sendContextPtr->state = SEND_NORMAL_STATE;
     }
 }
 
@@ -1083,6 +977,9 @@ static void IndefEndCallback
     if (sendContextPtr->collectionLayer == 0)
     {
         // we're finished: send out metadata and possible out arrays before the break:
+#ifdef RPC_PROXY_LOCAL_SERVICE
+        WriteOutStringOrArrays(sendContextPtr);
+#endif
         WriteMetaData(sendContextPtr);
     }
 }
@@ -1111,7 +1008,7 @@ static void ReferenceCallback
                                               sendContextPtr->messagePtr);
         //new write the new context:
         uint8_t tempBuff[1 + sizeof(uint64_t)];
-        size_t encoded_size = cbor_encode_uint((uintptr_t)newContext, tempBuff, sizeof(tempBuff));
+        size_t encoded_size = cbor_encode_uint32((uint32_t)newContext, tempBuff, sizeof(tempBuff));
         le_comm_Send(sendContextPtr->handle, tempBuff, encoded_size);
     }
     // clear the tag now:
@@ -1182,6 +1079,12 @@ static void OptStringPointerCallback
         // Write data:
         WriteBufferedData(sendContextPtr, value, sendContextPtr->lastLength);
     }
+    else if (sendContextPtr->lastTag == LE_PACK_OUT_STRING_POINTER)
+    {
+        // for [OUT] parameters, we also need to keep track of the pointer
+        RepackStoreResponsePointer(sendContextPtr, value);
+        WriteOutStringSize(sendContextPtr, sendContextPtr->lastLength);
+    }
     else if (sendContextPtr->lastTag == LE_PACK_IN_BYTE_STR_POINTER)
     {
         // for [IN] parameters, we just need to unroll the byte string
@@ -1190,68 +1093,17 @@ static void OptStringPointerCallback
         // Write data:
         WriteBufferedData(sendContextPtr, value, sendContextPtr->lastLength);
     }
-    else if ((sendContextPtr->lastTag == LE_PACK_OUT_STRING_POINTER) ||
-             (sendContextPtr->lastTag == LE_PACK_OUT_BYTE_STR_POINTER))
+    else if (sendContextPtr->lastTag == LE_PACK_OUT_STRING_POINTER ||
+             sendContextPtr->lastTag == LE_PACK_OUT_BYTE_STR_POINTER)
     {
         // for [OUT] parameters, we also need to keep track of the pointer
-        uint32_t outTag;
-        if (sendContextPtr->lastTag == LE_PACK_OUT_STRING_POINTER)
-        {
-            outTag = LE_PACK_OUT_STRING_SIZE;
-        }
-        else
-        {
-            outTag = LE_PACK_OUT_BYTE_STR_SIZE;
-        }
-
         RepackStoreResponsePointer(sendContextPtr, value);
-        WriteOutStringSize(sendContextPtr, sendContextPtr->lastLength, outTag);
+        WriteOutStringSize(sendContextPtr, sendContextPtr->lastLength);
     }
     else
     {
         LE_EMERG("OptStringPointerCallback is called but last tag is not an optimized string");
     }
-    // clear the tag now:
-    sendContextPtr->lastTag = 0;
-    sendContextPtr->state = SEND_NORMAL_STATE;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  libcbor callback for result size of an optimized byte string.
- *
- *  Called when we see a result byte string size in a response message to insert the byte string
- *  data into the message.
- */
-//--------------------------------------------------------------------------------------------------
-static void OptByteStringResponseCallback
-(
-    void* context,           ///< [IN] libcbor context, holds pointer to send state structure
-    uint64_t value           ///< [IN] the integer value
-)
-{
-    // Value is pointer:
-    SendContext_t* sendContextPtr = (SendContext_t*) context;
-    sendContextPtr->squelchThisItem = true;
-
-    rpcProxy_LocalBuffer_t *paramBuffer =
-        PopNextOutputParameter(sendContextPtr->messagePtr->commonHeader.id);
-
-    LE_ASSERT(paramBuffer);
-
-    // Skip NULL output parameters
-    if (paramBuffer->dataSz)
-    {
-        LE_FATAL_IF(value > paramBuffer->dataSz,
-                    "Returned byte array size %"PRIu64" larger than buffer %"PRIuS,
-                    value, paramBuffer->dataSz);
-
-        WriteByteStringHeader(sendContextPtr, value);
-        WriteBufferedData(sendContextPtr, (uintptr_t)paramBuffer->bufferData, value);
-    }
-
-    le_mem_Release(paramBuffer);
-
     // clear the tag now:
     sendContextPtr->lastTag = 0;
     sendContextPtr->state = SEND_NORMAL_STATE;
@@ -1288,7 +1140,7 @@ static le_result_t rpcProxy_SendFileStreamMessageBody
 
         if (ret == LE_OK)
         {
-            encoded_size = cbor_encode_uint(messagePtr->metaData.fileStreamId, tempBuff,
+            encoded_size = cbor_encode_uint16(messagePtr->metaData.fileStreamId, tempBuff,
                                               sizeof(tempBuff));
             ret = le_comm_Send(handle, tempBuff, encoded_size);
         }
@@ -1302,8 +1154,8 @@ static le_result_t rpcProxy_SendFileStreamMessageBody
 
         if (ret == LE_OK)
         {
-            encoded_size = cbor_encode_uint(messagePtr->metaData.fileStreamFlags, tempBuff,
-                                            sizeof(tempBuff));
+            encoded_size = cbor_encode_uint16(messagePtr->metaData.fileStreamFlags, tempBuff,
+                                              sizeof(tempBuff));
             ret = le_comm_Send(handle, tempBuff, encoded_size);
         }
 
@@ -1326,7 +1178,7 @@ static le_result_t rpcProxy_SendFileStreamMessageBody
 
             if (ret == LE_OK)
             {
-                encoded_size = cbor_encode_uint(messagePtr->requestedSize, tempBuff,
+                encoded_size = cbor_encode_uint16(messagePtr->requestedSize, tempBuff,
                                                   sizeof(tempBuff));
                 ret = le_comm_Send(handle, tempBuff, encoded_size);
             }
@@ -1453,14 +1305,17 @@ le_result_t rpcProxy_SendVariableLengthMsgBody
 void rpcProxy_InitializeOnceStreamingMemPools()
 {
 #ifdef RPC_PROXY_LOCAL_SERVICE
-    le_mem_PoolRef_t parentPoolRef = le_mem_InitStaticPool(LocalBufferPool,
+
+
+    le_mem_PoolRef_t parentPoolRef = le_mem_InitStaticPool(MessageDataPtrParentPool,
                                                            RPC_PROXY_LARGE_OUT_PARAMETER_MAX_NUM,
-                                                           sizeof(rpcProxy_LocalBuffer_t) +
                                                            RPC_LOCAL_MAX_LARGE_OUT_PARAMETER_SIZE);
-    LocalBufferPoolRef = le_mem_CreateReducedPool(parentPoolRef, "LocalBufferPool",
-                                                  RPC_PROXY_SMALL_OUT_PARAMETER_MAX_NUM,
-                                                  sizeof(rpcProxy_LocalBuffer_t) +
-                                                  RPC_LOCAL_MAX_SMALL_OUT_PARAMETER_SIZE);
+    MessageDataPtrPoolRef = le_mem_CreateReducedPool(parentPoolRef, "MessageDataPtrPool",
+            RPC_PROXY_SMALL_OUT_PARAMETER_MAX_NUM, RPC_LOCAL_MAX_SMALL_OUT_PARAMETER_SIZE);
+
+    LocalMessagePoolRef = le_mem_InitStaticPool(LocalMessagePool,
+                                                RPC_PROXY_MSG_OUT_PARAMETER_MAX_NUM,
+                                                sizeof(rpcProxy_LocalMessage_t));
 
 
     ResponseParameterArrayPoolRef = le_mem_InitStaticPool(
@@ -1561,9 +1416,7 @@ static const le_pack_SemanticTag_t TagsExpectedInRecvStream[] =
     LE_PACK_FILESTREAM_FLAG,
     LE_PACK_FILESTREAM_REQUEST_SIZE,
     LE_PACK_CONTEXT_PTR_REFERENCE,
-    LE_PACK_ASYNC_HANDLER_REFERENCE,
-    LE_PACK_OUT_STRING_RESPONSE,
-    LE_PACK_OUT_BYTE_STR_RESPONSE
+    LE_PACK_ASYNC_HANDLER_REFERENCE
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1580,9 +1433,6 @@ static inline unsigned int TagIdToDispatchIdx
     switch(tagId)
     {
         case (0):
-        case (LE_PACK_OUT_STRING_RESPONSE):
-        case (LE_PACK_OUT_BYTE_STR_RESPONSE):
-            // No tag, or no action needed
             ret = LE_RPC_NO_TAG_DISPATCH_IDX; break;
         case (LE_PACK_OUT_STRING_SIZE):
         case (LE_PACK_OUT_BYTE_STR_SIZE):
@@ -1839,41 +1689,50 @@ static le_result_t RepackRetrieveResponsePointer
 //--------------------------------------------------------------------------------------------------
 static void RepackAllocateResponseMemory
 (
-    StreamState_t* streamStatePtr,       ///< [IN] Pointer to the stream State-Machine data
     rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the Proxy Message
-    rpcProxy_Direction_t dir,            ///< [IN] Direction this parameter is traveling
+    le_pack_SemanticTag_t tagId, ///< [IN] Tag ID being processed
     size_t size, ///< [IN] Size for the response buffer
     uint8_t** responsePtr ///< [IN] Pointer to the response pointer
 )
 {
-    LE_DEBUG("Storing LocalMessage item, proxyMessageId:%"PRIu32", size: %"PRIuS"",
-             proxyMessagePtr->commonHeader.id, size);
+    LE_DEBUG("Storing LocalMessage item, proxyMessageId:%"PRIu32", semantic tag: %d, size: %"PRIuS"",
+             proxyMessagePtr->commonHeader.id, tagId, size);
     if (size == 0)
     {
         *responsePtr = NULL;
         return;
     }
-
     // Allocate a local message memory tracker record
-    rpcProxy_LocalBuffer_t* localBufferPtr = le_mem_TryVarAlloc(LocalBufferPoolRef,
-                                                                sizeof(rpcProxy_LocalBuffer_t) +
-                                                                size);
-    if (localBufferPtr == NULL)
+    rpcProxy_LocalMessage_t* localMessagePtr = le_mem_TryAlloc(LocalMessagePoolRef);
+    if (localMessagePtr == NULL)
     {
-        LE_FATAL("Failed to allocate memory tracker record for out parameter, size %"PRIuS"",
-                 sizeof(rpcProxy_LocalBuffer_t) + size);
+        LE_ERROR("Failed to allocated memory tracker record for \"out\" parameter");
+        *responsePtr = NULL;
         return;
     }
 
-    localBufferPtr->link = LE_DLS_LINK_INIT;
-    localBufferPtr->dataSz = size;
-    localBufferPtr->dir = dir;
-    memset(localBufferPtr->bufferData, 0, size);
+    // Allocate memory to hold the data
+    localMessagePtr->dataPtr = le_mem_TryVarAlloc(MessageDataPtrPoolRef, size);
+    if (localMessagePtr->dataPtr == NULL)
+    {
+        LE_ERROR("Failed to allocate a buffer for response memory, requested size: %"PRIuS"",
+                 size);
+    }
+    memset(localMessagePtr->dataPtr, 0, size);
 
-    // Enqueue this in the buffer list
-    le_dls_Queue(&streamStatePtr->localBuffers, &localBufferPtr->link);
+    // Set the Proxy Message Id this belongs to
+    localMessagePtr->id = proxyMessagePtr->commonHeader.id;
 
-    *responsePtr = localBufferPtr->bufferData;
+    // Set the Tag ID
+    localMessagePtr->tagId = tagId;
+
+    // Initialize the link
+    localMessagePtr->link = LE_DLS_LINK_INIT;
+
+    // Enqueue this in the Local Message List
+    le_dls_Queue(&LocalMessageList, &(localMessagePtr->link));
+
+    *responsePtr = localMessagePtr->dataPtr;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1908,13 +1767,7 @@ static le_result_t RepackUnOptimizedData
         {
             return result;
         }
-
-        // For byte strings, push the actual size of the returned buffer into the stream
-        if (itemType == LE_PACK_TYPE_BYTE_STRING)
-        {
-            le_pack_PackSize((uint8_t **)bufferPtr, length);
-        }
-        else if (dataIsNonEmptyString)
+        if (dataIsNonEmptyString)
         {
             // need to put the null terminator ourselves because the string on the wire wouldn't
             // contain it:
@@ -1929,9 +1782,7 @@ static le_result_t RepackUnOptimizedData
         {
             bufferSize += 1; // to account for null terminator.
         }
-        RepackAllocateResponseMemory(streamStatePtr, proxyMessagePtr,
-                                     GetParamDirection(streamStatePtr->lastTag),
-                                     bufferSize, &responsePtr);
+        RepackAllocateResponseMemory(proxyMessagePtr, streamStatePtr->lastTag, bufferSize, &responsePtr);
         if (responsePtr != NULL && dataIsNonEmptyString)
         {
             responsePtr[length] = '\0';
@@ -2124,13 +1975,7 @@ static le_result_t HandleSemanticTag
     streamStatePtr->lastTag = tagId;
     streamStatePtr->nextItemDispatchIdx = TagIdToDispatchIdx(tagId);
 
-    if (IsTagLocalStrResponse(streamStatePtr->lastTag) ||
-        IsTagLocalByteStrResponse(streamStatePtr->lastTag))
-    {
-        // Tag is passed straight through -- handling at another layer
-        le_pack_PackSemanticTag((uint8_t**) bufferPtr, tagId);
-    }
-    else if ((!DoIOptimize(streamStatePtr)) && IsTagOutParamSize(streamStatePtr->lastTag))
+    if ((!DoIOptimize(streamStatePtr)) && IsTagOutParamSize(streamStatePtr->lastTag))
     {
         // we can pack this tag now:
         if (streamStatePtr->msgBuffSizeLeft < LE_PACK_SEMANTIC_TAG_MAX_SIZE)
@@ -2199,7 +2044,6 @@ static le_result_t HandleStringHeader
     if (itemType == LE_PACK_TYPE_BYTE_STRING &&
             commonHeaderPtr->type == RPC_PROXY_FILESTREAM_MESSAGE)
     {
-        LE_DEBUG("Handling filestream data of length %"PRIuS"", length);
         if (length <= RPC_PROXY_MAX_FILESTREAM_PAYLOAD_SIZE)
         {
             rpcProxy_FileStreamMessage_t* fileStreamMsgPtr =
@@ -2407,7 +2251,6 @@ static le_result_t HandleFileStreamMetadata
 
     streamStatePtr->lastTag = 0;
     streamStatePtr->nextItemDispatchIdx = TagIdToDispatchIdx(streamStatePtr->lastTag);
-
     GoToCborHeaderState(streamStatePtr);
     return ret;
 error:
@@ -2935,6 +2778,11 @@ static le_result_t ClientRequestStreamInitializer
                  "in hashmap, service-id [%" PRIu32 "]",
                  clientRequestMsgPtr->commonHeader.serviceId);
 
+#ifdef RPC_PROXY_LOCAL_SERVICE
+        // Clean-up Local Message memory allocation associated with this Proxy Message ID
+        rpcProxy_CleanUpLocalMessageResources(clientRequestMsgPtr->commonHeader.id);
+#endif
+
         return LE_UNAVAILABLE;
     }
 
@@ -3061,9 +2909,7 @@ le_result_t rpcProxy_InitializeStreamState
 {
     //Start by initializing everything to zero:
     memset(streamStatePtr, 0 , sizeof(StreamState_t));
-    streamStatePtr->localBuffers = LE_DLS_LIST_INIT;
-
-        rpcProxy_CommonHeader_t* commonHeaderPtr = (rpcProxy_CommonHeader_t*) proxyMessagePtr;
+    rpcProxy_CommonHeader_t* commonHeaderPtr = (rpcProxy_CommonHeader_t*) proxyMessagePtr;
 
     return StreamStateInitializersTable[commonHeaderPtr->type](streamStatePtr, proxyMessagePtr);
 }
