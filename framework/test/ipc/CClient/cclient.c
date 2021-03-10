@@ -158,15 +158,15 @@ static void TestDouble(void)
 
     inValue = NAN;
     ipcTest_AddOneDouble(inValue, &outValue);
-    LE_TEST_OK(isnan(outValue) != 0, "add one double NAN");
+    LE_TEST_OK(isnan(outValue) != 0, "add one double NAN (out: %g)", outValue);
 
     inValue = INFINITY;
     ipcTest_AddOneDouble(inValue, &outValue);
-    LE_TEST_OK(isinf(outValue) == 1, "add one double pos INF");
+    LE_TEST_OK(isinf(outValue) && outValue > 0, "add one double pos INF (out: %g)", outValue);
 
     inValue = -INFINITY;
     ipcTest_AddOneDouble(inValue, &outValue);
-    LE_TEST_OK(isinf(outValue) == -1, "add one double neg INF");
+    LE_TEST_OK(isinf(outValue) && outValue < 0, "add one double neg INF (out: %g)", outValue);
 }
 
 static void TestReference(void)
