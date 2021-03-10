@@ -413,6 +413,19 @@ def GetCOutputBufferCount(function):
 def GetMaxCOutputBuffers(interface):
     return max([GetCOutputBufferCount(function) for function in interface.functions.values()])
 
+def GetSizePointerTag(parameter):
+    if parameter.direction == interfaceIR.DIR_IN:
+        if isinstance(parameter, interfaceIR.StringParameter):
+            return "LE_PACK_IN_STRING_POINTER"
+        elif isinstance(parameter, interfaceIR.ArrayParameter):
+            return "LE_PACK_IN_BYTE_STR_POINTER"
+    else:
+        if isinstance(parameter, interfaceIR.StringParameter):
+            return "LE_PACK_OUT_STRING_POINTER"
+        elif isinstance(parameter, interfaceIR.ArrayParameter):
+            return "LE_PACK_OUT_BYTE_STR_POINTER"
+
+
 #---------------------------------------------------------------------------------------------------
 # Test functions
 #---------------------------------------------------------------------------------------------------

@@ -39,7 +39,8 @@ Filters = { 'DecorateName':        codeGenHelpers.DecorateName,
             'UnpackFunction':        codeGenHelpers.GetUnpackFunction,
             'CAPIParameters':        codeGenHelpers.IterCAPIParameters,
             'MaxCOutputBuffers':     codeGenHelpers.GetMaxCOutputBuffers,
-            'LocalMessageSize':      codeGenHelpers.GetLocalMessageSize}
+            'LocalMessageSize':      codeGenHelpers.GetLocalMessageSize,
+            'SizePointerTag':        codeGenHelpers.GetSizePointerTag}
 
 
 Tests = { 'SizeParameter':         codeGenHelpers.IsSizeParameter,

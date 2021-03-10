@@ -732,6 +732,9 @@ static void Handle_{{apiName}}_{{function.name}}
     // Get the message buffer pointer
     __attribute__((unused)) uint8_t* _msgBufPtr =
         ((_Message_t*)le_msg_GetPayloadPtr(_msgRef))->buffer;
+    {% for parameter in function.parameters if parameter is OutParameter %}
+    __attribute__((unused)) bool _skip_{{parameter|FormatParameterName}} = false;
+    {%- endfor %}
 
     if(!le_pack_UnpackIndefArrayHeader(&_msgBufPtr))
     {
@@ -745,6 +748,11 @@ static void Handle_{{apiName}}_{{function.name}}
         goto {{error_unpack_label}};
     }
     {%- endif %}
+
+    {% for parameter in function.parameters if parameter is OutParameter %}
+    _skip_{{parameter|FormatParameterName}} =
+        !(_serverCmdPtr->requiredOutputs & (1u << {{loop.index0}}));
+    {% endfor %}
 
     // Unpack the input parameters from the message
     {%- call pack.UnpackInputs(function.parameters,initiatorWaits=True) %}
@@ -836,6 +844,10 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- if any(function.parameters, "OutParameter") %}
     uint32_t _requiredOutputs = 0;
     {%- endif %}
+    {%- for parameter in function.parameters if parameter is OutParameter %}
+    bool _skip_{{parameter|FormatParameterName}} = false;
+    {%- endfor %}
+
     {%- if function is RemoveHandlerFunction %}
     {#- Remove handlers only have one parameter which is treated specially,
      # so do separate handling
@@ -859,11 +871,12 @@ static void Handle_{{apiName}}_{{function.name}}
     {%- endif %}
 
     {%- for parameter in function.parameters if parameter is OutParameter %}
-    if (!(_requiredOutputs & (1u << {{loop.index0}})))
+    _skip_{{parameter|FormatParameterName}} = !(_requiredOutputs & (1u << {{loop.index0}}));
+    if (_skip_{{parameter|FormatParameterName}})
     {
         {{parameter|FormatParameterName}} = NULL;
-        {%- if parameter is StringParameter %}
-        {{parameter.name}}Size = 0;
+        {%- if parameter is ArrayParameter %}
+        {{parameter.name}}SizePtr = NULL;
         {%- endif %}
     }
     {%- endfor %}

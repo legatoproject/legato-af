@@ -156,42 +156,21 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
                                                   parameter is OptimizableArray) %}
     // Pack TagID to allow external identification of the
     // StringParameter or ArrayParameter tuple
-    {%- if parameter is InParameter %}
-    // "In" Parameters
-    {%- if parameter is StringParameter %}
-    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (void*){{parameter|FormatParameterName}},
-                                             LE_PACK_IN_STRING_POINTER ));
-
-    {%- else %}
-    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (void*){{parameter|FormatParameterName}},
-                                             LE_PACK_IN_BYTE_STR_POINTER ));
+    {%- if parameter is not InParameter %}
+    if ({{parameter|FormatParameterName}})
+    {
     {%- endif %}
-    {%- else %}
-    // "Out" Parameters
-    {%- if parameter is StringParameter %}
-    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (void*){{parameter|FormatParameterName}},
-                                             LE_PACK_OUT_STRING_POINTER ));
-    {%- else %}
-    LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
-                                             {{parameter|GetParameterCount}},
-                                             (void*){{parameter|FormatParameterName}},
-                                             LE_PACK_OUT_BYTE_STR_POINTER ));
-    {%- endif %}
+        LE_ASSERT(le_pack_PackTaggedSizePointerTuple( &_msgBufPtr,
+                                                 {{parameter|GetParameterCount}},
+                                                 (void*){{parameter|FormatParameterName}},
+                                                 {{parameter|SizePointerTag}} ));
+    {%- if parameter is not InParameter %}
+    }
     {%- endif %}
     {%- elif parameter is not InParameter %}
     if ({{parameter|FormatParameterName}})
     {
         LE_ASSERT(le_pack_PackSize( &_msgBufPtr, {{parameter|GetParameterCount}} ));
-    }
-    else
-    {
-        LE_ASSERT(le_pack_PackSize( &_msgBufPtr, 0 ));
     }
     {%- elif parameter is StringParameter %}
     LE_ASSERT(le_pack_PackString( &_msgBufPtr,
@@ -324,45 +303,56 @@ static inline bool {{type.iface.name}}_Unpack{{type.name}}
            or parameter is ArrayParameter %}
     {%- if args.localService and initiatorWaits and (parameter is StringParameter or
                                                   parameter is OptimizableArray) %}
-    if (!le_pack_UnpackSizePointerTuple( &_msgBufPtr,
-                                    &{{parameter.name}}Size,
-                                    (void**)&{{parameter|FormatParameterName}}, NULL ))
+    {%- if parameter is not InParameter %}
+    if (!_skip_{{parameter|FormatParameterName}})
     {
-        {{- caller() }}
-    }
-    {%- if parameter is StringParameter %}
-    if ({{parameter.name}}Size >= UINT32_MAX)
-    {
-        {{parameter.name}}Size = UINT32_MAX;
-    }
-    else
-    {
-        {{parameter.name}}Size++;
+    {%- endif %}
+        if (!le_pack_UnpackSizePointerTuple( &_msgBufPtr,
+                                        &{{parameter.name}}Size,
+                                       (void**)&{{parameter|FormatParameterName}}, NULL ))
+        {
+            {{- caller() }}
+        }
+
+        {%- if parameter is StringParameter %}
+        if ({{parameter.name}}Size >= UINT32_MAX)
+        {
+            {{parameter.name}}Size = UINT32_MAX;
+        }
+        else
+        {
+            {{parameter.name}}Size++;
+        }
+        {%- endif %}
+    {%- if parameter is not InParameter %}
     }
     {%- endif %}
     {%- elif parameter is not InParameter %}
-    if (!le_pack_UnpackSize( &_msgBufPtr,
-                             &{{parameter.name}}Size ))
+    if (!_skip_{{parameter|FormatParameterName}})
     {
-        {{- caller() }}
-    }
-    if ( ({{parameter.name}}Size > {{parameter.maxCount}}){% if parameter is StringParameter %} &&
-         ({{parameter.name}}Size < UINT32_MAX){% endif %} )
-    {
-        LE_DEBUG("Adjusting {{parameter.name}}Size from %" PRIuS " to {{parameter.maxCount}}",
+        if (!le_pack_UnpackSize( &_msgBufPtr,
+                                 &{{parameter.name}}Size ))
+        {
+            {{- caller() }}
+        }
+        if ( ({{parameter.name}}Size > {{parameter.maxCount}}){% if parameter is StringParameter %} &&
+             ({{parameter.name}}Size < UINT32_MAX){% endif %} )
+        {
+            LE_DEBUG("Adjusting {{parameter.name}}Size from %" PRIuS " to {{parameter.maxCount}}",
                  {#- #} {{parameter.name}}Size);
-        {{parameter.name}}Size = {{parameter.maxCount}};
+            {{parameter.name}}Size = {{parameter.maxCount}};
+        }
+        {%- if parameter is StringParameter %}
+        if ({{parameter.name}}Size >= UINT32_MAX)
+        {
+            {{parameter.name}}Size = UINT32_MAX;
+        }
+        else
+        {
+            {{parameter.name}}Size++;
+        }
+        {%- endif %}
     }
-    {%- if parameter is StringParameter %}
-    if ({{parameter.name}}Size >= UINT32_MAX)
-    {
-        {{parameter.name}}Size = UINT32_MAX;
-    }
-    else
-    {
-        {{parameter.name}}Size++;
-    }
-    {%- endif %}
     {%- elif parameter is StringParameter %}
     if (!le_pack_UnpackString( &_msgBufPtr,
                                {{parameter|FormatParameterName}},
