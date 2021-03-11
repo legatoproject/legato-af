@@ -373,8 +373,7 @@ err:
 //--------------------------------------------------------------------------------------------------
 static le_result_t StartApp
 (
-    const App_t* appPtr,
-    bool         registerCleanUpDestructor
+    const App_t* appPtr
 )
 {
     uint32_t taskNum;
@@ -397,7 +396,7 @@ static le_result_t StartApp
                                        currentTaskPtr->defaultArgc,
                                        currentTaskPtr->defaultArgv,
                                        NULL,
-                                       registerCleanUpDestructor);
+                                       false);
         if (result != LE_OK)
         {
             return result;
@@ -591,7 +590,7 @@ LE_SHARED void le_microSupervisor_Main
             continue;
         }
 
-        if (StartApp(currentAppPtr, false) != LE_OK)
+        if (StartApp(currentAppPtr) != LE_OK)
         {
             LE_FATAL("Failed to start app '%s'", currentAppPtr->appNameStr);
         }
@@ -634,7 +633,7 @@ le_result_t LE_SHARED le_microSupervisor_StartApp
         return LE_OK;
     }
 
-    return StartApp(currentAppPtr, true);
+    return StartApp(currentAppPtr);
 }
 
 
