@@ -270,6 +270,12 @@ static le_result_t CreateParameterList
     atCmdPtr->parameterIndex = 0;
     memset(atCmdPtr->parameterList, 0, sizeof(atCmdPtr->parameterList));
 
+    // Check if this AT Command has parameters, if not return
+    if (atCmdPtr->type != LE_ATSERVER_TYPE_PARA)
+    {
+        return LE_OK;
+    }
+
     struct le_atProxy_StaticCommand* atCmdRegistryPtr = atProxy_GetCmdRegistry();
 
     // Check the operator character
@@ -329,12 +335,6 @@ static le_result_t CreateParameterList
                         stringParam = true;
                     }
                 }
-            break;
-
-            case AT_TOKEN_QUESTIONMARK:
-            break;
-
-            case AT_TOKEN_SPACE:
             break;
 
             case AT_TOKEN_COMMA:
@@ -408,10 +408,33 @@ static le_result_t CreateParameterList
                 }
             break;
 
-            default:
+            case AT_TOKEN_ZERO:
+            case AT_TOKEN_ONE:
+            case AT_TOKEN_TWO:
+            case AT_TOKEN_THREE:
+            case AT_TOKEN_FOUR:
+            case AT_TOKEN_FIVE:
+            case AT_TOKEN_SIX:
+            case AT_TOKEN_SEVEN:
+            case AT_TOKEN_EIGHT:
+            case AT_TOKEN_NINE:
                 if (startIndex == AT_PROXY_PARAMETER_NONE)
                 {
                     startIndex = i;  // Mark the start of a new parameter
+                }
+            break;
+
+            default: // Only supported if inside a quote
+                if (startIndex != AT_PROXY_PARAMETER_NONE)
+                {
+                    if (!openQuote)
+                    {
+                        return LE_BAD_PARAMETER;
+                    }
+                }
+                else
+                {
+                    return LE_BAD_PARAMETER;
                 }
             break;
         }
@@ -587,6 +610,32 @@ static void StoreUnsolicitedResponse
     le_dls_Queue(&(atCmdPtr->unsolicitedList), &(rspStringPtr->link));
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Helper function to handle parser errors
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+static void ParseError
+(
+    struct le_atProxy_AtCommandSession* atCmdPtr,  ///< [IN] AT Command Session Pointer
+    uint32_t errorCode                             ///< [IN] CME Error Code
+)
+{
+    // Send an error to the Serial UART
+    atProxyCmdHandler_GenerateErrorOutputResponse(
+        atCmdPtr->port,
+        errorCode);
+
+    // Drop the buffer contents and start again
+    atCmdPtr->index = 0;
+    atCmdPtr->operatorIndex = 0;
+    atCmdPtr->rxState = PARSER_SEARCH_A;
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Parse incoming characters
@@ -654,6 +703,30 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
                         // AT Command Registry
                         SearchAtCmdRegistry(atCmdPtr);
                     }
+                    else if ((atCmdPtr->type == LE_ATSERVER_TYPE_READ) &&
+                             ((atCmdPtr->operatorIndex + 1) != i))
+                    {
+                        // For all READ operations, confirm that there are
+                        // no additional characters between
+                        // the operator ("?") and the carriage return.
+                        // If so, throw an error.
+
+                        LE_DEBUG("Parse error - Malformed AT READ command");
+                        ParseError(atCmdPtr, LE_AT_PROXY_CME_ERROR_OPER_NOT_ALLOWED);
+                        return;
+                    }
+                    else if ((atCmdPtr->type == LE_ATSERVER_TYPE_TEST) &&
+                             ((atCmdPtr->operatorIndex + 2) != i))
+                    {
+                        // For all TEST operations, confirm that there are
+                        // no additional characters between
+                        // the operator ("=?") and the carriage return
+                        // If so, throw an error.
+
+                        LE_DEBUG("Parse error - Malformed AT TEST command");
+                        ParseError(atCmdPtr, LE_AT_PROXY_CME_ERROR_OPER_NOT_ALLOWED);
+                        return;
+                    }
 
                     // Process AT Command
                     ProcessAtCmd(atCmdPtr);
@@ -708,9 +781,11 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
                                 // AT Command Registry
                                 SearchAtCmdRegistry(atCmdPtr);
                             }
-                            else
+                            else if ((atCmdPtr->buffer[atCmdPtr->operatorIndex] ==
+                                        AT_TOKEN_EQUAL) &&
+                                     (i == (atCmdPtr->operatorIndex + 1)))
                             {
-                                // Set the operation type to 'Read'
+                                // Set the operation type to 'Test'
                                 atCmdPtr->type = LE_ATSERVER_TYPE_TEST;
                             }
                         break;
@@ -730,7 +805,7 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
                                 // Mark the operator index for the AT Command
                                 atCmdPtr->operatorIndex = i;
 
-                                // Set the operation type to 'Read'
+                                // Set the operation type to 'Parameter'
                                 atCmdPtr->type = LE_ATSERVER_TYPE_PARA;
 
                                 // Try to look for AT Command in the
@@ -754,17 +829,10 @@ LE_SHARED void atProxyCmdHandler_ParseBuffer
     if (atCmdPtr->index >= LE_ATDEFS_COMMAND_MAX_LEN)
     {
         // Send an error to the Serial UART
-        atProxyCmdHandler_GenerateErrorOutputResponse(
-            atCmdPtr->port,
-            LE_AT_PROXY_CME_ERROR_OPER_NOT_SUPPORTED);
+        ParseError(atCmdPtr, LE_AT_PROXY_CME_ERROR_OPER_NOT_SUPPORTED);
 
         LE_ERROR("AT Command string is too long, maximum supported length is %d",
                  LE_ATDEFS_COMMAND_MAX_LEN);
-
-        // Drop the buffer contents and start again
-        atCmdPtr->index = 0;
-        atCmdPtr->operatorIndex = 0;
-        atCmdPtr->rxState = PARSER_SEARCH_A;
     }
 }
 
@@ -1013,7 +1081,7 @@ LE_SHARED void atProxyCmdHandler_GenerateErrorOutputResponse
     ErrorCodesMode_t errorCodeMode = atProxy_GetExtendedErrorCodes();
 
     // Set the pattern string
-    const char* pattern = LE_ATDEFS_CME_ERROR;
+    const char* pattern = LE_AT_PROXY_CME_ERROR_RESP;
 
     // Send the AT Server Error result code
     atProxy_SendFinalResultCode(

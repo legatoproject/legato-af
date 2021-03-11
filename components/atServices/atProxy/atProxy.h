@@ -22,6 +22,9 @@
 #define LE_AT_PROXY_CME_ERROR   "+CME ERROR: "
 #define LE_AT_PROXY_CMS_ERROR   "+CMS ERROR: "
 
+#define LE_AT_PROXY_CME_ERROR_RESP "\r\n+CME ERROR: "
+#define LE_AT_PROXY_CMS_ERROR_RESP "\r\n+CMS ERROR: "
+
 // Intermediate response.
 #define LE_AT_PROXY_CONNECT     "\r\nCONNECT\r\n"
 
