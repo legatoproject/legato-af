@@ -38,7 +38,11 @@ static void mdc_DefaultPATest()
                "Test le_mdc_GetSessionState()");
 
     LE_TEST_OK(LE_FAULT == le_mdc_SetPDP(profileRef, LE_MDC_PDP_IPV4), "Test le_mdc_SetPDP()");
+#if LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
     LE_TEST_OK(LE_FAULT == le_mdc_SetDefaultAPN(profileRef), "Test le_mdc_SetDefaultAPN()");
+#else
+    LE_TEST_OK(LE_UNSUPPORTED == le_mdc_SetDefaultAPN(profileRef), "Test le_mdc_SetDefaultAPN()");
+#endif
     LE_TEST_OK(LE_FAULT == le_mdc_SetAPN(profileRef, "sp.telus.com"), "Test le_mdc_SetAPN()");
     LE_TEST_OK(LE_FAULT == le_mdc_SetAuthentication(profileRef,
                                                     LE_MDC_AUTH_PAP,

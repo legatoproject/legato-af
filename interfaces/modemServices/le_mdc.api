@@ -965,6 +965,7 @@ FUNCTION le_result_t SetAPN
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_UNSUPPORTED if default APN switching is disabled
  *      - LE_FAULT for all other errors
  *
  * @note
