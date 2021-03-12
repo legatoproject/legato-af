@@ -200,6 +200,13 @@ config ENABLE_SIM_WAKEUP_FALLBACK
     Allow the setting of SIM fallback options for device wakeup/
     initialization.
 
+config ENABLE_DEFAULT_APN_SWITCHING
+  bool "Enable default apn switching"
+  default y
+  ---help---
+    In the event that sim is roaming, the module will automatically
+    switch to the default APN of the sim.
+
 endmenu
 
 menu "Secure Storage"

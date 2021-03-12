@@ -320,8 +320,13 @@ static void SetConfiguration
     // Set APN
     if (0 == strncmp(configuration.apn, automaticApn, sizeof(automaticApn)))
     {
+#if LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
         // Set default APN
         LE_ASSERT(LE_OK == le_mdc_SetDefaultAPN(*profileRefPtr));
+#else
+        // Default APN switching should be disabled. Thus we should use SetApn.
+        LE_ASSERT(LE_OK == le_mdc_SetAPN(*profileRefPtr, configuration.apn));
+#endif
     }
     else
     {

@@ -414,6 +414,7 @@ static le_mdc_ProfileRef_t CreateModemProfile
     return profilePtr->profileRef;
 }
 
+#if LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
 // -------------------------------------------------------------------------------------------------
 /**
  *  This function will attempt to read APN definition for MCC/MNC in file apnFilePtr
@@ -623,6 +624,7 @@ static le_result_t FindApnWithIccidFromFile
     return result;
 #endif
 }
+#endif //LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2400,6 +2402,7 @@ le_result_t le_mdc_SetAPN
  * @return
  *      - LE_OK on success
  *      - LE_BAD_PARAMETER if an input parameter is not valid
+ *      - LE_UNSUPPORTED if default APN switching is disabled
  *      - LE_FAULT for all other errors
  *
  * @note
@@ -2411,6 +2414,7 @@ le_result_t le_mdc_SetDefaultAPN
     le_mdc_ProfileRef_t profileRef ///< [IN] Query this profile object
 )
 {
+#if LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
     le_result_t error = LE_FAULT;
     char mccString[LE_MRC_MCC_BYTES]           = {0};
     char mncString[LE_MRC_MNC_BYTES]           = {0};
@@ -2460,6 +2464,9 @@ le_result_t le_mdc_SetDefaultAPN
 
     // Save the APN value into the modem
     return le_mdc_SetAPN(profileRef, defaultApn);
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------

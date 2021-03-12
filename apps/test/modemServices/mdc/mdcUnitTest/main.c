@@ -335,7 +335,8 @@ static void TestMdc_Configuration( void )
 
     /* stop the session */
     LE_ASSERT_OK(le_mdc_StopSession(ProfileRef[0]));
-
+// If default APN switching is disabled, changing MNC/MCC or ICCID wont change the APN.
+#if LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
     /* Test default APNs */
     char homeMcc[] = "000";
     char homeMnc[] = "00";
@@ -365,6 +366,9 @@ static void TestMdc_Configuration( void )
     /* Check APN */
     LE_ASSERT_OK(le_mdc_GetAPN(ProfileRef[2], apn, sizeof(apn)));
     LE_ASSERT(0 == strcmp("internet.sierrawireless.com", apn));
+#else
+    LE_ASSERT(LE_UNSUPPORTED == le_mdc_SetDefaultAPN(ProfileRef[2]));
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
