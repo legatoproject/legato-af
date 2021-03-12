@@ -322,21 +322,96 @@ void le_lpt_RemoveEDrxParamsChangeHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the lowest power saving mode that the module can enter.
+ * Set the PSM activation state.
  *
  * @return
- *      - LE_OK             The function succeeded.
- *      - LE_BAD_PARAMETER  A parameter is invalid.
- *      - LE_UNSUPPORTED    Operation is not supported.
- *      - LE_FAULT          The function failed.
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    PSM is not supported by the platform.
+ *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_lpt_SetPmMode
+le_result_t le_lpt_SetPSMState
 (
-    le_lpt_PMMode_t mode    ///< [IN] Power saving mode
+    le_onoff_t          activation  ///< [IN] PSM activation state.
 )
 {
-    return pa_lpt_SetPmMode(mode);
+    return pa_lpt_SetPSMState(activation);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Power Saving Mode Setting.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    PSM is not supported by the platform.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_lpt_SetPSMValue
+(
+    uint8_t rqstPeriodicRau,        ///< [IN] Requested periodic RAU
+    uint8_t rqstGprsRdyTimer,       ///< [IN] Requested GPRS Ready timer
+    uint8_t rqstPeriodicTau,        ///< [IN] Requested periodic TAU
+    uint8_t rqstActiveTimer         ///< [IN] Requested active timer
+)
+{
+    return pa_lpt_SetPSMValue(rqstPeriodicRau,
+                              rqstGprsRdyTimer,
+                              rqstPeriodicTau,
+                              rqstActiveTimer);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Power Saving Mode Setting.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    PSM is not supported by the platform.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_lpt_GetPSMValue
+(
+    uint8_t* rqstPeriodicRauPtr,       ///< [OUT] Requested periodic RAU
+    uint8_t* rqstGprsRdyTimerPtr,      ///< [OUT] Requested GPRS Ready timer
+    uint8_t* rqstPeriodicTauPtr,       ///< [OUT] Requested periodic TAU
+    uint8_t* rqstActiveTimerPtr        ///< [OUT] Requested active timer
+)
+{
+    if (rqstPeriodicRauPtr == NULL)
+    {
+        LE_CRIT("rqstPeriodicRauPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (rqstGprsRdyTimerPtr == NULL)
+    {
+        LE_CRIT("rqstGprsRdyTimerPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (rqstPeriodicTauPtr == NULL)
+    {
+        LE_CRIT("rqstPeriodicTauPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+
+    if (rqstActiveTimerPtr == NULL)
+    {
+        LE_CRIT("rqstActiveTimerPtr is NULL!");
+        return LE_BAD_PARAMETER;
+    }
+
+    return pa_lpt_GetPSMValue(rqstPeriodicRauPtr,
+                              rqstGprsRdyTimerPtr,
+                              rqstPeriodicTauPtr,
+                              rqstActiveTimerPtr);
 }
 
 //--------------------------------------------------------------------------------------------------

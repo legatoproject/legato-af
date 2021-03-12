@@ -64,6 +64,12 @@
  *
  * The handler can be removed with le_lpt_RemoveEDrxParamsChangeHandler().
  *
+ * @section le_lpt_PSM PSM
+ *
+ * The power saving mode (PSM) allows user to control various PSM parameters such as the extended
+ * periodic RAU value, the requested GPRS READY value, the requested extended periodic TAU value
+ * and the requested Active Time value which are defined in 3GPP TS 27.007 version 12.7.0 Release 12.
+ *
  * <HR>
  *
  * Copyright (C) Sierra Wireless Inc.
@@ -94,19 +100,6 @@ ENUM EDrxRat
     EDRX_RAT_LTE_M1,        ///< E-UTRAN (WB-S1 mode)
     EDRX_RAT_LTE_NB1,       ///< E-UTRAN (NB-S1 mode)
     EDRX_RAT_MAX            ///< Invalid
-};
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Power management mode enum
- */
-//--------------------------------------------------------------------------------------------------
-ENUM PMMode
-{
-    PMMODE_SLEEP,           ///< Sleep
-    PMMODE_LITEHIBERNATE,   ///< Lite hibernation
-    PMMODE_HIBERNATE,       ///< Hibernate
-    PMMODE_MAX              ///< Invalid
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -232,16 +225,54 @@ EVENT EDrxParamsChange
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the lowest power management mode that the module can enter.
+ * Set the PSM activation state.
  *
  * @return
  *  - LE_OK             The function succeeded.
  *  - LE_BAD_PARAMETER  A parameter is invalid.
- *  - LE_UNSUPPORTED    Operation is not supported.
+ *  - LE_UNSUPPORTED    PSM is not supported by the platform.
  *  - LE_FAULT          The function failed.
  */
 //--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetPmMode
+FUNCTION le_result_t SetPSMState
 (
-    PMMode mode
+    le_onoff_t  activation      IN     ///< PSM activation state.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Power Saving Mode Setting.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    PSM is not supported by the platform.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetPSMValue
+(
+    uint8 rqstPeriodicRau       IN, ///< Requested periodic RAU.
+    uint8 rqstGprsRdyTimer      IN, ///< Requested GPRS Ready timer.
+    uint8 rqstPeriodicTau       IN, ///< Requested periodic TAU.
+    uint8 rqstActiveTimer       IN  ///< Requested active timer.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the Power Saving Mode Setting.
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    PSM is not supported by the platform.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPSMValue
+(
+    uint8 rqstPeriodicRau        OUT, ///< Requested periodic RAU.
+    uint8 rqstGprsRdyTimer       OUT, ///< Requested GPRS Ready timer.
+    uint8 rqstPeriodicTau        OUT, ///< Requested periodic TAU.
+    uint8 rqstActiveTimer        OUT  ///< Requested active timer.
 );
