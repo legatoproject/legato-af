@@ -14,6 +14,51 @@
 #define EXIT_DIFFERENT_BOOT_SOURCE (2)
 
 
+/*
+// The format 'pmtool bootOn status gpio' is shown below,
+
+        gpio###\n
+        \tEdge:xxxxxxx\n
+        \tPull:xxxx\n
+        \tTriggered:#\n
+
+        Returned example:
+        gpio38
+            Edge:falling
+            Pull:none
+            Triggered:1
+
+// Note: The block only includes Edge, Pull, and Triggered. And the Triggered needs
+// an extra byte to account for 'NA' cases.
+*/
+#define GPIO_MAX_STATUS_BLOCK_BYTES 41
+
+/*
+// Format of 'pmtool bootOn status adc' is shown below,
+
+        interval:###############\n
+        \tadc###\n
+        \tAbove:##############\n
+        \tBelow:##############\n
+        \tSelect:#\n
+        \tTriggered:#\n
+
+// Note: Block only counts Above, Below, Select, and Triggered. Also it gives an extra
+// byte for both Select and Triggered to account for 'NA' case.
+*/
+#define ADC_MAX_STATUS_BLOCK_BYTES 72
+
+/*
+// Format of 'pmtool bootOn status timer' is shown below,
+
+        Timer Information\n
+        \tTimeout:##########\n
+        \tTriggered:#\n
+
+// Note: Only printing Timeout and Triggered. Also it gives an extra
+// byte for Triggered to account for 'NA' case.
+*/
+#define TIMER_MAX_STATUS_BLOCK_BYTES 37
 //--------------------------------------------------------------------------------------------------
 /**
  * Prototype for command handler functions.
@@ -66,6 +111,17 @@ static union
     } bootReasonAdc;
 } Params;
 
+static enum
+{
+    ACTION_GET_ALL,
+    ACTION_GET_ALL_GPIO,
+    ACTION_GET_ALL_ADC,
+    ACTION_GET_ALL_TIMER,
+    ACTION_GET_ALL_SHUTDOWN,
+    ACTION_GET_SPECIFIC_GPIO,
+    ACTION_GET_SPECIFIC_ADC
+}
+Action = ACTION_GET_ALL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -86,6 +142,7 @@ static void PrintHelp
                 pmtool bootOn gpio <gpioNum> <trigger>\n\
                 pmtool bootOn timer <timeOutVal>\n\
                 pmtool bootOn adc <adcNum> <pollingInterval> <bootAboveValue> <bootBelowValue>\n\
+                pmtool bootOn status [gpio <gpioNum>] [adc <adcNum>] <timer> <shutdown>\n\
                 pmtool shutdown\n\
                 pmtool bootReason gpio <gpioNum>\n\
                 pmtool bootReason timer\n\
@@ -112,6 +169,16 @@ static void PrintHelp
                     bootBelowValue, the system will boot if an ADC reading is either above\n\
                     bootAboveValue or below bootBelowValue. The pollingInterval parameter\n\
                     specifies the time in milliseconds between ADC samples.\n\
+            \n\
+                pmtool bootOn status [gpio <gpioNum>] [adc <adcNum>] <timer> <shutdown>\n\
+                  - Displays all the information set for gpio, adc, timer, and shutdown\n\
+                    strategies. If only 'status' is specified it will return all information.\n\
+                    If specified with 'gpio' it will return information on all GPIOs. If 'gpio'\n\
+                    and a 'gpioNum' is specified it will only return information about that\n\
+                    particular gpio. This is the same behaviour for ADC. The 'timer' parameter\n\
+                    provides information about its timeout settings. The 'shutdown' parameter\n\
+                    will provide information about which power mode the device will go into,\n\
+                    such as ULPM or PSM.\n\
             \n\
                 pmtool shutdown\n\
                   - Initiate shutdown of the device.\n\
@@ -442,6 +509,22 @@ static void PosArgCbSetGpioNum
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to parse the gpio number argument of the "pmtool bootOn status gpio <number>" command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TryPosArgCbSetGpioNum
+(
+    const char* arg  ///< [IN] Null terminated argument string
+)
+{
+    if (arg != NULL)
+    {
+        PosArgCbSetGpioNum(arg);
+        Action = ACTION_GET_SPECIFIC_GPIO;
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -521,6 +604,22 @@ static void PosArgCbSetAdcNum
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Try to parse the adc number argument of the "pmtool bootOn status adc <number> command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void TryPosArgCbSetAdcNum
+(
+    const char* arg  ///< [IN] Null terminated argument string
+)
+{
+    if (arg != NULL)
+    {
+        PosArgCbSetAdcNum(arg);
+        Action = ACTION_GET_SPECIFIC_ADC;
+    }
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -614,7 +713,302 @@ static void PosArgCbCheckAdcNum
     }
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print a specific GPIO information when it is provided in the "pmtool bootOn status gpio
+ * <number>" command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintSpecificGpio
+(
+    const char *gpio
+)
+{
+    // Buffer to hold the string passed back.
+    char gpioBuf[GPIO_MAX_STATUS_BLOCK_BYTES] = {0};
 
+    if (LE_OK != le_bootReason_GetGpioInfo(gpioBuf, GPIO_MAX_STATUS_BLOCK_BYTES, gpio))
+    {
+        fprintf(stderr, "Cannot get information for gpio: '%s'\n", gpio);
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        printf("GPIO Information:\n");
+        printf("%s\n", gpio);
+        printf("%s\n", gpioBuf);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print all GPIO information when "pmtool bootOn status gpio" or "pmtool bootOn status"
+ * command is called.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintAllGpio
+(
+)
+{
+    // Specified inside the le_bootReason api, the max array size is 100.
+    uint8_t gpioArr[100];
+    size_t arrSize = 0;
+
+    // Temporary storage of gpio.
+    char tempGpio[10] = "";
+
+    // Buffer to hold the string passed back from the le_bootReasonGetInfo.
+    char gpioBuf[GPIO_MAX_STATUS_BLOCK_BYTES] = {0};
+
+    // Get the gpio numbers filled into the gpioArr.
+    if (LE_OK != le_bootReason_GetGpioCount(gpioArr, &arrSize))
+    {
+        fprintf(stderr, "Cannot get the number of gpio available\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (arrSize > 0)
+    {
+        printf("GPIO Information:\n");
+
+        for (int i = 0; i < arrSize; i++)
+        {
+            // Printing the gpio information.
+            snprintf(tempGpio, sizeof(tempGpio), "gpio%d", gpioArr[i]);
+            memset(gpioBuf, 0, GPIO_MAX_STATUS_BLOCK_BYTES);
+            if (LE_OK != le_bootReason_GetGpioInfo(gpioBuf, GPIO_MAX_STATUS_BLOCK_BYTES, tempGpio))
+            {
+                fprintf(stderr, "Failed to get gpio info for: '%s'", tempGpio);
+            }
+            else
+            {
+                printf("%s\n", tempGpio);
+                printf("%s\n", gpioBuf);
+            }
+        }
+    }
+
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print a specific ADC information when it is provided in the "pmtool bootOn status adc
+ * <number>" command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintSpecificAdc
+(
+    const char *adc
+)
+{
+    // Buffer to hold the string passed back.
+    char interval[24] = "";
+    char adcBuf[ADC_MAX_STATUS_BLOCK_BYTES] = {0};
+
+    le_bootReason_GetAdcInterval(interval, sizeof(interval));
+    if (LE_OK != le_bootReason_GetAdcInfo(adcBuf, ADC_MAX_STATUS_BLOCK_BYTES, adc))
+    {
+        fprintf(stderr, "Cannot get information for adc: '%s'\n", adc);
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        printf("ADC Information:\n");
+        printf("%s\n", interval);
+        printf("%s\n", adc);
+        printf("%s\n", adcBuf);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print all ADC information when "pmtool bootOn status adc" or "pmtool bootOn status"
+ * command is called.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintAllAdc
+(
+)
+{
+    // Specified inside the le_bootReason api, the max array size is 100.
+    uint8_t adcArr[100];
+    size_t adcArrSize = 0;
+
+    // Temporary storage for adc.
+    char tempAdc[10] = "";
+
+    // Store the adc information here.
+    char interval[24] = "";
+    char adcBuf[ADC_MAX_STATUS_BLOCK_BYTES] = {0};
+
+    if (LE_OK != le_bootReason_GetAdcCount(adcArr, &adcArrSize))
+    {
+        fprintf(stderr, "Cannot get the number of adc available\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("ADC Information:\n");
+
+    if (LE_OK != le_bootReason_GetAdcInterval(interval, sizeof(interval)))
+    {
+        fprintf(stderr, "Cannot get the adc interval\n");
+    }
+    else
+    {
+        printf("%s\n", interval);
+    }
+
+    for (int i = 0; i < adcArrSize; i++)
+    {
+        // Print the adc info.
+        snprintf(tempAdc, sizeof(tempAdc), "adc%d", adcArr[i]);
+        memset(adcBuf, 0, ADC_MAX_STATUS_BLOCK_BYTES);
+        if (LE_OK != le_bootReason_GetAdcInfo(adcBuf, ADC_MAX_STATUS_BLOCK_BYTES, tempAdc))
+        {
+            fprintf(stderr, "Cannot get information for adc: '%s'\n", tempAdc);
+        }
+        else
+        {
+            printf("%s\n", tempAdc);
+            printf("%s\n", adcBuf);
+        }
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print the timer information when using "pmtool bootOn status timer" or "pmtool bootOn status"
+ * command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintTimerInfo
+(
+)
+{
+    char timer[TIMER_MAX_STATUS_BLOCK_BYTES] = {0};
+    if (LE_OK != le_bootReason_GetTimerInfo(timer, sizeof(timer)))
+    {
+        fprintf(stderr, "Cannot get the timer information\n");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        printf("Timer Information:\n%s\n", timer);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Print the shutdown strategy information when using "pmtool bootOn status shutdown" or
+ * "pmtool bootOn status" command.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintShutdownStrategy
+(
+)
+{
+    // Shutdown stuff
+    char shutdownStrategy[40] = {0};
+    if (LE_OK != le_bootReason_GetShutdownStrategy(shutdownStrategy, sizeof(shutdownStrategy)))
+    {
+        fprintf(stderr, "Cannot get the shutdown strategy information\n");
+        exit(EXIT_FAILURE);
+    }
+    else
+    {
+        printf("Shutdown Strategy Setting (ultra low power state):\n%s\n", shutdownStrategy);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command handler to call the print functions depending on which arguments have been passed to
+ * pmtool.
+ */
+//--------------------------------------------------------------------------------------------------
+static void PrintBootOnStatus
+(
+)
+{
+    if (Action == ACTION_GET_ALL)
+    {
+        PrintAllGpio();
+        PrintAllAdc();
+        PrintTimerInfo();
+        PrintShutdownStrategy();
+    }
+    else if (Action == ACTION_GET_ALL_GPIO)
+    {
+        PrintAllGpio();
+    }
+    else if (Action == ACTION_GET_SPECIFIC_GPIO)
+    {
+        char tempGpio[10] = {0};
+        snprintf(tempGpio, sizeof(tempGpio), "gpio%u", Params.bootOnGpio.num);
+        PrintSpecificGpio(tempGpio);
+    }
+    else if (Action == ACTION_GET_ALL_ADC)
+    {
+        PrintAllAdc();
+    }
+    else if (Action == ACTION_GET_SPECIFIC_ADC)
+    {
+        char tempAdc[10] = {0};
+        snprintf(tempAdc, sizeof(tempAdc), "adc%u", Params.bootOnAdc.num);
+        PrintSpecificAdc(tempAdc);
+    }
+    else if (Action == ACTION_GET_ALL_TIMER)
+    {
+        PrintTimerInfo();
+    }
+    else if (Action == ACTION_GET_ALL_SHUTDOWN)
+    {
+        PrintShutdownStrategy();
+    }
+    else
+    {
+        // Should never be here.
+        fprintf(stderr, "Error printing bootOn status");
+        exit(EXIT_FAILURE);
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Callback used to select what we will print depending on which arguments have been passed to
+ * pmtool.
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetBootOnStatusCallBack
+(
+    const char* argPtr
+)
+{
+    if (strcmp(argPtr, "gpio") == 0)
+    {
+        Action = ACTION_GET_ALL_GPIO;
+        le_arg_AddPositionalCallback(TryPosArgCbSetGpioNum);
+    }
+    else if (strcmp(argPtr, "timer") == 0)
+    {
+        Action = ACTION_GET_ALL_TIMER;
+    }
+    else if (strcmp(argPtr, "adc") == 0)
+    {
+        Action = ACTION_GET_ALL_ADC;
+        le_arg_AddPositionalCallback(TryPosArgCbSetAdcNum);
+    }
+    else if (strcmp(argPtr, "shutdown") == 0)
+    {
+        Action = ACTION_GET_ALL_SHUTDOWN;
+    }
+    else
+    {
+        // Default to print all.
+        fprintf(stderr, "Couldn't parse provided status option: \"%s\".\n", argPtr);
+        exit(EXIT_FAILURE);
+    }
+}
 //--------------------------------------------------------------------------------------------------
 /**
  * Callback function to set boot source depending on command line arguments.
@@ -643,6 +1037,13 @@ static void SetBootSource
         le_arg_AddPositionalCallback(PosArgCbSetAdcPollingInterval);
         le_arg_AddPositionalCallback(PosArgCbSetAdcBootAboveValue);
         le_arg_AddPositionalCallback(PosArgCbSetAdcBootBelowValue);
+    }
+    else if (strcmp(argPtr, "status") == 0)
+    {
+        CommandHandler = PrintBootOnStatus;
+        // Optional options following status, by default it will print everything.
+        le_arg_AddPositionalCallback(GetBootOnStatusCallBack);
+        le_arg_AllowLessPositionalArgsThanCallbacks();
     }
     else
     {

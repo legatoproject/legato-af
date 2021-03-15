@@ -8,6 +8,7 @@ Use the Power Manager @c pmtool to set power management options.
 pmtool bootOn gpio  <gpioNum> <triggerOption>
 pmtool bootOn timer <timeOutVal>
 pmtool bootOn adc <adcNum> <pollingInterval> <bootAboveValue> <bootBelowValue>
+pmtool bootOn status [gpio <gpioNum>] [adc <adcNum>] <timer> <shutdown>
 pmtool shutdown
 pmtool bootReason gpio <gpioNum>
 pmtool bootReason adc <adcNum>
@@ -34,14 +35,24 @@ pmtool query
 > bootAboveValue or below bootBelowValue. The pollingInterval parameter
 > specifies the time in milliseconds between ADC samples.
 
+@verbatim pmtool bootOn status [gpio <gpioNum>] [adc <adcNum>] <timer> <shutdown>@endverbatim
+> Displays all the information set for gpio, adc, timer, and shutdown strategies.
+> If only 'status' is specified it will return all information. If specified with 'gpio'
+> it will return information on all GPIOs. If 'gpio' and a 'gpioNum'
+> is specified it will only return information about that particular gpio.
+> This is the same behaviour for ADC. The 'timer' parameter provides
+> information about its timeout settings. The 'shutdown' parameter will provide
+> information about which power mode the device will go into, such as ULPM
+> or PSM.
+
 @verbatim pmtool shutdown@endverbatim
 > Initiates target device shutdown.
 
 @verbatim pmtool bootReason gpio  <gpioNum>@endverbatim
-> Checks if the specified gpio triggers' target device boot.
+> Checks if the specified gpio triggered target device boot.
 
 @verbatim pmtool bootReason timer@endverbatim
-> Checks if the timer expiry triggers' target device boot.
+> Checks if the timer expiry triggered target device boot.
 
 @verbatim pmtool bootReason adc <adcNum>@endverbatim
 > Checks if the specified adc triggered device boot.

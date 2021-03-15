@@ -57,6 +57,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 
+DEFINE MAX_GPIO_ADC_COUNT = 100;
+DEFINE MAX_GPIO_NAME_BYTES = 10;
+DEFINE MAX_ADC_NAME_BYTES = 10;
+DEFINE MAX_GPIO_STATUS_BLOCK_BYTES = 41;
+DEFINE MAX_ADC_STATUS_BLOCK_BYTES = 72;
+DEFINE MAX_ADC_INTERVAL_BYTES = 24;
+DEFINE MAX_TIMER_STATUS_BLOCK_BYTES = 37;
+DEFINE MAX_SHUTDOWN_STRATEGY_BLOCK_BYTES = 40;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -103,4 +111,104 @@ FUNCTION bool WasGpio
 FUNCTION bool WasAdc
 (
     uint32 adcNum IN        ///< ADC number
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of GPIOs that are specified in the system.
+ *
+ * @return
+ *      LE_OK if we successfully get all the GPIOs and place them in the array.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetGpioCount
+(
+    uint8 gpioArray[MAX_GPIO_ADC_COUNT] OUT
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the information for a specific GPIO and place all the information into the buffer.
+ *
+ * @return
+ *      LE_OK if we successfully get all the information.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetGpioInfo
+(
+    string buf[MAX_GPIO_STATUS_BLOCK_BYTES] OUT,
+    string gpio[MAX_GPIO_NAME_BYTES] IN
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the number of ADCs that are specified in the system.
+ *
+ * @return
+ *      LE_OK if we successfully get all the ADCs and place them in the array.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAdcCount
+(
+    uint8 adcArray[MAX_GPIO_ADC_COUNT] OUT
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the information for a specific ADC and place all the information into the buffer.
+ *
+ * @return
+ *      LE_OK if we successfully get all the information.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAdcInfo
+(
+    string buf[MAX_ADC_STATUS_BLOCK_BYTES] OUT,
+    string adc[MAX_ADC_NAME_BYTES] IN
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the information about ADC interval and place all the information into the buffer.
+ *
+ * @return
+ *      LE_OK if we successfully get all the information.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetAdcInterval
+(
+    string buf[MAX_ADC_INTERVAL_BYTES] OUT
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the information about timer and place all the information into the buffer.
+ *
+ * @return
+ *      LE_OK if we successfully get all the information.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetTimerInfo
+(
+    string buf[MAX_TIMER_STATUS_BLOCK_BYTES] OUT
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the information about shutdown strategy and place all the information into the buffer.
+ *
+ * @return
+ *      LE_OK if we successfully get all the information.
+ *      LE_FAULT otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetShutdownStrategy
+(
+    string buf[MAX_SHUTDOWN_STRATEGY_BLOCK_BYTES] OUT
 );
