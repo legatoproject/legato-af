@@ -100,9 +100,9 @@ static const unsigned int Crc32Table[256] =
 //--------------------------------------------------------------------------------------------------
 uint32_t le_crc_Crc32
 (
-    uint8_t* addressPtr,///< [IN] Input buffer
-    size_t   size,      ///< [IN] Number of bytes to read
-    uint32_t crc        ///< [IN] Starting CRC seed
+    const uint8_t   *addressPtr,    ///< [IN] Input buffer
+    size_t           size,          ///< [IN] Number of bytes to read
+    uint32_t         crc            ///< [IN] Starting CRC seed
 )
 {
     for (; size > 0 ; size--)
