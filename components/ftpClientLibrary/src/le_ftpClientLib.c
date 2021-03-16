@@ -1370,6 +1370,15 @@ static void FtpClientStateMachine
                             contextPtr->response = response1;
                         }
                     }
+                    else if (response == RESP_NO_FILE)
+                    {
+                        // Filename is unavailable, retain the connection on control session
+                        // and close the data session.
+                        FtpClientDisconnectDataServer(contextPtr);
+                        contextPtr->controlState = FTP_DATAEND;
+                        restartLoop = true;
+                        break;
+                    }
                 }
 
                 // Fail case.
@@ -1398,6 +1407,15 @@ static void FtpClientStateMachine
                             contextPtr->controlState = FTP_XFERING;
                             break;
                         }
+                    }
+                    else if (response == RESP_NO_FILE)
+                    {
+                        // Filename is unavailable, retain the connection on control session
+                        // and close the data session.
+                        FtpClientDisconnectDataServer(contextPtr);
+                        contextPtr->controlState = FTP_DATAEND;
+                        restartLoop = true;
+                        break;
                     }
                 }
 
@@ -1486,11 +1504,22 @@ static void FtpClientStateMachine
                 contextPtr->controlState = FTP_LOGGED;
                 contextPtr->operation = OP_NONE;
                 contextPtr->result = LE_OK;
-                // Call user defined callback function.
-                if (contextPtr->eventHandlerFunc != NULL)
+
+                // Data transfering is completed, call user defined callback function.
+                if (contextPtr->eventHandlerFunc)
                 {
+                    if (contextPtr->response == RESP_TRANS_OK)
+                    {
+                        // Data transfering successfully.
+                        callbackEvent = LE_FTP_CLIENT_EVENT_DATAEND;
+                    }
+                    else
+                    {
+                        // Operation on unavailable file, will AT ERROR response.
+                        callbackEvent = LE_FTP_CLIENT_EVENT_ERROR;
+                    }
                     contextPtr->eventHandlerFunc(contextPtr,
-                                                 LE_FTP_CLIENT_EVENT_DATAEND,
+                                                 callbackEvent,
                                                  contextPtr->result,
                                                  contextPtr->eventHandlerDataPtr);
                 }
