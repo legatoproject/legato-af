@@ -33,14 +33,6 @@ pools:
     le_atServer.le_atServer_Messages = 2
 }
 
-requires:
-{
-    component:
-    {
-        ${LEGATO_ATPROXY_PA}
-    }
-}
-
 cflags:
 {
     -I${SWI_ROOT}/include

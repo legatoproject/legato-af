@@ -14,6 +14,7 @@
 #include "legato.h"
 #include "interfaces.h"
 #include "atProxy.h"
+#include "pa_atProxy.h"
 #include "pa_port.h"
 #include "pa_remote.h"
 #include "atProxyCmdHandler.h"
@@ -1080,7 +1081,7 @@ LE_SHARED void atProxyCmdHandler_GenerateErrorOutputResponse
 )
 {
     // Get the current Extended Error Code mode
-    ErrorCodesMode_t errorCodeMode = atProxy_GetExtendedErrorCodes();
+    ErrorCodesMode_t errorCodeMode = pa_atProxy_GetExtendedErrorCodes();
 
     // Set the pattern string
     const char* pattern = LE_AT_PROXY_CME_ERROR_RESP;

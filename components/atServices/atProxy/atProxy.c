@@ -83,13 +83,6 @@ extern le_ref_MapRef_t  atCmdSessionRefMap;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Error codes current mode
- */
-//--------------------------------------------------------------------------------------------------
-static ErrorCodesMode_t ErrorCodesMode = MODE_EXTENDED;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Pre-formatted strings corresponding to AT commands +CME error codes
  * (see 3GPP TS 27.007 9.2)
  *
@@ -754,7 +747,7 @@ void le_atServer_SendFinalResultCode
     atProxy_SendFinalResultCode(
         atCmdSessionPtr->port,
         errorCode,
-        ErrorCodesMode,
+        pa_atProxy_GetExtendedErrorCodes(),
         finalResult,
         pattern,
         patternLen);
@@ -919,7 +912,7 @@ void le_atServer_EnableExtendedErrorCodes
     le_atServer_ServerCmdRef_t cmdRef  ///< [IN] Asynchronous Server Command Reference
 )
 {
-    atProxy_EnableExtendedErrorCodes();
+    pa_atProxy_EnableExtendedErrorCodes();
 
     le_atServer_EnableExtendedErrorCodesRespond(cmdRef);
 }
@@ -936,57 +929,9 @@ void le_atServer_DisableExtendedErrorCodes
     le_atServer_ServerCmdRef_t cmdRef  ///< [IN] Asynchronous Server Command Reference
 )
 {
-    atProxy_DisableExtendedErrorCodes();
+    pa_atProxy_DisableExtendedErrorCodes();
 
     le_atServer_DisableExtendedErrorCodesRespond(cmdRef);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function enables extended error codes on the selected device
- *
- * @return none
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void atProxy_EnableExtendedErrorCodes
-(
-    void
-)
-{
-    ErrorCodesMode = MODE_EXTENDED;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function disables the current error codes mode on the selected device
- *
- * @return none
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED void atProxy_DisableExtendedErrorCodes
-(
-    void
-)
-{
-    ErrorCodesMode = MODE_DISABLED;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function retrieves the current error codes mode on the selected device
- *
- * @return
- *      - MODE_EXTENDED  If extended error code is enabled
- *      - MODE_VERBOSE   If extended verbose error code is enabled (NOTE: Not Supported)
- *      - MODE_DISABLED  If extended error code is disabled
- */
-//--------------------------------------------------------------------------------------------------
-LE_SHARED ErrorCodesMode_t atProxy_GetExtendedErrorCodes
-(
-    void
-)
-{
-    return ErrorCodesMode;
 }
 
 //-------------------------------------------------------------------------------------------------

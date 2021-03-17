@@ -87,46 +87,6 @@ LE_SHARED struct le_atProxy_StaticCommand* atProxy_GetCmdRegistryEntry
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function enables extended error codes on the selected device
- *
- * @return none
- */
-//--------------------------------------------------------------------------------------------------
-void atProxy_EnableExtendedErrorCodes
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function disables the current error codes mode on the selected device
- *
- * @return none
- */
-//--------------------------------------------------------------------------------------------------
-void atProxy_DisableExtendedErrorCodes
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function retrieves the current error codes mode on the selected device
- *
- * @return
- *      - MODE_EXTENDED  If extended error code is enabled
- *      - MODE_VERBOSE   If extended verbose error code is enabled (NOTE: Not Supported)
- *      - MODE_DISABLED  If extended error code is disabled
- */
-//--------------------------------------------------------------------------------------------------
-ErrorCodesMode_t atProxy_GetExtendedErrorCodes
-(
-    void
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Helper function to generate and send the final result code.
  *
  * @return none
