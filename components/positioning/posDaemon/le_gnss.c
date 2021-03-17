@@ -130,6 +130,17 @@ typedef struct le_gnss_PositionSample
     int32_t           altitude;               ///< altitude
     bool              altitudeOnWgs84Valid;   ///< if true, altitude with respect to the WGS-84 is
                                               ///< set
+
+    bool              horUncEllipseSemiMajorValid;
+                                              ///< if true, horUncEllipseSemiMajor is set
+    uint32_t          horUncEllipseSemiMajor; ///< Horizontal semi major elliptical uncertainty
+    bool              horUncEllipseSemiMinorValid;
+                                              ///< if true, horUncEllipseSemiMinor is set
+    uint32_t          horUncEllipseSemiMinor; ///< Horizontal semi minor elliptical uncertainity
+    bool              horConfidenceValid;
+                                              ///< if true, horConfidence is set
+    uint8_t           horConfidence;          ///< Horizontal confidence level
+
     int32_t           altitudeOnWgs84;        ///< altitude with respect to the WGS-84 ellipsoid
     bool              vAccuracyValid;         ///< if true, vertical accuracy is set
     int32_t           vAccuracy;              ///< vertical accuracy
@@ -825,6 +836,15 @@ static void GetPosSampleData
     posSampleDataPtr->directionAccuracy = paPosDataPtr->directionUncertainty;
     posSampleDataPtr->magneticDeviationValid = paPosDataPtr->magneticDeviationValid;
     posSampleDataPtr->magneticDeviation = paPosDataPtr->magneticDeviation;
+
+    // Horizontal uncertainty on semi major and semi minor axis
+    posSampleDataPtr->horUncEllipseSemiMajorValid = paPosDataPtr->horUncEllipseSemiMajorValid;
+    posSampleDataPtr->horUncEllipseSemiMajor = paPosDataPtr->horUncEllipseSemiMajor;
+    posSampleDataPtr->horUncEllipseSemiMinorValid = paPosDataPtr->horUncEllipseSemiMinorValid;
+    posSampleDataPtr->horUncEllipseSemiMinor = paPosDataPtr->horUncEllipseSemiMinor;
+    posSampleDataPtr->horConfidenceValid = paPosDataPtr->horConfidenceValid;
+    posSampleDataPtr->horConfidence = paPosDataPtr->horConfidence;
+
     // Date
     posSampleDataPtr->dateValid = paPosDataPtr->dateValid;
     posSampleDataPtr->year = paPosDataPtr->date.year;
@@ -1753,6 +1773,95 @@ le_result_t le_gnss_GetLocation
         }
     }
 
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the semi-major and semi-minor horizontal elliptical uncertainty.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the horizontal uncertainty data.
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (more info below).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note horUncEllipseSemiMajorPtr, horUncEllipseSemiMinorPtr and horConfidencePtr can be set to
+ *       NULL if not needed.
+ *
+ * @note The uncertainty values are given in metres with 2 decimal places.
+ *
+ * @note The confidence level is given in an integer percentage with values ranging from 0 to 99.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with UINT32_MAX or UINT8_MAX respective to their individual
+ *       types.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetEllipticalUncertainty
+(
+    le_gnss_SampleRef_t positionSampleRef,
+        ///< [IN] Position sample's reference.
+    uint32_t* horUncEllipseSemiMajorPtr,
+        ///< [OUT] Horizontal semi major elliptical uncertainty
+    uint32_t* horUncEllipseSemiMinorPtr,
+        ///< [OUT] Horizontal semi minor elliptical uncertainity
+    uint8_t* horConfidencePtr
+        ///< [OUT] Horizontal confidence level.
+)
+{
+    le_result_t result = LE_OK;
+    le_gnss_PositionSampleRequest_t* positionSampleRequestNodePtr
+                                            = le_ref_Lookup(PositionSampleMap,positionSampleRef);
+
+    // Check position sample's reference
+    result = ValidatePositionSamplePtr(positionSampleRequestNodePtr);
+    if (result != LE_OK)
+    {
+        return result;
+    }
+
+    if (horUncEllipseSemiMajorPtr)
+    {
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->horUncEllipseSemiMajorValid)
+        {
+            *horUncEllipseSemiMajorPtr
+                    = positionSampleRequestNodePtr->positionSampleNodePtr->horUncEllipseSemiMajor;
+        }
+        else
+        {
+            *horUncEllipseSemiMajorPtr = UINT32_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+    if (horUncEllipseSemiMinorPtr)
+    {
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->horUncEllipseSemiMinorValid)
+        {
+            *horUncEllipseSemiMinorPtr
+                    = positionSampleRequestNodePtr->positionSampleNodePtr->horUncEllipseSemiMinor;
+        }
+        else
+        {
+            *horUncEllipseSemiMinorPtr = UINT32_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
+    if (horConfidencePtr)
+    {
+        if (positionSampleRequestNodePtr->positionSampleNodePtr->horConfidenceValid)
+        {
+            // Confidence level is between 0 to 99.
+            *horConfidencePtr = positionSampleRequestNodePtr->positionSampleNodePtr->horConfidence;
+        }
+        else
+        {
+            *horConfidencePtr = UINT8_MAX;
+            result = LE_OUT_OF_RANGE;
+        }
+    }
     return result;
 }
 

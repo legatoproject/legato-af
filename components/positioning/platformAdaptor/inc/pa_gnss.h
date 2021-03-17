@@ -177,6 +177,21 @@ typedef struct {
     bool               directionUncertaintyValid;   ///< if true, direction uncertainty is set
     uint32_t           directionUncertainty;        ///< The direction uncertainty in degrees,
                                                     ///  with 1 decimal place
+
+    bool               horUncEllipseSemiMajorValid; ///< if true, horizontal uncertainty is set
+    uint32_t           horUncEllipseSemiMajor;      ///< The horizontal uncertainty in meters
+                                                    ///  on the semi-major axis, with 2 decimal
+                                                    ///  places
+
+    bool               horUncEllipseSemiMinorValid; ///< if true, horizontal uncertainty is set
+    uint32_t           horUncEllipseSemiMinor;      ///< The horizontal uncertainty in meters
+                                                    ///  on the semi-minor axis, with 2 decimal
+                                                    ///  places
+
+    bool               horConfidenceValid;  ///< if true, horizontal confidence is set
+    uint8_t            horConfidence;       ///< The horizontal confidence in percentage,
+                                            ///  with values from 0 to 99
+
     // UTC time
     bool               timeValid;           ///< if true, time is set
     pa_Gnss_Time_t     time;                ///< The time of the fix
