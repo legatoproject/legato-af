@@ -1289,6 +1289,40 @@ FUNCTION le_result_t GetLocation
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the semi-major and semi-minor horizontal elliptical uncertainty.
+ *
+ * @return
+ *  - LE_FAULT         Function failed to get the horizontal uncertainty data.
+ *  - LE_OUT_OF_RANGE  At least one of the retrieved parameters is invalid (more info below).
+ *  - LE_OK            Function succeeded.
+ *
+ * @note horUncEllipseSemiMajorPtr, horUncEllipseSemiMinorPtr and horConfidencePtr can be set to
+ *       NULL if not needed.
+ *
+ * @note The uncertainty values are given in metres with 2 decimal places.
+ *
+ * @note The confidence level is given in an integer percentage with values ranging from 0 to 99.
+ *
+ * @note In case the function returns LE_OUT_OF_RANGE, some of the retrieved parameters may be
+ *       valid. Please compare them with UINT32_MAX or UINT8_MAX respective to their individual
+ *       types.
+ *
+ * @note If the caller is passing an invalid Position sample reference into this function,
+ *       it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetEllipticalUncertainty
+(
+    Sample positionSampleRef IN,            ///< Position sample's reference.
+    uint32 horUncEllipseSemiMajor OUT,       ///< Horizontal semi major elliptical uncertainty
+                                            ///  [resolution 1e-2].
+    uint32 horUncEllipseSemiMinor OUT,       ///< Horizontal semi minor elliptical uncertainity
+                                            ///  [resolution 1e-2].
+    uint8 horConfidence OUT                  ///< Horizontal confidence level.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the position sample's altitude.
  *
  * @return
