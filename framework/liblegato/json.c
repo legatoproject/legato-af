@@ -653,7 +653,10 @@ static void ParseString
                 else if (contextType == LE_JSON_CONTEXT_MEMBER)
                 {
                     Report(parserPtr, LE_JSON_OBJECT_MEMBER);
-                    parserPtr->next = EXPECT_COLON;
+                    if (NotStopped(parserPtr))
+                    {
+                        parserPtr->next = EXPECT_COLON;
+                    }
                 }
                 else
                 {
@@ -871,7 +874,6 @@ static void ProcessChar
 }
 
 
-#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Read data from the JSON document file descriptor and process it.
@@ -946,6 +948,7 @@ static void ReadData
 }
 
 
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Event handler that gets called when an event occurs on a monitored file descriptor.
@@ -1103,6 +1106,41 @@ le_json_ParsingSessionRef_t le_json_Parse
     return parserPtr;
 }
 #endif
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse a JSON document received via a file descriptor.
+ * This API Works Synchronously. This function returns when either parse is finished or there has
+ * been an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_json_SyncParse
+(
+    int fd, ///< File descriptor to read the JSON document from.
+    le_json_EventHandler_t  eventHandler,   ///< Function to call when normal parsing events happen.
+    le_json_ErrorHandler_t  errorHandler,   ///< Function to call when errors happen.
+    void* opaquePtr   ///< Opaque pointer to be fetched by handlers using le_json_GetOpaquePtr().
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Create a Parser.
+    Parser_t* parserPtr = NewParser(eventHandler, errorHandler, opaquePtr);
+
+    parserPtr->fd = fd;
+
+    // Create the top-level context and push it onto the context stack.
+    PushContext(parserPtr, LE_JSON_CONTEXT_DOC, eventHandler);
+
+    // Increment the reference count on the Parser object so it won't go away until we are done
+    // with it, even if the client calls le_json_Cleanup() for this parser.
+    le_mem_AddRef(parserPtr);
+
+    ReadData(parserPtr, parserPtr->fd);
+    // We are finished with the parser object now.
+    le_mem_Release(parserPtr);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -223,6 +223,21 @@ LE_FULL_API le_json_ParsingSessionRef_t le_json_Parse
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a JSON document received via a file descriptor.
+ * This API Works Synchronously. This function returns when either parse is finished or there has
+ * been an error.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_API_JSON void le_json_SyncParse
+(
+    int fd, ///< File descriptor to read the JSON document from.
+    le_json_EventHandler_t  eventHandler,   ///< Function to call when normal parsing events happen.
+    le_json_ErrorHandler_t  errorHandler,   ///< Function to call when errors happen.
+    void* opaquePtr   ///< Opaque pointer to be fetched by handlers using le_json_GetOpaquePtr().
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parse a JSON document received via C string.
  *
  * @return Reference to the JSON parsing session started by this function call.
