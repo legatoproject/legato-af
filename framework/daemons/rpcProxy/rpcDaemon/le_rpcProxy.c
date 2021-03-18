@@ -1197,12 +1197,21 @@ static void DeleteClientRequestTimer
         if ((sessionRef == NULL) ||(le_msg_GetSession(msgRef) == sessionRef))
         {
             // Free the IPC msgRef
-            LE_INFO("Free msgRef for service id [%" PRIuPTR "]  sessionRef [%p] ",
-                    (uintptr_t)serviceId, sessionRef);
-            le_msg_ReleaseMsg(msgRef);
+            if (msgRef)
+            {
+                LE_INFO("Free msgRef for service id [%" PRIuPTR "]  sessionRef [%p] ",
+                        (uintptr_t)serviceId, sessionRef);
+                le_msg_ReleaseMsg(msgRef);
 
-            // Remove the msgRef from hash-map
-            le_hashmap_Remove(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMsgId);
+                // Remove the msgRef from hash-map
+                le_hashmap_Remove(MsgRefMapByProxyId, (void*)(uintptr_t) proxyMsgId);
+            }
+            else
+            {
+                LE_ERROR("Expiry timer but msgRef = NULL for service id [%" PRIuPTR "]"
+                         " sessionRef %p",
+                         (uintptr_t)serviceId, sessionRef);
+            }
 
             // Remove the timer entry from hash-map
             le_hashmap_Remove(ExpiryTimerRefByProxyId, (void*)(uintptr_t) proxyMsgId);
