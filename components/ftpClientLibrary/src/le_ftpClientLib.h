@@ -1,5 +1,5 @@
 /**
- * @file le_fttpClientLib.h
+ * @file le_ftpClientLib.h
  *
  * Interface for Legato FTP client built on top of le_socketLib.
  *

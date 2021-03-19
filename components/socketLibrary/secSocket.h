@@ -47,11 +47,10 @@ le_result_t secSocket_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add one or more certificates to the secure socket context.
+ * Add root CA certificates to the secure socket context.
  *
  * @return
  *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FORMAT_ERROR  Invalid certificate
  *  - LE_FAULT         Failure
  */
@@ -59,8 +58,63 @@ le_result_t secSocket_Init
 le_result_t secSocket_AddCertificate
 (
     secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
-    const uint8_t*    certificatePtr,   ///< [IN] Certificate Pointer
-    size_t            certificateLen    ///< [IN] Certificate Length
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the secure socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificate
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKey
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    pkeyPtr,          ///< [IN] Private key pointer
+    size_t            pkeyLen           ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetCipherSuites
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           cipherIdx         ///< [IN] Cipher suites index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAuthType
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           auth              ///< [IN] Authentication type
 );
 
 //--------------------------------------------------------------------------------------------------

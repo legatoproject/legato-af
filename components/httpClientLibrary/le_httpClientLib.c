@@ -1305,7 +1305,7 @@ le_result_t le_httpClient_SetCredentials
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a certificate to the HTTP session in order to make the connection secure
+ * Add root CA certificates to the HTTP session in order to make the connection secure
  *
  * @return
  *  - LE_OK            Function success
@@ -1317,8 +1317,8 @@ le_result_t le_httpClient_SetCredentials
 le_result_t le_httpClient_AddCertificate
 (
     le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
-    const uint8_t*       certificatePtr,  ///< [IN] Certificate Pointer
-    size_t               certificateLen   ///< [IN] Certificate Length
+    const uint8_t*       certificatePtr,  ///< [IN] Certificate pointer
+    size_t               certificateLen   ///< [IN] Certificate length
 )
 {
     le_result_t status;
@@ -1340,6 +1340,116 @@ le_result_t le_httpClient_AddCertificate
     }
 
     return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the HTTP session for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_httpClient_AddOwnCertificate
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    const uint8_t*       certificatePtr,  ///< [IN] Certificate pointer
+    size_t               certificateLen   ///< [IN] Certificate length
+)
+{
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    return le_socket_AddOwnCertificate(contextPtr->socketRef, certificatePtr, certificateLen);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the HTTP session for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_httpClient_AddOwnPrivateKey
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    const uint8_t*       pkeyPtr,         ///< [IN] Private key pointer
+    size_t               pkeyLen          ///< [IN] Private key length
+)
+{
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    return le_socket_AddOwnPrivateKey(contextPtr->socketRef, pkeyPtr, pkeyLen);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites used in establishing secure connection
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_httpClient_SetCipherSuites
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    uint8_t              cipherIdx        ///< [IN] Cipher suites index
+)
+{
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    return le_socket_SetCipherSuites(contextPtr->socketRef, cipherIdx);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type used in establishing secure connection
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_httpClient_SetAuthType
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    uint8_t              auth             ///< [IN] Authentication type
+)
+{
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    return le_socket_SetAuthType(contextPtr->socketRef, auth);
 }
 
 //--------------------------------------------------------------------------------------------------

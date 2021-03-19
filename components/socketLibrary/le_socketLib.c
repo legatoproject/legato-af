@@ -394,7 +394,7 @@ le_result_t le_socket_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a certificate to the socket in order to make the connection secure.
+ * Add root CA certificates to the socket in order to make the connection secure.
  *
  * @return
  *  - LE_OK            Function success
@@ -447,6 +447,199 @@ le_result_t le_socket_AddCertificate
     }
 
     return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddOwnCertificate
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    certificatePtr,  ///< [IN] Certificate pointer
+    size_t            certificateLen   ///< [IN] Certificate length
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!certificatePtr) || (certificateLen == 0))
+    {
+        LE_ERROR("Wrong parameter: %p, %zu", certificatePtr, certificateLen);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddOwnCertificate(contextPtr->secureCtxPtr, certificatePtr, certificateLen);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added a certificate");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add certificate");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_AddOwnPrivateKey
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    pkeyPtr,         ///< [IN] Private key pointer
+    size_t            pkeyLen          ///< [IN] Private key length
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if ((!pkeyPtr) || (pkeyLen == 0))
+    {
+        LE_ERROR("Wrong parameter: %p, %zu", pkeyPtr, pkeyLen);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    status = secSocket_AddOwnPrivateKey(contextPtr->secureCtxPtr, pkeyPtr, pkeyLen);
+    if (status == LE_OK)
+    {
+        LE_DEBUG("Added a certificate");
+        contextPtr->hasCert = true;
+    }
+    else
+    {
+        LE_ERROR("Unable to add certificate");
+    }
+
+    return status;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SetCipherSuites
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           cipherIdx        ///< [IN] Cipher suites index
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetCipherSuites(contextPtr->secureCtxPtr, cipherIdx);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SetAuthType
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           auth             ///< [IN] Authentication type
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetAuthType(contextPtr->secureCtxPtr, auth);
+    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------

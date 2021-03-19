@@ -270,6 +270,73 @@ end:
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add client certificates to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificate
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
+)
+{
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the client private key to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKey
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    pkeyPtr,          ///< [IN] Private key pointer
+    size_t            pkeyLen           ///< [IN] Private key length
+)
+{
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetCipherSuites
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           cipherIdx         ///< [IN] Cipher suites index
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAuthType
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           auth              ///< [IN] Authentication type
+)
+{
+    return;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Performs TLS Handshake
  *
  * @return

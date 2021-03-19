@@ -208,7 +208,7 @@ LE_SHARED le_result_t le_socket_Delete
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a certificate to the socket in order to make the connection secure
+ * Add root CA certificates to the socket in order to make the connection secure.
  *
  * @return
  *  - LE_OK            Function success
@@ -220,8 +220,75 @@ LE_SHARED le_result_t le_socket_Delete
 LE_SHARED le_result_t le_socket_AddCertificate
 (
     le_socket_Ref_t   ref,             ///< [IN] Socket context reference
-    const uint8_t*    certificatePtr,  ///< [IN] Certificate Pointer
-    size_t            certificateLen   ///< [IN] Certificate Length
+    const uint8_t*    certificatePtr,  ///< [IN] Certificate pointer
+    size_t            certificateLen   ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddOwnCertificate
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    certificatePtr,  ///< [IN] Certificate pointer
+    size_t            certificateLen   ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_AddOwnPrivateKey
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const uint8_t*    pkeyPtr,         ///< [IN] Private key pointer
+    size_t            pkeyLen          ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetCipherSuites
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           cipherIdx        ///< [IN] Cipher suite index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetAuthType
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           auth             ///< [IN] Authentication type
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -416,7 +416,7 @@ LE_SHARED le_result_t le_httpClient_SetCredentials
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add a certificate to the HTTP session in order to make the connection secure
+ * Add root CA certificates to the HTTP session in order to make the connection secure.
  *
  * @return
  *  - LE_OK            Function success
@@ -428,8 +428,78 @@ LE_SHARED le_result_t le_httpClient_SetCredentials
 LE_SHARED le_result_t le_httpClient_AddCertificate
 (
     le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
-    const uint8_t*       certificatePtr,  ///< [IN] Certificate Pointer
-    size_t               certificateLen   ///< [IN] Certificate Length
+    const uint8_t*       certificatePtr,  ///< [IN] Certificate pointer
+    size_t               certificateLen   ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the HTTP session for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_httpClient_AddOwnCertificate
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    const uint8_t*       certificatePtr,  ///< [IN] Certificate pointer
+    size_t               certificateLen   ///< [IN] Certificate length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the HTTP session for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_httpClient_AddOwnPrivateKey
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    const uint8_t*       pkeyPtr,         ///< [IN] Private key pointer
+    size_t               pkeyLen          ///< [IN] Private key length
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites to the HTTP session in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_httpClient_SetCipherSuites
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    uint8_t              cipherIdx        ///< [IN] Cipher suites index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the HTTP session in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_httpClient_SetAuthType
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    uint8_t              auth             ///< [IN] Authentication type
 );
 
 //--------------------------------------------------------------------------------------------------

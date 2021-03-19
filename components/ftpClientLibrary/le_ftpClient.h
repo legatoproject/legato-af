@@ -331,6 +331,23 @@ LE_SHARED le_result_t le_ftpClient_SetEventCallback
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set cipher suites used in establishing secure connection.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_ftpClient_SetCipherSuites
+(
+    le_ftpClient_SessionRef_t    sessionRef,    ///< Session reference.
+    uint8_t                      cipherIdx      ///< Cipher suites index.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Open a new connection to the configured server.
  *
  *  @return LE_OK on success or an appropriate error code on failure.

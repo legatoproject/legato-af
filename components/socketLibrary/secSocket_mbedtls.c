@@ -21,6 +21,12 @@
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/ssl.h"
 
+#if defined(MBEDTLS_DEBUG_C)
+#include "mbedtls/debug.h"
+#define DEBUG_LEVEL                 (0)
+#define SSL_DEBUG_LEVEL             (16)
+#endif
+
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions
 //--------------------------------------------------------------------------------------------------
@@ -44,15 +50,41 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * SSL/TLS cipher suites configuration
+ * These constants are in line with the ones in ksslcrypto.h.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SSL_MIN_PROFILE_ID          (0)
+#define SSL_MAX_PROFILE_ID          (7)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Authentication types, which is the 7th parameter in the ksslcrypto write command.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum AuthType
+{
+    AUTH_SERVER  = 1,
+    AUTH_MUTUAL  = 3,
+    AUTH_UNKNOWN = 0xFF
+}
+AuthType_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * MbedTLS global context
  */
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    mbedtls_net_context sock;       ///< MbedTLS wrapper for socket.
-    mbedtls_ssl_context sslCtx;     ///< SSL/TLS context.
-    mbedtls_ssl_config  sslConf;    ///< SSL/TLS configuration.
-    mbedtls_x509_crt    caCert;     ///< X.509 certificate.
+    mbedtls_net_context sock;                                   ///< MbedTLS wrapper for socket.
+    mbedtls_ssl_context sslCtx;                                 ///< SSL/TLS context.
+    mbedtls_ssl_config  sslConf;                                ///< SSL/TLS configuration.
+    mbedtls_x509_crt    caCert;                                 ///< Root CA X.509 certificate.
+    mbedtls_x509_crt    ownCert;                                ///< Module's X.509 certificate.
+    mbedtls_pk_context  ownPkey;                                ///< Module's private key container.
+    uint8_t             auth;                                   ///< Authentication type.
+    int                 ciphersuite[2];                         ///< Cipher suite(s) to use.
 }
 MbedtlsCtx_t;
 
@@ -65,8 +97,65 @@ static le_mem_PoolRef_t SocketCtxPoolRef = NULL;
 LE_MEM_DEFINE_STATIC_POOL(SocketCtxPool, MAX_SOCKET_NB, sizeof(MbedtlsCtx_t));
 
 //--------------------------------------------------------------------------------------------------
+/**
+ * Cipher suite mapping based on https://testssl.sh/openssl-iana.mapping.html
+ * List of approved cipher suites --- for full list see: Core/include/mbedtls/ssl_ciphersuites.h
+ * The list is in line with blocks available in sslCipherSuiteOpts (see ksslcrypto.h)
+ *
+ * Note: When +ksslcrypto profile index 0 is selected, all approved ciphers below must be included.
+ * For the rest of +ksslcrypto profiles, i.e., 1-7, single cipher suite shall be selected.
+ */
+//--------------------------------------------------------------------------------------------------
+const int ciphersuites[SSL_MAX_PROFILE_ID + 1] = {
+    MBEDTLS_TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,   ///< 0xC02F
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM,        ///< 0xC0AC
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_256_CCM,        ///< 0xC0AD
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_CCM_8,      ///< 0xC0AE
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_256_CCM_8,      ///< 0xC0AF
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, ///< 0xC02B
+    MBEDTLS_TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384, ///< 0xC02C
+    0
+};
+
+//--------------------------------------------------------------------------------------------------
 // Static functions
 //--------------------------------------------------------------------------------------------------
+
+#if defined(MBEDTLS_DEBUG_C)
+//--------------------------------------------------------------------------------------------------
+/**
+ * Debug callback function of "mbedtls_ssl_conf_dbg()" API
+ *
+ * To enable mbedtls log messages, you need to uncomment "#define MBEDTLS_DEBUG_C" in
+ * frameworkAdaptor/include/mbedtls_port.h
+ *
+ * @return
+ *  - None
+ */
+//--------------------------------------------------------------------------------------------------
+static void OutputMbedtlsDebugInfo(
+    void*       ctx,    ///< [IN] Output file handle
+    int         level,  ///< [IN] Debug level
+    const char* file,   ///< [IN] Source file path
+    int         line,   ///< [IN] Source file line number
+    const char* str     ///< [IN] Debug message
+)
+{
+    // Extract basename from the file path
+    const char *p;
+    const char *basename;
+    for (p = basename = file; *p != '\0'; p++)
+    {
+        if (*p == '/' || *p == '\\')
+        {
+            basename = p + 1;
+        }
+    }
+
+    fprintf((FILE *)ctx, "%s:%04d: |%d| %s", basename, line, level, str);
+    fflush((FILE *)ctx);
+}
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -206,6 +295,15 @@ le_result_t secSocket_Init
     mbedtls_net_init(&(contextPtr->sock));
     mbedtls_ssl_init(&(contextPtr->sslCtx));
     mbedtls_ssl_config_init(&(contextPtr->sslConf));
+    mbedtls_x509_crt_init(&(contextPtr->caCert));
+    mbedtls_x509_crt_init(&(contextPtr->ownCert));
+    mbedtls_pk_init(&(contextPtr->ownPkey));
+    contextPtr->auth = AUTH_SERVER;
+
+#if defined(MBEDTLS_DEBUG_C)
+    mbedtls_ssl_conf_dbg(&(contextPtr->sslConf), OutputMbedtlsDebugInfo, stdout);
+    mbedtls_debug_set_threshold(SSL_DEBUG_LEVEL);
+#endif
 
     *ctxPtr = (secSocket_Ctx_t *) contextPtr;
 
@@ -214,11 +312,10 @@ le_result_t secSocket_Init
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Add one or more certificates to the secure socket context.
+ * Add root CA certificates to the secure socket context.
  *
  * @return
  *  - LE_OK            The function succeeded
- *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FORMAT_ERROR  Invalid certificate
  *  - LE_FAULT         Failure
  */
@@ -226,21 +323,22 @@ le_result_t secSocket_Init
 le_result_t secSocket_AddCertificate
 (
     secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
-    const uint8_t*    certificatePtr,   ///< [IN] Certificate Pointer
-    size_t            certificateLen    ///< [IN] Certificate Length
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
 )
 {
+    int              ret;
     MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
     LE_ASSERT(contextPtr != NULL);
     LE_ASSERT(certificatePtr != NULL);
     LE_ASSERT(certificateLen > 0);
 
-    LE_DEBUG("Certificate: %p Len:%"PRIuS, certificatePtr, certificateLen);
-    int ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
+    LE_DEBUG("Add root CA certificates: %p Len:%"PRIuS, certificatePtr, certificateLen);
+    ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
     if (ret < 0)
     {
-        LE_ERROR("Failed!  mbedtls_x509_crt_parse returned -0x%x", -ret);
+        LE_ERROR("Failed! mbedtls_x509_crt_parse returned -0x%x", -ret);
         return LE_FAULT;
     }
 
@@ -248,11 +346,135 @@ le_result_t secSocket_AddCertificate
     if ((mbedtls_x509_time_is_past(&contextPtr->caCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->caCert.valid_from)))
     {
-        LE_ERROR("Current certificate expired, please add a valid certificate");
+        LE_ERROR("Current root CA certificates expired, please add valid certificates");
         return LE_FORMAT_ERROR;
     }
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own certificates to the secure socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnCertificate
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    certificatePtr,   ///< [IN] Certificate pointer
+    size_t            certificateLen    ///< [IN] Certificate length
+)
+{
+    int              ret;
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(certificatePtr != NULL);
+    LE_ASSERT(certificateLen > 0);
+
+    LE_DEBUG("Add client certificates: %p Len:%"PRIuS, certificatePtr, certificateLen);
+    ret = mbedtls_x509_crt_parse(&(contextPtr->ownCert), certificatePtr, certificateLen);
+    if (ret < 0)
+    {
+        LE_ERROR("Failed! mbedtls_x509_crt_parse returned -0x%x", -ret);
+        return LE_FAULT;
+    }
+
+    // Check certificate validity
+    if ((mbedtls_x509_time_is_past(&contextPtr->ownCert.valid_to)) ||
+        (mbedtls_x509_time_is_future(&contextPtr->ownCert.valid_from)))
+    {
+        LE_ERROR("Current client certificates expired, please add valid certificates");
+        return LE_FORMAT_ERROR;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Add the module's own private key to the secure socket context for mutual authentication.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t secSocket_AddOwnPrivateKey
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const uint8_t*    pkeyPtr,          ///< [IN] Private key pointer
+    size_t            pkeyLen           ///< [IN] Private key length
+)
+{
+    int              ret;
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(pkeyPtr != NULL);
+    LE_ASSERT(pkeyLen > 0);
+
+    LE_DEBUG("Add client private key: %p Len:%"PRIuS, pkeyPtr, pkeyLen);
+    ret = mbedtls_pk_parse_key(&(contextPtr->ownPkey), pkeyPtr, pkeyLen, NULL, 0);
+    if (ret < 0)
+    {
+        LE_ERROR("Failed! mbedtls_pk_parse_key returned -0x%x", -ret);
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suites to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetCipherSuites
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           cipherIdx         ///< [IN] Cipher suites index
+)
+{
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(cipherIdx <= SSL_MAX_PROFILE_ID);
+
+    // If +ksslcrypto profile index 0 is selected, the module would send all the approved cipher
+    // suites to the server, so the server can check its own supported cipher suites and pick one
+    // that is supported by both parties. If other profile index is selected, the module would send
+    // the specified cipher suite to the server.
+    contextPtr->ciphersuite[0] = cipherIdx == 0 ? 0 : ciphersuites[cipherIdx - 1];
+    contextPtr->ciphersuite[1] = 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set authentication type to the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAuthType
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           auth              ///< [IN] Authentication type
+)
+{
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(auth == AUTH_SERVER || auth == AUTH_MUTUAL);
+
+    contextPtr->auth = auth;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -286,8 +508,7 @@ le_result_t secSocket_PerformHandshake
     contextPtr->sock.fd = fd;
 
     // Setup
-    LE_INFO("Setting up the SSL/TLS structure...");
-
+    LE_INFO("Set up the default SSL/TLS configuration");
     if ((ret = mbedtls_ssl_config_defaults(&(contextPtr->sslConf),
                                            MBEDTLS_SSL_IS_CLIENT,
                                            MBEDTLS_SSL_TRANSPORT_STREAM,
@@ -298,8 +519,32 @@ le_result_t secSocket_PerformHandshake
         return LE_NO_MEMORY;
     }
 
+    if (contextPtr->ciphersuite[0] == 0)
+    {
+        LE_INFO("Add all approved cipher suites to SSL/TLS configuration");
+        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, ciphersuites);
+    }
+    else
+    {
+        LE_INFO("Add cipher suite '%d' to SSL/TLS configuration", contextPtr->ciphersuite[0]);
+        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, contextPtr->ciphersuite);
+    }
+
     mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&(contextPtr->sslConf), &(contextPtr->caCert), NULL);
+
+    // Apply local certificate and key bindings if the authentication type is mutual
+    if (contextPtr->auth == AUTH_MUTUAL)
+    {
+        if ((ret = mbedtls_ssl_conf_own_cert(&(contextPtr->sslConf),
+                                             &(contextPtr->ownCert),
+                                             &(contextPtr->ownPkey))) != 0)
+        {
+            LE_ERROR("Failed! mbedtls_ssl_conf_own_cert returned %d", ret);
+            return LE_FAULT;
+        }
+    }
+
     mbedtls_port_SSLSetRNG(&contextPtr->sslConf);
 
     if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
@@ -471,9 +716,11 @@ le_result_t secSocket_Delete
     LE_ASSERT(contextPtr != NULL);
 
     mbedtls_net_free(&(contextPtr->sock));
-    mbedtls_x509_crt_free(&(contextPtr->caCert));
     mbedtls_ssl_free(&(contextPtr->sslCtx));
     mbedtls_ssl_config_free(&(contextPtr->sslConf));
+    mbedtls_x509_crt_free(&(contextPtr->caCert));
+    mbedtls_x509_crt_free(&(contextPtr->ownCert));
+    mbedtls_pk_free(&(contextPtr->ownPkey));
 
     le_mem_Release(contextPtr);
     return LE_OK;

@@ -150,6 +150,7 @@ struct le_ftpClient_Session
         uint64_t                 fileSize;                  ///< Size of remote file.
     };
     void                         *userDataPtr;              ///< User data passed to writeFunc.
+    uint8_t                      cipherIdx;                 ///< Cipher suites index.
     const uint8_t                *certPtr;                  ///< Pointer to certificate
     size_t                       certSize;                  ///< Certificate size in bytes
     bool                         isConnected;               ///< Connection status.
@@ -847,11 +848,18 @@ static le_result_t FtpClientConnectDataServer
     // Add a certificate for FTPS
     if (sessionRef->securityMode == LE_FTP_CLIENT_SECURE)
     {
-        LE_INFO("Adding a certificate to data channel");
+        LE_INFO("Adding root CA certificates to data channel");
         if (le_socket_AddCertificate(sessionRef->dataSocketRef,
                                      sessionRef->certPtr,
                                      sessionRef->certSize) != LE_OK)
-        {   LE_ERROR("Failed to add certificate.");
+        {   LE_ERROR("Failed to add root CA certificates.");
+            goto freeSocket;
+        }
+
+        LE_INFO("Setting cipher suites to data channel");
+        if (le_socket_SetCipherSuites(sessionRef->dataSocketRef, sessionRef->cipherIdx) != LE_OK)
+        {
+            LE_ERROR("Failed to set cipher suites.");
             goto freeSocket;
         }
     }
@@ -1742,6 +1750,15 @@ static le_result_t FtpClientConnectServer
        goto freeSocket;
     }
 
+    if (sessionRef->securityMode == LE_FTP_CLIENT_SECURE)
+    {
+        if (le_socket_SetCipherSuites(sessionRef->ctrlSocketRef, sessionRef->cipherIdx) != LE_OK)
+        {
+            LE_ERROR("Failed to set cipher suites.");
+            goto freeSocket;
+        }
+    }
+
     // Connect the remote FTP server.
     if (LE_OK != le_socket_Connect(sessionRef->ctrlSocketRef))
     {
@@ -1756,7 +1773,7 @@ static le_result_t FtpClientConnectServer
                                      sessionRef->certPtr,
                                      sessionRef->certSize) != LE_OK)
         {
-            LE_ERROR("Failed to add certificate.");
+            LE_ERROR("Failed to add root CA certificates.");
             goto freeSocket;
         }
     }
@@ -1964,6 +1981,30 @@ LE_SHARED le_result_t le_ftpClient_SetEventCallback
 
     sessionRef->eventHandlerFunc = handlerFunc;
     sessionRef->eventHandlerDataPtr = (handlerFunc == NULL ? NULL : userPtr);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set cipher suites used in establishing secure connection
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ftpClient_SetCipherSuites
+(
+    le_ftpClient_SessionRef_t    sessionRef,    ///< Session reference.
+    uint8_t                      cipherIdx      ///< Cipher suites index
+)
+{
+    if (sessionRef == NULL)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    sessionRef->cipherIdx = cipherIdx;
     return LE_OK;
 }
 
