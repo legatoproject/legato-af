@@ -49,17 +49,18 @@ enum le_mqttClient_Event_t
 };
 
 /// MQTT Client Quality of Service types
-enum le_mqttClient_QoS_t
+typedef enum le_mqttClient_QoS
 {
     LE_MQTT_CLIENT_QOS0,   ///< Guaranteed to be delivered 'At most once'
     LE_MQTT_CLIENT_QOS1,   ///< Guaranteed to be delivered 'At least once'
     LE_MQTT_CLIENT_QOS2,   ///< Guaranteed to be delivered 'Exactly once'
-};
+} le_mqttClient_QoS_t;
 
 
 // MQTT Client Session Configuration Data
 struct le_mqttClient_Configuration
 {
+    uint32_t         sessionId;             ///< Session Id
     uint32_t         profileNum;            ///< PDP profile number
     char            *host;                  ///< Host name or IP address of target
                                             ///  MQTT broker.
@@ -168,7 +169,7 @@ LE_SHARED void le_mqttClient_EnableLastWillAndTestament
     char                       *message,       ///< [IN] Last will topic message
     bool                        retained,      ///< [IN] Indicates whether broker will retain the
                                                ///  message on that topic
-    enum le_mqttClient_QoS_t    qos            ///< [IN] Publication QoS setting
+    le_mqttClient_QoS_t         qos            ///< [IN] Publication QoS setting
 );
 
 
@@ -186,7 +187,7 @@ LE_SHARED le_result_t le_mqttClient_Publish
     char                       *message,       ///< [IN] Topic message
     bool                        retained,      ///< [IN] Indicates whether broker will retain the
                                                ///  message on that topic
-    enum le_mqttClient_QoS_t    qos            ///< [IN] Publication QoS setting
+    le_mqttClient_QoS_t         qos            ///< [IN] Publication QoS setting
 );
 
 
@@ -201,7 +202,7 @@ LE_SHARED le_result_t le_mqttClient_Subscribe
 (
     le_mqttClient_SessionRef_t  sessionRef,    ///< [IN] Session reference.
     char                       *topic,         ///< [IN] Subscription Topic
-    enum le_mqttClient_QoS_t    qos            ///< [IN] Subscription QoS setting
+    le_mqttClient_QoS_t         qos            ///< [IN] Subscription QoS setting
 );
 
 
@@ -233,6 +234,19 @@ LE_SHARED le_result_t le_mqttClient_AddReceiveHandler
     le_mqttClient_SessionRef_t   sessionRef,    ///< [IN] Session reference.
     le_mqttClient_EventFunc_t    handlerFunc,   ///< [IN] Handler callback.
     void                        *contextPtr     ///< [IN] Additional data to pass to the handler.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Initialize the libaray
+ *
+ *  @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mqttClient_Init
+(
+    void
 );
 
 #endif /* end LE_MQTT_CLIENT_LIBRARY_H */

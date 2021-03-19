@@ -19,6 +19,7 @@ cflags:
     -DMQTTCLIENT_PLATFORM_HEADER=mqttAdaptor.h
     -DREVERSED
     -DMQTT_TASK
+    -DMAX_MESSAGE_HANDLERS=MK_CONFIG_MQTT_SUBSCRIB_TOPIC_MAX
 }
 
 requires:
@@ -26,6 +27,7 @@ requires:
     api:
     {
         modemServices/le_mdc.api
+        le_atDefs.api [types-only]
     }
 
     component:

@@ -7,8 +7,10 @@
  */
 
 #include "legato.h"
+#include "le_mqttClientLib.h"
 
 COMPONENT_INIT
 {
-    // do nothing
+    // Initialize the lib
+    le_mqttClient_Init();
 }

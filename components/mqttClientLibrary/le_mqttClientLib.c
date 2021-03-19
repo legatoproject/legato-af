@@ -29,6 +29,36 @@ enum NetworkStatus
     LE_MQTT_NETWORK_STATUS_DOWN
 };
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Subscription information
+ */
+//--------------------------------------------------------------------------------------------------
+typedef struct MqttSubInfo
+{
+    uint32_t sessionId;                             ///< Session Id
+    char topicName[LE_ATDEFS_PARAMETER_MAX_BYTES];  ///< Topic name
+    le_mqttClient_QoS_t qos;                        ///< Qos
+    le_dls_Link_t   link;                           ///< link for multiple subcription info
+} MqttSubInfo_t;
+
+// List of all subscription info
+static le_dls_List_t SubInfoList;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool for subscribed topics
+ * This pool is needed for allocating memory for subcribed topic information, as this mqttClientLib
+ * is implemented based on paho library, which references this information (specifically topic name
+ * string) until the topic is unsubscribed.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t MqttSubPoolRef;
+
+LE_MEM_DEFINE_STATIC_POOL(MqttSubPool,
+                          MK_CONFIG_MQTT_SUBSCRIB_TOPIC_MAX,
+                          sizeof(MqttSubInfo_t));
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -37,6 +67,7 @@ enum NetworkStatus
 //--------------------------------------------------------------------------------------------------
 struct le_mqttClient_Session
 {
+    uint32_t sessionId;                      ///< Session Id
     uint32_t profileNum;                     ///< PDP profile number
     struct Network network;                  ///< Network adaptor record
     enum NetworkStatus networkStatus;        ///< Network status (connected or disconnected)
@@ -73,7 +104,10 @@ static le_mem_PoolRef_t MqttClientSessionPoolRef = NULL;
 /**
  *  Inline function for converting PAHO Client library return code values.
  *
- *  @return void
+ *  @return
+ *      - LE_FAULT      If code is FAILURE
+ *      - LE_OVERFLOW   If code is BUFFER_OVERFLOW
+ *      - LE_OK         Otherwise
  */
 //--------------------------------------------------------------------------------------------------
 static inline le_result_t ConvertResultCode(int rc)
@@ -208,26 +242,6 @@ static void NetworkAsyncRecvHandler
         // Data waiting to be read or written
         //
 
-        if (sessionRef->networkStatus != LE_MQTT_NETWORK_STATUS_UP)
-        {
-            //
-            // Network connection has come up
-            //
-
-            // Update the network status to reflect the change
-            sessionRef->networkStatus = LE_MQTT_NETWORK_STATUS_UP;
-
-            if (sessionRef->handlerFunc)
-            {
-                /* Call the client's message handler */
-                sessionRef->handlerFunc(sessionRef,
-                                        LE_MQTT_CLIENT_CONNECTION_UP,
-                                        NULL,
-                                        NULL,
-                                        sessionRef->contextPtr);
-            }
-        }
-
         /* Execute the yield function for the specified MQTT client session */
         int result = MQTTYield(&sessionRef->client, sessionRef->readTimeoutMs);
 
@@ -265,6 +279,8 @@ static void NetworkAsyncRecvHandler
 //--------------------------------------------------------------------------------------------------
 /**
  * Handler function for Expired Session-related Timers
+ *
+ * @return none
  */
 //--------------------------------------------------------------------------------------------------
 static void SessionTimerExpiryHandler
@@ -321,6 +337,8 @@ discon:
 //--------------------------------------------------------------------------------------------------
 /**
  * Start MQTT Client Keep-Alive service.
+ *
+ * @return none
  */
 //--------------------------------------------------------------------------------------------------
 static void StartNetworkKeepAliveService
@@ -356,6 +374,8 @@ static void StartNetworkKeepAliveService
 //--------------------------------------------------------------------------------------------------
 /**
  * Stop MQTT Client Keep-Alive service.
+ *
+ * @return none
  */
 //--------------------------------------------------------------------------------------------------
 static void StopNetworkKeepAliveService
@@ -365,6 +385,119 @@ static void StopNetworkKeepAliveService
 {
     le_timer_Delete(sessionRef->keepAliveTimerRef);
     sessionRef->keepAliveTimerRef = NULL;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check if the topic name has been subscribed on the given session
+ *
+ * @return
+ *      - Valid pointer of MqttSubInfo_t* type     If subscribed already
+ *      - NULL                                     othwerise
+ */
+//--------------------------------------------------------------------------------------------------
+static MqttSubInfo_t* CheckTopicSubscribed
+(
+    uint32_t sessionId,             ///< [IN] Session Id
+    const char* topicName           ///< [IN] Topic name
+)
+{
+    MqttSubInfo_t* subInfoPtr = NULL;
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SubInfoList);
+
+    while (NULL != linkPtr)
+    {
+        subInfoPtr = CONTAINER_OF(linkPtr, MqttSubInfo_t, link);
+
+        if ((subInfoPtr) &&
+            (subInfoPtr->sessionId == sessionId) &&
+            (0 == strncmp(topicName, subInfoPtr->topicName, LE_ATDEFS_PARAMETER_MAX_BYTES)))
+        {
+            return subInfoPtr;
+        }
+        else
+        {
+            linkPtr = le_dls_PeekNext(&SubInfoList, linkPtr);
+        }
+    }
+
+    return NULL;
+}
+
+//--------------------------------------------------------------------------------------------
+/**
+ * Release subscribed topic infomation if it exists
+ *
+ * @return
+ *      - LE_OK     Found and released the subscribed topic information
+ *      - LE_FAULT  Otherwise
+ */
+//--------------------------------------------------------------------------------------------
+static le_result_t ReleaseTopic
+(
+    uint32_t sessionId,         ///< [IN] Session Id
+    const char* topicName       ///< [IN] Topic name
+)
+{
+    MqttSubInfo_t* subInfoPtr = NULL;
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SubInfoList);
+
+    while (NULL != linkPtr)
+    {
+        subInfoPtr = CONTAINER_OF(linkPtr, MqttSubInfo_t, link);
+
+        if ((subInfoPtr) &&
+            (subInfoPtr->sessionId == sessionId) &&
+            (0 == strncmp(topicName, subInfoPtr->topicName, LE_ATDEFS_PARAMETER_MAX_BYTES)))
+        {
+            le_dls_Remove(&SubInfoList, linkPtr);
+            le_mem_Release(subInfoPtr);
+
+            return LE_OK;
+        }
+        else
+        {
+            linkPtr = le_dls_PeekNext(&SubInfoList, linkPtr);
+        }
+    }
+
+    return LE_FAULT;
+}
+
+
+//--------------------------------------------------------------------------------------------
+/**
+ * Release subscription information of given session
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------
+void MQTTReleaseSessionTopics
+(
+    uint32_t sessionId          ///< [IN] Session Id
+)
+{
+    MqttSubInfo_t* subInfoPtr = NULL;
+    le_dls_Link_t* linkPtr = le_dls_Peek(&SubInfoList);
+    le_dls_Link_t* tempPtr = NULL;
+
+    while (NULL != linkPtr)
+    {
+        subInfoPtr = CONTAINER_OF(linkPtr, MqttSubInfo_t, link);
+
+        if ((subInfoPtr) && (subInfoPtr->sessionId == sessionId))
+        {
+            tempPtr = le_dls_PeekNext(&SubInfoList, linkPtr);
+            le_dls_Remove(&SubInfoList, linkPtr);
+            le_mem_Release(subInfoPtr);
+            linkPtr = tempPtr;
+        }
+        else
+        {
+            linkPtr = le_dls_PeekNext(&SubInfoList, linkPtr);
+        }
+    }
 }
 
 
@@ -402,6 +535,7 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
 
     /* Store the MQTT Client Session's broker hostname, port number,
      * connection timeout, network status, and security settings. */
+    sessionRef->sessionId = configPtr->sessionId;
     sessionRef->profileNum = configPtr->profileNum;
     strncpy(sessionRef->host, configPtr->host, LE_MQTT_CLIENT_HOSTNAME_MAX_LEN);
     sessionRef->port = configPtr->port;
@@ -448,7 +582,7 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
 /**
  *  Delete a MQTT client session.
  *
- *  @return void
+ *  @return LE_OK
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_mqttClient_DeleteSession
@@ -468,7 +602,11 @@ LE_SHARED le_result_t le_mqttClient_DeleteSession
 /**
  *  Start a new MQTT session to the configured server.
  *
- *  @return LE_OK on success or an appropriate error code on failure.
+ *  @return
+ *      - LE_OK         On success
+ *      - LE_OVERFLOW   On buffer overflow
+ *      - LE_NO_MEMORY  On memory allocation failed
+ *      - LE_FAULT      Otherwise
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_mqttClient_StartSession
@@ -492,7 +630,7 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     {
         LE_ERROR("NetworkConnect() failed, result %d", result);
         le_mem_Release(sessionRef);
-        return LE_FAULT;
+        return LE_NO_MEMORY;
     }
 
     /* Send MQTT connect packet and wait for a Connack */
@@ -508,6 +646,19 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     // Start the keep-alive service
     StartNetworkKeepAliveService(sessionRef);
 
+    // Update the network status
+    sessionRef->networkStatus = LE_MQTT_NETWORK_STATUS_UP;
+
+    if (sessionRef->handlerFunc)
+    {
+        /* Call the client's message handler */
+        sessionRef->handlerFunc(sessionRef,
+                                LE_MQTT_CLIENT_CONNECTION_UP,
+                                NULL,
+                                NULL,
+                                sessionRef->contextPtr);
+    }
+
     return LE_OK;
 }
 
@@ -516,7 +667,10 @@ LE_SHARED le_result_t le_mqttClient_StartSession
 /**
  *  Stop the active MQTT session.
  *
- *  @return void
+ *  @return
+ *      - LE_OK         On success
+ *      - LE_OVERFLOW   On buffer overflow
+ *      - LE_FAULT      Otherwise
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_mqttClient_StopSession
@@ -537,6 +691,9 @@ LE_SHARED le_result_t le_mqttClient_StopSession
 
     LE_INFO("Disconnected client session, sessionRef [%p], result [%d]", sessionRef, rc);
 
+    // Release resources associated with the session
+    MQTTReleaseSessionTopics(sessionRef->sessionId);
+
     return ConvertResultCode(rc);
 }
 
@@ -556,7 +713,7 @@ LE_SHARED void le_mqttClient_EnableLastWillAndTestament
     char                       *message,       ///< [IN] Last will topic message
     bool                        retained,      ///< [IN] Indicates whether broker will retain the
                                                ///  message on that topic
-    enum le_mqttClient_QoS_t    qos            ///< [IN] The quality of service setting
+    le_mqttClient_QoS_t         qos            ///< [IN] The quality of service setting
                                                ///  for the LWT message
 )
 {
@@ -576,7 +733,10 @@ LE_SHARED void le_mqttClient_EnableLastWillAndTestament
 /**
  *  Publish a message to the MQTT session server.
  *
- *  @return LE_OK on success or an appropriate error code on failure.
+ *  @return
+ *      - LE_OK         On success
+ *      - LE_OVERFLOW   On buffer overflow
+ *      - LE_FAULT      Otherwise
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_mqttClient_Publish
@@ -586,7 +746,7 @@ LE_SHARED le_result_t le_mqttClient_Publish
     char                       *message,       ///< [IN] Topic message
     bool                        retained,      ///< [IN] Indicates whether broker will retain the
                                                ///  message on that topic
-    enum le_mqttClient_QoS_t    qos            ///< [IN] Publication QoS setting
+    le_mqttClient_QoS_t         qos            ///< [IN] Publication QoS setting
 )
 {
     /* Initialize the MQTT QoS */
@@ -620,31 +780,70 @@ LE_SHARED le_result_t le_mqttClient_Publish
 /**
  *  Subscribe to messages for a MQTT session.
  *
- *  @return LE_OK on success or an appropriate error code on failure.
+ *  @return
+ *      - LE_OK         On success
+ *      - LE_NO_MEMORY  Memory allocation failed
+ *      - LE_OVERFLOW   On buffer overflow
+ *      - LE_FAULT      Otherwise
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_mqttClient_Subscribe
 (
     le_mqttClient_SessionRef_t  sessionRef,    ///< [IN] Session reference.
     char                       *topic,         ///< [IN] Subscription Topic
-    enum le_mqttClient_QoS_t    qos            ///< [IN] Subscription QoS setting
+    le_mqttClient_QoS_t         qos            ///< [IN] Subscription QoS setting
 )
 {
+    MqttSubInfo_t *mqttSubInfoPtr = NULL;
+
+    // Check if the topic is already subscribed for the given session
+    mqttSubInfoPtr = CheckTopicSubscribed(sessionRef->sessionId, topic);
+
+    if (!mqttSubInfoPtr)
+    {
+        // Allocate subscribe information from pool
+        mqttSubInfoPtr = le_mem_Alloc(MqttSubPoolRef);
+
+        if (!mqttSubInfoPtr)
+        {
+            LE_ERROR("Cannot allocate subscription info from pool!");
+            return LE_NO_MEMORY;
+        }
+
+        memset(mqttSubInfoPtr, 0, sizeof(MqttSubInfo_t));
+
+        le_dls_Queue(&SubInfoList, &(mqttSubInfoPtr->link));
+
+        // Set topic name
+        strncpy(mqttSubInfoPtr->topicName, topic, LE_ATDEFS_PARAMETER_MAX_BYTES);
+        mqttSubInfoPtr->topicName[LE_ATDEFS_PARAMETER_MAX_BYTES - 1] = '\0';
+        // Set session Id
+        mqttSubInfoPtr->sessionId = sessionRef->sessionId;
+    }
+
+    // Always set qos
+    mqttSubInfoPtr->qos = qos;
+
     /* Initialize the MQTT QoS */
     enum QoS mqttQos = (enum QoS) qos;
 
     /* Subscribe the MQTT Client session to the specified topic */
-    int rc =
-        MQTTSubscribe(&sessionRef->client,
-                      topic,
-                      mqttQos,
-                      MessageAsyncRecvHandler,
-                      sessionRef);
+    int rc = MQTTSubscribe(&sessionRef->client,
+                           mqttSubInfoPtr->topicName,
+                           mqttQos,
+                           MessageAsyncRecvHandler,
+                           sessionRef);
 
     LE_INFO("Subscribed client session to topic [%s], sessionRef [%p], result [%d]",
             topic,
             sessionRef,
             rc);
+
+    if (SUCCESS != rc)
+    {
+        LE_ERROR("Subscribe to broker failed, release resource!");
+        ReleaseTopic(sessionRef->sessionId, topic);
+    }
 
     return ConvertResultCode(rc);
 }
@@ -654,7 +853,11 @@ LE_SHARED le_result_t le_mqttClient_Subscribe
 /**
  *  Unsubscribe to messages for a MQTT session.
  *
- *  @return LE_OK on success or an appropriate error code on failure.
+ *  @return
+ *      - LE_OK         On success
+ *      - LE_OVERFLOW   On buffer overflow
+ *      - LE_NOT_FOUND  Topic not found in memory pool of subscription
+ *      - LE_FAULT      Otherwise
  */
 //--------------------------------------------------------------------------------------------------
 LE_SHARED le_result_t le_mqttClient_Unsubscribe
@@ -670,6 +873,15 @@ LE_SHARED le_result_t le_mqttClient_Unsubscribe
             topic,
             sessionRef,
             rc);
+
+    if (SUCCESS == rc)
+    {
+        if (LE_OK != ReleaseTopic(sessionRef->sessionId, topic))
+        {
+            LE_WARN("Cannot find topic %s in session %d to release!", topic, sessionRef->sessionId);
+            return LE_NOT_FOUND;
+        }
+    }
 
     return ConvertResultCode(rc);
 }
@@ -696,4 +908,22 @@ LE_SHARED le_result_t le_mqttClient_AddReceiveHandler
     sessionRef->contextPtr = contextPtr;
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ *  Initialize the libaray
+ *
+ *  @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void le_mqttClient_Init
+(
+    void
+)
+{
+    // Subscription pool initialization
+    MqttSubPoolRef = le_mem_InitStaticPool(MqttSubPool,
+                                           MK_CONFIG_MQTT_SUBSCRIB_TOPIC_MAX,
+                                           sizeof(MqttSubInfo_t));
 }
