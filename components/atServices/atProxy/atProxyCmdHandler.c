@@ -143,6 +143,7 @@ static le_result_t ProcessStoredURC
                                                             le_atProxy_RspString_t,
                                                             link);
 
+        pa_port_Write(atSession->port, "\r\n", strlen("\r\n"));
         pa_port_Write(atSession->port, (char *)rspStringPtr->resp, strlen(rspStringPtr->resp));
         pa_port_Write(atSession->port, "\r\n", strlen("\r\n"));
 
@@ -977,6 +978,7 @@ void atProxyCmdHandler_SendUnsolicitedResponse
         return;
     }
 
+    pa_port_Write(atCmdPtr->port, "\r\n", strlen("\r\n"));
     pa_port_Write(atCmdPtr->port, (char *)responseStr, strlen(responseStr));
     pa_port_Write(atCmdPtr->port, "\r\n", strlen("\r\n"));
 }

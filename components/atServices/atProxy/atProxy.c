@@ -709,6 +709,7 @@ void le_atServer_SendIntermediateResponse
     }
 
     // Write the responseStr out to the console port
+    pa_port_Write(atCmdSessionPtr->port, "\r\n", strlen("\r\n"));
     pa_port_Write(atCmdSessionPtr->port, (char*) responseStr, strlen(responseStr));
     pa_port_Write(atCmdSessionPtr->port, "\r\n", strlen("\r\n"));
 
