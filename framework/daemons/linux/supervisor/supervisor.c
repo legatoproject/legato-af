@@ -1365,6 +1365,10 @@ COMPONENT_INIT
 
     if (!smack_IsEnabled())
     {
+        // Write the default access rules to /legato/smack/load2 before we unmount
+        // because this will be reflected within /sys/fs/smackfs/load2 which are the
+        // rules that are still being used.
+        smack_LoadDefaultRules();
         // Try to umount /legato/smack as we do no use SMACK anymore at this point.
         umount("/legato/smack");
     }

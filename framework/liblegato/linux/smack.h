@@ -455,4 +455,11 @@ le_result_t smack_SetFdSmackLabel
     int fd,                         ///< [IN] File Descriptor.
     const char *labelPtr            ///< [IN] SMACK label to set FD to.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Append the default smack rules in the target mount directory.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_LoadDefaultRules();
 #endif // LEGATO_SRC_SMACK_INCLUDE_GUARD

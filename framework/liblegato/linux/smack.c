@@ -14,6 +14,7 @@
 #include "limit.h"
 #include "fileSystem.h"
 #include "fileDescriptor.h"
+#include "file.h"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -111,6 +112,14 @@
  */
 //--------------------------------------------------------------------------------------------------
 #define SMACK_RULE_STR_BYTES                 2*LIMIT_MAX_SMACK_LABEL_LEN + MAX_ACCESS_MODE_LEN + 3
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SMACK default load2 rules.
+ */
+//--------------------------------------------------------------------------------------------------
+#define SMACK_DEFAULT_ACCESS_FILE "/etc/smack/accesses"
 
 
 //********  SMACK is enabled.  *******************************************************************//
@@ -1215,6 +1224,15 @@ le_result_t smack_SetFdSmackLabel
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Append the default smack rules in the target mount directory.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_LoadDefaultRules()
+{
+}
+
 //********  SMACK is disabled.  ******************************************************************//
 #else
 
@@ -1677,5 +1695,24 @@ le_result_t smack_SetFdSmackLabel
 )
 {
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Append the default smack rules in the target mount directory.
+ */
+//--------------------------------------------------------------------------------------------------
+void smack_LoadDefaultRules()
+{
+    // Default rules are quite small and very general.
+    char readBuffer[256];
+    int numBytesRead = file_ReadStr(SMACK_DEFAULT_ACCESS_FILE, readBuffer, sizeof(readBuffer));
+    if (numBytesRead  == -1 || numBytesRead > sizeof(readBuffer))
+    {
+        LE_ERROR("Error when reading from: '%s', the number of bytes read: %d",
+                    SMACK_DEFAULT_ACCESS_FILE, numBytesRead);
+    }
+
+    file_WriteStr(SMACK_LOAD_FILE, readBuffer, 0);
 }
 #endif
