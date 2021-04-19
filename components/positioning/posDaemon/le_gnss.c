@@ -949,7 +949,7 @@ static void InitClientRequest
 {
     // Init default resolution
     clientRequestPtr->dopResolution = LE_GNSS_RES_THREE_DECIMAL;
-    clientRequestPtr->vAccuracyResolution = LE_GNSS_RES_ONE_DECIMAL;
+    clientRequestPtr->vAccuracyResolution = LE_GNSS_RES_THREE_DECIMAL;
     clientRequestPtr->vSpeedAccuracyResolution = LE_GNSS_RES_ONE_DECIMAL;
     clientRequestPtr->hSpeedAccuracyResolution = LE_GNSS_RES_ONE_DECIMAL;
 }
@@ -1123,7 +1123,7 @@ static le_result_t ConvertPositionData
         switch(dataType)
         {
             case LE_GNSS_DATA_VACCURACY:
-                resolution = LE_GNSS_RES_ONE_DECIMAL;
+                resolution = LE_GNSS_RES_THREE_DECIMAL;
                 break;
             case LE_GNSS_DATA_VSPEEDACCURACY:
                 resolution = LE_GNSS_RES_ONE_DECIMAL;
