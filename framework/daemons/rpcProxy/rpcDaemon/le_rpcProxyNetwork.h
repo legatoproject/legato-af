@@ -82,6 +82,9 @@ NetworkMessageReceiveState_t;
 //--------------------------------------------------------------------------------------------------
 /**
  * State of streaming
+ *
+ * The NETWORK_MSG_STREAM state of NetworkMessageReceiveState_t itself is handled in another state
+ * machine. Below are the states of that state machine:
  */
 //--------------------------------------------------------------------------------------------------
 typedef enum MessageStreamState

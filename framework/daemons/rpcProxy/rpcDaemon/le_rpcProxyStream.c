@@ -1,7 +1,101 @@
 /**
  * @file le_rpcProxyStream.c
  *
+ * @ref stream_intro <br>
+ * @ref stream_send <br>
+ * @ref stream_receive <br>
+
+ * @section stream_intro        Introduction
+ *
  * This file contains the source code for streaming messages out and receiving streams.
+ *
+ * There are two type of streams that this file handles, outgoing streams and incoming streams.
+ *
+ * An outgoing stream is an IPC message that must be parsed, repacked, and sent to the remote side.
+ * An incoming stream is an RPC message that is coming from the remote side. It must be parsed, and
+ * repacked as an IPC message suitable for a local client or sever.
+ *
+ * The client-server concepts are independent of outgoing and incoming message types. Consider the
+ * below diagram:
+@verbatim
+
+
+             ALICE                 │            BOB
+                                   │
+                                   │
+                                   │
+                                   │
+  ┌───────┐        ┌───────┐       │      ┌───────┐         ┌────────┐
+  │       ├──1───► │ rpc   ├────2──┼────► │ rpc   ├───3────►│        │
+  │client │        │       │       │      │       │         │ server │
+  │       │◄──6─── │server │ ◄─────┤5─────┤ client│◄───4────┤        │
+  └───────┘        └───────┘       │      └───────┘         └────────┘
+
+@endverbatim
+
+ * IPC message 1 is a client request, for Alice's rpc engine, this is an outgoing message.
+ * It will be repacked into message 2, which is considered an incoming message for Bob's RPC engine.
+ * Bob converts 3 into an IPC client request and sends it to the server. The server response,
+ * message 4 is then considered an outgoing message by Bob's rpc engine. It will convert it to an
+ * RPC message, message 5, which is seen as an incoming message by Alice's rpc engine. Finally,
+ * Alice's rpc engine converts message 5 to message 6, a server response IPC message.
+ *
+ * This file provides two major API's used by the rest of RPC,
+ * @ref rpcProxy_SendVariableLengthMsgBody and @ref rpcProxy_RecvStream. Outgoing messages,
+ * messages that are supposed to be sent, are handled by @ref rpcProxy_SendVariableLengthMsgBody
+ * and incoming message, messages that we are receiving from a remote side are handled by
+ * @ref rpcProxy_RecvStream.
+ *
+ *
+ * @section stream_send Send Logic
+ *
+ * The @ref rpcProxy_SendVariableLengthMsgBody function must handle two types of message,
+ * file stream messages and IPC messages. File stream messages are passed to
+ * @ref rpcProxy_SendFileStreamMessageBody, which uses @c cbor_encode_* APIs to send file message
+ * components one by one. IPC messages are passed to @ref rpcProxy_SendIpcMessageBody which uses
+ * @c cbor_stream_decode API to decode the IPC message buffer. @c cbor_stream_decode expects a list
+ * of callbacks for different CBOR data types. Because at every state of the message, only specific
+ * CBOR types are acceptable, there is a different callback structure for every send state.
+ * During the transition to a new state we will also update the callback structure. Send states are
+ * laid out in @ref SendState and @ref StateToCallbacksTable attributed a specific
+ * callback structure to each state. In each state's callback structure, expected CBOR types are
+ * given an appropriate callback and unexpected CBOR types are given a callback that if called,
+ * raises an error.
+ *
+ * @section stream_receive Receive Logic
+ *
+ * Receiving an RPC message is driven by the fdmonitor handler given to @c le_comm. This handler is
+ * called whenever new bytes are received. RPC proxy then receives the new bytes and processes them
+ * accordingly. If a full message is received, it will be processed and if RPC expected more bytes
+ * for the current message, it waits for following calls to the receiver handler.
+ *
+ * An RPC message is handled in two state machines. The message header is handled in
+ * @ref le_rpcProxy.c's @ref RecvRpcMsg. After receiving the header, the first layer state machine
+ * goes to the stream state. It then calls @ref rpcProxy_InitializeStreamState to initialize the
+ * second layer state machine according to the message type found in the header.
+ *
+ * From then on, @ref rpcProxy_RecvStream is called with new bytes to process. Every state has
+ * an expected number of bytes. The state machine will buffer the messages in its destination buffer
+ * until it has received the expected number of bytes for the current state, it can then process
+ * that state and move on to the next.
+ *
+ * For constant size messages, the state machine starts by expecting the size of message body and
+ * is finished once it receives that many bytes. For variable length messages, the state machine
+ * expects to receive the message item by item and at each state, it will receive enough to parse
+ * only one item. In the case of CBOR items, the state machine first receives the CBOR header and
+ * then decides what to do depending on the CBOR item type. The @ref DispatchTable provides a handler
+ * function to be called for any CBOR <tag, item> pair.
+ *
+ *
+ * @subsection stream_dest Where is the destination buffer?
+ *
+ * The destination buffer is set dynamically according to the type of message and type of CBOR item
+ * that is being received. For constant size messages, the rpcProxy message pointer provided to us
+ * has enough room for the message body. For IPC and file stream messages the destination is set
+ * according to the stream state and CBOR item. For the CBOR header and CBOR small items like
+ * integers destination is the @c workBuffer of state machine. For larger CBOR items like strings or
+ * byte strings, the destination buffer is set to the IPC message buffer or the payload buffer of
+ * file stream message.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
@@ -2556,7 +2650,7 @@ static le_result_t HandleReference
     return ret;
 
 error:
-    LE_ERROR("Error in hanlding reference");
+    LE_ERROR("Error in handling reference");
     return ret;
 }
 
