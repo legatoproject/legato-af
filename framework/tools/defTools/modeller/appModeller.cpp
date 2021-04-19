@@ -849,6 +849,33 @@ static void AddRequiredItems
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Adds each tag name and value listed in a "tags:" section to app config
+ */
+//--------------------------------------------------------------------------------------------------
+static void GetTags
+(
+    model::App_t* appPtr,
+    const parseTree::CompoundItem_t* sectionPtr
+)
+{
+    // A tags section is a list of STRING to STRING pair tokens.
+    // Each pair's key STRING is a tag name, and value STRING is the tag's value
+    auto tagsSectionPtr = dynamic_cast<const parseTree::CompoundItemList_t*>(sectionPtr);
+
+    for (auto itemPtr : tagsSectionPtr->Contents())
+    {
+        dynamic_cast<const parseTree::ComplexSection_t*>(itemPtr);
+        // Unquote the tag name and value
+        const auto tagName = path::Unquote(DoSubstitution(itemPtr->firstTokenPtr));
+        const auto tagValue = path::Unquote(DoSubstitution(itemPtr->lastTokenPtr));
+        // Insert the tag into the tags map
+        appPtr->tags[tagName] = tagValue;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Add processes to a process environment, based on the contents of a given run section in
  * the parse tree.
  */
@@ -2173,6 +2200,10 @@ model::App_t* GetApp
         else if (sectionName == "maxWatchdogTimeout")
         {
             SetMaxWatchdogTimeout(appPtr, ToSimpleSectionPtr(sectionPtr));
+        }
+        else if (sectionName == "tags")
+        {
+            GetTags(appPtr, sectionPtr);
         }
         else
         {
