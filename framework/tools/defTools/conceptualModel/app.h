@@ -95,6 +95,9 @@ struct App_t : public HasTargetInfo_t
     WatchdogTimeout_t watchdogTimeout;
     WatchdogTimeout_t maxWatchdogTimeout;
 
+    /// Map of tag names to values
+    std::map<std::string, std::string> tags;
+
     /// Map of configuration tree names to access permissions (see permissions.h).
     std::map<std::string, Permissions_t> configTrees;
 

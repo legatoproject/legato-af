@@ -589,6 +589,35 @@ static parseTree::CompoundItem_t* ParseRequiresSubsection
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse a subsection inside a "tags:" section.
+ *
+ * @return Pointer to the item.
+ */
+//--------------------------------------------------------------------------------------------------
+static parseTree::CompoundItem_t* ParseTagsSubsection
+(
+    Lexer_t& lexer
+)
+//--------------------------------------------------------------------------------------------------
+{
+    // Each entry in the tags: section is a tag name followed by a colon and then the tag value.
+    // Pull the tag name out and create a new object for it.
+    parseTree::Token_t* nameTokenPtr = lexer.Pull(parseTree::Token_t::STRING);
+
+    auto itemPtr = new parseTree::ComplexSection_t(nameTokenPtr);
+
+    // Expect an ':' next.
+    (void)lexer.Pull(parseTree::Token_t::COLON);
+
+    // Expect the content token next.
+    itemPtr->lastTokenPtr = lexer.Pull(parseTree::Token_t::STRING);
+
+    return itemPtr;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Parses a section in a .adef file.
  *
  * @return Pointer to the item.
@@ -675,6 +704,10 @@ static parseTree::CompoundItem_t* ParseSection
     else if (sectionName == "maxWatchdogTimeout")
     {
         return ParseSimpleSection(lexer, sectionNameTokenPtr, parseTree::Token_t::INTEGER);
+    }
+    else if (sectionName == "tags")
+    {
+        return ParseComplexSection(lexer, sectionNameTokenPtr, ParseTagsSubsection);
     }
     else
     {

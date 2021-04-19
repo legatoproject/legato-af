@@ -885,6 +885,35 @@ static void GenerateAppWatchdogConfig
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Generate the tags configuration for a given app.
+ **/
+//--------------------------------------------------------------------------------------------------
+static void GenerateAppTagsConfig
+(
+    std::ofstream& cfgStream,
+    model::App_t* appPtr
+)
+{
+    if (appPtr->tags.empty())
+    {
+        return;
+    }
+
+    cfgStream <<
+        "    \"tags\"\n"
+        "    {\n";
+    for (auto &mapEntry : appPtr->tags)
+    {
+        cfgStream << "        \"" << mapEntry.first << "\" \""
+                << mapEntry.second << "\"\n";
+    }
+    cfgStream <<
+        "    }\n";
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Generate the configuration that the framework needs for a given app.  This is the configuration
  * that will be installed in the system configuration tree by the installer when the app is
  * installed on the target.  It will be output to a file called "root.cfg" in the app's staging
@@ -935,6 +964,8 @@ void Generate
     GenerateConfigTreeAclConfig(cfgStream, appPtr);
 
     GenerateAppWatchdogConfig(cfgStream, appPtr);
+
+    GenerateAppTagsConfig(cfgStream, appPtr);
 
     cfgStream << "}" << std::endl;
 }

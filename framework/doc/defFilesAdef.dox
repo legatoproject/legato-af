@@ -1212,6 +1212,32 @@ Default is @b auto.
 start: auto
 @endcode
 
+@section defFilesAdef_tags tags
+
+The tags section is an optional field that allow clients to specify key-value pairs on a
+per application basis. This feature is used in the .adef file of the specific application that
+clients wish to set tags for. Tags must be used as a key-value pair, where key is the tag
+name and value is the value associated with that tag.
+
+@subsection defFilesAdef_tagsAV disableAirVantageManagement
+
+The variable, "disableAirVantageManagement", is an optional variable that can be used to
+enable/disable application management from AirVantage. To use this variable, the variable
+must be set in the .adef file of the specific application. By default, the variable is
+set to false, meaning that application management for this app is enabled and actions
+can be performed through AirVantage (i.e. deleted, started/stopped). If this variable is
+set to true, the application management from AirVantage will be disabled for this
+specific app. Disabling application management will make the app not visible on
+AirVantage and prevent actions such as deleting or updating the application through
+AirVantage. An example of how to use this variable in the .adef file is shown below.
+
+@code
+tags:
+{
+disableAirVantageManagement: true
+}
+@endcode
+
 @section defFilesAdef_version version
 
 Optional field that specifies a string to use as the app's version string.
