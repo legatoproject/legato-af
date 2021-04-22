@@ -88,7 +88,8 @@ export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
 LIBJANSSON = $(LIB_DIR)/libjansson.so
 JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
-TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools/target/linux
+TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools/target
+LINUX_TOOLS_SRC_DIR = $(TOOLS_SRC_DIR)/linux
 APP_TOOLS_SRC_DIR = $(LEGATO_ROOT)/apps/tools
 LIBLEGATO_SRC_DIR = $(LEGATO_ROOT)/framework/liblegato
 DAEMON_SRC_DIR = $(LEGATO_ROOT)/framework/daemons/linux
@@ -121,7 +122,7 @@ $(LIBJANSSON): $(LIB_DIR)
 
 config: $(LIBJANSSON)
 	$(L) MKEXE $(BIN_DIR)/$@
-	$(Q)mkexe -o $(BIN_DIR)/$@ $(TOOLS_SRC_DIR)/config \
+	$(Q)mkexe -o $(BIN_DIR)/$@ $(LINUX_TOOLS_SRC_DIR)/config \
 			-i $(JANSSON_INC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR) \
 			--ldflags=-L$(LIB_DIR) \
@@ -131,7 +132,7 @@ config: $(LIBJANSSON)
 log:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/logTool/logTool.c \
+			$(LINUX_TOOLS_SRC_DIR)/logTool/logTool.c \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(DAEMON_SRC_DIR)/logDaemon \
 			$(LOCAL_MKEXE_FLAGS)
@@ -139,7 +140,7 @@ log:
 sdir:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/sdirTool \
+			$(LINUX_TOOLS_SRC_DIR)/sdirTool \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			-i $(DAEMON_SRC_DIR)/serviceDirectory \
@@ -156,6 +157,7 @@ inspect:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
 			$(TOOLS_SRC_DIR)/inspect/inspect.c \
+                        $(TOOLS_SRC_DIR)/inspect/target_linux.c \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			-i $(DAEMON_SRC_DIR) \
@@ -164,21 +166,21 @@ inspect:
 xattr:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/xattr/xattr.c \
+			$(LINUX_TOOLS_SRC_DIR)/xattr/xattr.c \
 			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 appStopClient:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/_$@ \
-			$(TOOLS_SRC_DIR)/appStopClient/appStopClient.c \
+			$(LINUX_TOOLS_SRC_DIR)/appStopClient/appStopClient.c \
 			-i $(LIBLEGATO_SRC_DIR) \
 			$(LOCAL_MKEXE_FLAGS)
 
 app:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/appCtrl \
+			$(LINUX_TOOLS_SRC_DIR)/appCtrl \
 			-i $(LEGATO_INTERFACES_DIR)/supervisor \
 			-i $(LIBLEGATO_SRC_DIR) \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
@@ -187,13 +189,13 @@ app:
 update:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/$@ \
+			$(LINUX_TOOLS_SRC_DIR)/$@ \
 			$(LOCAL_MKEXE_FLAGS)
 
 sbtrace:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ \
-			$(TOOLS_SRC_DIR)/$@ \
+			$(LINUX_TOOLS_SRC_DIR)/$@ \
 			-i $(LIBLEGATO_SRC_DIR)/linux \
 			$(LOCAL_MKEXE_FLAGS)
 

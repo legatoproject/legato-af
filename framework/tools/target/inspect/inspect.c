@@ -15,15 +15,25 @@
 #include "mem.h"
 #include "thread.h"
 #include "safeRef.h"
-#include "messagingInterface.h"
-#include "messagingProtocol.h"
-#include "messagingSession.h"
+#if LE_CONFIG_LINUX
+#  include "messagingInterface.h"
+#  include "messagingProtocol.h"
+#  include "messagingSession.h"
+#endif
 #include "limit.h"
-#include "addr.h"
 #include "fileDescriptor.h"
 #include "timer.h"
 
-#include <sys/ptrace.h>
+#include "inspect_target.h"
+
+/*
+ * A note on coding style specific to the inspect tool:
+ *
+ * __attribute__((unused)) is used liberally for service functions which are not currently used
+ * on all platforms or all configurations.  This was chosen over #ifdef'ing them out to keep
+ * these functions easily available if the supported feature set changes in the future.
+ *
+ */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -70,14 +80,18 @@
 typedef struct MemPoolIter*         MemPoolIter_Ref_t;
 typedef struct ThreadObjIter*       ThreadObjIter_Ref_t;
 typedef struct TimerIter*           TimerIter_Ref_t;
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 typedef struct MutexIter*           MutexIter_Ref_t;
 typedef struct SemaphoreIter*       SemaphoreIter_Ref_t;
+#endif
 typedef struct ThreadMemberObjIter* ThreadMemberObjIter_Ref_t;
 typedef struct RefMapIter*          RefMapIter_Ref_t;
+#if LE_CONFIG_LINUX
 typedef struct ServiceObjIter*      ServiceObjIter_Ref_t;
 typedef struct ClientObjIter*       ClientObjIter_Ref_t;
 typedef struct SessionObjIter*      SessionObjIter_Ref_t;
 typedef struct InterfaceObjIter*    InterfaceObjIter_Ref_t;
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -90,13 +104,17 @@ typedef enum
     INSPECT_INSP_TYPE_MEM_POOL,
     INSPECT_INSP_TYPE_THREAD_OBJ,
     INSPECT_INSP_TYPE_TIMER,
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     INSPECT_INSP_TYPE_MUTEX,
     INSPECT_INSP_TYPE_SEMAPHORE,
+#endif
     INSPECT_INSP_TYPE_SAFE_REF,
+#if LE_CONFIG_LINUX
     INSPECT_INSP_TYPE_IPC_SERVERS,
     INSPECT_INSP_TYPE_IPC_CLIENTS,
     INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS,
     INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS
+#endif
 }
 InspType_t;
 
@@ -219,6 +237,7 @@ typedef struct RefMapIter
 }
 RefMapIter_t;
 
+#if LE_CONFIG_LINUX
 typedef struct ServiceObjIter
 {
     RemoteHashmapAccess_t serviceObjMap; ///< Service object map in the remote process.
@@ -272,13 +291,40 @@ typedef struct InterfaceObjIter
     le_hashmap_Entry_t currEntry;
 }
 InterfaceObjIter_t;
+#endif
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Union capable of holding any iterator.  Used for memory pool object sizing
+ */
+//--------------------------------------------------------------------------------------------------
+typedef union {
+    MemPoolIter_t poolIter;
+    ThreadObjIter_t threadIter;
+    TimerIter_t timerIter;
+#if LE_CONFIG_LINUX_TARGET_TOOLS
+    MutexIter_t mutexIter;
+    SemaphoreIter_t semIter;
+#endif
+    ThreadMemberObjIter_t threadMemberIter;
+    RefMapIter_t safeRefIter;
+#if LE_CONFIG_LINUX
+    ServiceObjIter_t serviceIter;
+    ClientObjIter_t clientIter;
+    SessionObjIter_t sessionIter;
+    InterfaceObjIter_t interfaceIter;
+#endif
+} AnyIter_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
  * Local memory pool that is used for allocating an inspection object iterator.
  */
 //--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(IteratorPool, 1, sizeof(AnyIter_t));
+LE_MEM_DEFINE_STATIC_POOL(TimerRecPool, 1, sizeof(timer_ThreadRec_t));
+
 static le_mem_PoolRef_t IteratorPool;
 static le_mem_PoolRef_t TimerRecPool;
 
@@ -288,6 +334,14 @@ static le_mem_PoolRef_t TimerRecPool;
  */
 //--------------------------------------------------------------------------------------------------
 #define ESCAPE_CHAR         27
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * PID of the process to inspect.
+ */
+//--------------------------------------------------------------------------------------------------
+static pid_t PidToInspect = -1;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -320,14 +374,6 @@ static time_t RefreshInterval = DEFAULT_REFRESH_INTERVAL;
  */
 //--------------------------------------------------------------------------------------------------
 static le_timer_Ref_t refreshTimer = NULL;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * PID of the process to inspect.
- */
-//--------------------------------------------------------------------------------------------------
-static pid_t PidToInspect = -1;
 
 
 //--------------------------------------------------------------------------------------------------
@@ -366,35 +412,6 @@ static bool IsVerbose = false;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * true = child process stopped
- */
-//--------------------------------------------------------------------------------------------------
-static bool IsChildStopped = false;
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Local mapped address of liblegato.so
- */
-//--------------------------------------------------------------------------------------------------
-uintptr_t LocalLibLegatoBaseAddr = 0;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Child mapped address of liblegato.so
- */
-//--------------------------------------------------------------------------------------------------
-uintptr_t ChildLibLegatoBaseAddr = 0;
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Signal to deliver when process is restarted
- */
-//--------------------------------------------------------------------------------------------------
-int PendingChildSignal = 0;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Type of Timer under inspection: TIMER_NON_WAKEUP / TIMER_WAKEUP
  */
 //--------------------------------------------------------------------------------------------------
@@ -416,229 +433,12 @@ InspectEndStatus_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Prints a generic message on stderr so that the user is aware there is a problem, logs the
- * internal error message and exit.
- */
-//--------------------------------------------------------------------------------------------------
-#define INTERNAL_ERR(formatString, ...)                                                 \
-            { fprintf(stderr, "Internal error check logs for details.\n");              \
-              LE_FATAL(formatString, ##__VA_ARGS__); }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * If the condition is true, print a generic message on stderr so that the user is aware there is a
- * problem, log the internal error message and exit.
- */
-//--------------------------------------------------------------------------------------------------
-#define INTERNAL_ERR_IF(condition, formatString, ...)                                   \
-        if (condition) { INTERNAL_ERR(formatString, ##__VA_ARGS__); }
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Error message for reading something in the remote process.
  */
 //--------------------------------------------------------------------------------------------------
 #define REMOTE_READ_ERR(x) "Error reading " #x " in the remote process."
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Gets the counterpart address of the specified local reference in the address space of the
- * specified process.
- *
- * @return
- *      Remote address that is the counterpart of the local address.
- */
-//--------------------------------------------------------------------------------------------------
-static uintptr_t GetRemoteAddress
-(
-    pid_t pid,              ///< [IN] Remote process to to get the address for.
-    void* localAddrPtr      ///< [IN] Local address to get the offset with.
-)
-{
-    if (!LocalLibLegatoBaseAddr)
-    {
-        off_t localLibLegatoBaseAddrOff = 0;
-        // Get the address of our framework library.
-        if (addr_GetLibDataSection(0, "liblegato.so", &localLibLegatoBaseAddrOff) != LE_OK)
-        {
-            INTERNAL_ERR("Can't find our framework library address.");
-        }
-
-        LocalLibLegatoBaseAddr = localLibLegatoBaseAddrOff;
-    }
-
-    // Calculate the offset address of the local address by subtracting it by the start of our
-    // own framwork library address.
-    uintptr_t offset = (uintptr_t)(localAddrPtr) - LocalLibLegatoBaseAddr;
-
-    if (!ChildLibLegatoBaseAddr)
-    {
-        off_t childLibLegatoBaseAddrOff = 0;
-
-        // Get the address of the framework library in the remote process.
-        if (addr_GetLibDataSection(pid, "liblegato.so", &childLibLegatoBaseAddrOff) != LE_OK)
-        {
-            INTERNAL_ERR("Can't find address of the framework library in the remote process.");
-        }
-
-        ChildLibLegatoBaseAddr = childLibLegatoBaseAddrOff;
-    }
-
-    // Calculate the process-under-inspection's counterpart address to the local address  by adding
-    // the offset to the start of their framework library address.
-    return (ChildLibLegatoBaseAddr + offset);
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Attach to the target process in order to gain control of its execution and access its memory
- * space.
- */
-//--------------------------------------------------------------------------------------------------
-static void TargetAttach
-(
-    pid_t pid              ///< [IN] Remote process to attach to
-)
-{
-    if (ptrace(PTRACE_SEIZE, pid, NULL, (void*)0) == -1)
-    {
-        fprintf(stderr, "Failed to attach to pid %d: error %d\n", pid, errno);
-        LE_FATAL("Failed to attach to pid %d: error %d\n", pid, errno);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Detach from a process that we had previously attached to.
- */
-//--------------------------------------------------------------------------------------------------
-static void TargetDetach
-(
-    pid_t pid              ///< [IN] Remote process to detach from
-)
-{
-    if (ptrace(PTRACE_DETACH, pid, 0, 0) == -1)
-    {
-        fprintf(stderr, "Failed to detach from pid %d: error %d\n", pid, errno);
-        LE_FATAL("Failed to detach from pid %d: error %d\n", pid, errno);
-    }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pause execution of a running process which we had previously attached to.
- */
-//--------------------------------------------------------------------------------------------------
-static void TargetStop
-(
-    pid_t pid              ///< [IN] Remote process to stop.
-)
-{
-    int waitStatus;
-
-    if (ptrace(PTRACE_INTERRUPT, pid, 0, 0) == -1)
-    {
-        fprintf(stderr, "Failed to stop pid %d: error %d\n", pid, errno);
-        LE_FATAL("Failed to stop pid %d: error %d\n", pid, errno);
-    }
-
-    if (waitpid(pid, &waitStatus, 0) != pid)
-    {
-        fprintf(stderr, "Failed to wait for stopping pid %d: error %d\n", pid, errno);
-        LE_FATAL("Failed to wait for stopping pid %d: error %d\n", pid, errno);
-    }
-
-    if (WIFEXITED(waitStatus))
-    {
-        fprintf(stderr, "Inspected process %d exited\n", pid);
-        LE_FATAL("Inspected process %d exited\n", pid);
-    }
-    else if (WIFSTOPPED(waitStatus))
-    {
-        if (WSTOPSIG(waitStatus) != SIGTRAP && !PendingChildSignal)
-        {
-            // Stopped for a reason other than PTRACE interrupt (above) and no pending child
-            // signal.  So store signal to be delivered later.
-            PendingChildSignal = WSTOPSIG(waitStatus);
-        }
-    }
-    else if (WIFSIGNALED(waitStatus))
-    {
-        // Store signal to pass along to the child when we restart
-        if (!PendingChildSignal)
-        {
-            PendingChildSignal = WTERMSIG(PendingChildSignal);
-        }
-    }
-
-    IsChildStopped = true;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Resume execution of a previously paused process.
- */
-//--------------------------------------------------------------------------------------------------
-static void TargetStart
-(
-    pid_t pid              ///< [IN] Remote process to restart
-)
-{
-    IsChildStopped = false;
-
-    if (ptrace(PTRACE_CONT, pid, 0, (void *) (intptr_t) PendingChildSignal) == -1)
-    {
-        fprintf(stderr, "Failed to start pid %d: error %d\n", pid, errno);
-        LE_FATAL("Failed to stop pid %d: error %d\n", pid, errno);
-    }
-
-    // Clear pending signal
-    PendingChildSignal = 0;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Read from the memory of an attached target process.
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t TargetReadAddress
-(
-    pid_t pid,              ///< [IN] Remote process to read address
-    uintptr_t remoteAddr,   ///< [IN] Remote address to read from target
-    void* buffer,           ///< [OUT] Destination to read into
-    size_t size             ///< [IN] Number of bytes to read
-)
-{
-    LE_ASSERT(IsChildStopped);
-
-    uintptr_t readWord;
-    for (readWord = remoteAddr & ~(sizeof(long) - 1);
-         size > 0;
-         readWord += sizeof(long))
-    {
-        errno = 0;
-        long peekWord = ptrace(PTRACE_PEEKDATA, pid, readWord, 0);
-
-        // Check if ptrace was able to get memory
-        if (errno != 0)
-        {
-            return LE_FAULT;
-        }
-
-        uintptr_t startOffset = (remoteAddr - readWord);
-        size_t readSize = sizeof(long) - startOffset;
-        LE_ASSERT(startOffset < sizeof(long));
-        memcpy(buffer, ((char*)&peekWord) + startOffset, readSize);
-        size -= readSize;
-        remoteAddr += readSize;
-        buffer = (char*)buffer + readSize;
-    }
-
-    return LE_OK;
-}
 
 
 //--------------------------------------------------------------------------------------------------
@@ -679,6 +479,7 @@ static void InitRemoteSlsListAccessObj
  * Initialize a RemoteHashmapListAccess_t data struct.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static void InitRemoteHashmapListAccessObj
 (
     RemoteHashmapListAccess_t* remoteList
@@ -711,24 +512,24 @@ static MemPoolIter_Ref_t CreateMemPoolIter
 )
 {
     // Get the address offset of the memory pool list for the process to inspect.
-    uintptr_t listAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolList());
+    uintptr_t listAddrOffset = target_GetRemoteAddress(PidToInspect, mem_GetPoolList());
 
     // Get the address offset of the memory pool list change counter for the process to inspect.
-    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, mem_GetPoolListChgCntRef());
+    uintptr_t listChgCntAddrOffset = target_GetRemoteAddress(PidToInspect, mem_GetPoolListChgCntRef());
 
     // Create the iterator.
     MemPoolIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
     InitRemoteDlsListAccessObj(&iteratorPtr->memPoolList);
 
     // Get the List for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->memPoolList.List),
+    if (target_ReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->memPoolList.List),
                              sizeof(iteratorPtr->memPoolList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list"));
     }
 
     // Get the ListChgCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->memPoolList.ListChgCntRef),
                           sizeof(iteratorPtr->memPoolList.ListChgCntRef)) != LE_OK)
     {
@@ -754,24 +555,24 @@ static ThreadObjIter_Ref_t CreateThreadObjIter
 )
 {
     // Get the address offset of the thread obj list for the process to inspect.
-    uintptr_t listAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
+    uintptr_t listAddrOffset = target_GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
 
     // Get the address offset of the list of thread objs change counter for the process to inspect.
-    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjListChgCntRef());
+    uintptr_t listChgCntAddrOffset = target_GetRemoteAddress(PidToInspect, thread_GetThreadObjListChgCntRef());
 
     // Create the iterator.
     ThreadObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
     InitRemoteDlsListAccessObj(&iteratorPtr->threadObjList);
 
     // Get the List for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->threadObjList.List),
+    if (target_ReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->threadObjList.List),
                           sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list"));
     }
 
     // Get the ListChgCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->threadObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
     {
@@ -806,6 +607,7 @@ static void* CreateThreadMemberObjIter
             getListChgCntRefFunc = timer_GetTimerListChgCntRef;
             break;
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         case INSPECT_INSP_TYPE_MUTEX:
             getListChgCntRefFunc = mutex_GetMutexListChgCntRef;
             break;
@@ -813,22 +615,23 @@ static void* CreateThreadMemberObjIter
         case INSPECT_INSP_TYPE_SEMAPHORE:
             getListChgCntRefFunc = sem_GetSemaphoreListChgCntRef;
             break;
+#endif
 
         default:
             INTERNAL_ERR("unexpected thread member object type %d.", memberObjType);
     }
 
     // Get the address offset of the list of thread objs for the process to inspect.
-    uintptr_t threadObjListAddrOffset = GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
+    uintptr_t threadObjListAddrOffset = target_GetRemoteAddress(PidToInspect, thread_GetThreadObjList());
 
     // Get the addr offset of the change counter of the list of thread objs for the process to
     // inspect.
-    uintptr_t threadObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+    uintptr_t threadObjListChgCntAddrOffset = target_GetRemoteAddress(PidToInspect,
                                                            thread_GetThreadObjListChgCntRef());
 
     // Get the address offset of the change counter of the list of thread member objs for the
     // process to inspect.
-    uintptr_t threadMemberObjListChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+    uintptr_t threadMemberObjListChgCntAddrOffset = target_GetRemoteAddress(PidToInspect,
                                                                  getListChgCntRefFunc());
 
     // Create the iterator.
@@ -838,14 +641,14 @@ static void* CreateThreadMemberObjIter
     InitRemoteDlsListAccessObj(&iteratorPtr->threadMemberObjList);
 
     // Get the list of thread objs for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, threadObjListAddrOffset, &(iteratorPtr->threadObjList.List),
+    if (target_ReadAddress(PidToInspect, threadObjListAddrOffset, &(iteratorPtr->threadObjList.List),
                              sizeof(iteratorPtr->threadObjList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list"));
     }
 
     // Get the thread obj ListChgCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, threadObjListChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, threadObjListChgCntAddrOffset,
                           &(iteratorPtr->threadObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadObjList.ListChgCntRef)) != LE_OK)
     {
@@ -853,7 +656,7 @@ static void* CreateThreadMemberObjIter
     }
 
     // Get the thread member obj ListChgCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, threadMemberObjListChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, threadMemberObjListChgCntAddrOffset,
                           &(iteratorPtr->threadMemberObjList.ListChgCntRef),
                           sizeof(iteratorPtr->threadMemberObjList.ListChgCntRef)) != LE_OK)
     {
@@ -882,6 +685,7 @@ static TimerIter_Ref_t CreateTimerIter
     return (TimerIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_TIMER);
 }
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 static MutexIter_Ref_t CreateMutexIter
 (
     void
@@ -897,7 +701,7 @@ static SemaphoreIter_Ref_t CreateSemaphoreIter
 {
     return (SemaphoreIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_SEMAPHORE);
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -918,24 +722,24 @@ static RefMapIter_Ref_t CreateRefMapIter
 )
 {
     // Get the address offset of the safe ref list for the process to inspect.
-    uintptr_t listAddrOffset = GetRemoteAddress(PidToInspect, ref_GetRefMapList());
+    uintptr_t listAddrOffset = target_GetRemoteAddress(PidToInspect, ref_GetRefMapList());
 
     // Get the address offset of the safe ref list change counter for the process to inspect.
-    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect, ref_GetRefMapListChgCntRef());
+    uintptr_t listChgCntAddrOffset = target_GetRemoteAddress(PidToInspect, ref_GetRefMapListChgCntRef());
 
     // Create the iterator
     RefMapIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
     InitRemoteDlsListAccessObj(&iteratorPtr->refMapList);
 
     // Get the List for the process-under-inspection
-    if (TargetReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->refMapList.List),
+    if (target_ReadAddress(PidToInspect, listAddrOffset, &(iteratorPtr->refMapList.List),
                           sizeof(iteratorPtr->refMapList.List)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("saferef list"));
     }
 
     // Get the ListChngCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->refMapList.ListChgCntRef),
                           sizeof(iteratorPtr->refMapList.ListChgCntRef)) != LE_OK)
     {
@@ -945,7 +749,7 @@ static RefMapIter_Ref_t CreateRefMapIter
     return iteratorPtr;
 }
 
-
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Creates an iterator that can be used to iterate over the map of interface objects. See the
@@ -993,10 +797,10 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
 
 
     // Get the address offset of the map of interface objs for the process to inspect.
-    uintptr_t mapAddrOffset = GetRemoteAddress(PidToInspect, getMapFunc());
+    uintptr_t mapAddrOffset = target_GetRemoteAddress(PidToInspect, getMapFunc());
 
     // Get the address offset of the map of interface objs change counter for the proc to inspect.
-    uintptr_t mapChgCntAddrOffset = GetRemoteAddress(PidToInspect, getMapChgCntRefFunc());
+    uintptr_t mapChgCntAddrOffset = target_GetRemoteAddress(PidToInspect, getMapChgCntRefFunc());
 
     // Create the iterator.
     InterfaceObjIter_t* iteratorPtr = le_mem_ForceAlloc(IteratorPool);
@@ -1005,13 +809,13 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
     le_hashmap_Hashmap_t map;
 
     // Get the mapRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, mapAddrOffset, &(mapRef), sizeof(mapRef)) != LE_OK)
+    if (target_ReadAddress(PidToInspect, mapAddrOffset, &(mapRef), sizeof(mapRef)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map ref"));
     }
 
     // Get the map for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)mapRef, &(map), sizeof(map)) != LE_OK)
+    if (target_ReadAddress(PidToInspect, (uintptr_t)mapRef, &(map), sizeof(map)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map"));
     }
@@ -1020,7 +824,7 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
     iteratorPtr->interfaceObjMap.bucketCount = map.bucketCount;
 
     // Get the mapChgCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, mapChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, mapChgCntAddrOffset,
                           &(iteratorPtr->interfaceObjMap.mapChgCntRef),
                           sizeof(iteratorPtr->interfaceObjMap.mapChgCntRef)) != LE_OK)
     {
@@ -1033,7 +837,7 @@ static InterfaceObjIter_Ref_t CreateInterfaceObjIter
     InitRemoteHashmapListAccessObj(&iteratorPtr->interfaceObjList);
 
     // Get the list of interface objects.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)iteratorPtr->interfaceObjMap.bucketsPtr,
+    if (target_ReadAddress(PidToInspect, (uintptr_t)iteratorPtr->interfaceObjMap.bucketsPtr,
                           &(iteratorPtr->interfaceObjList.List),
                           sizeof(iteratorPtr->interfaceObjList.List)) != LE_OK)
     {
@@ -1103,14 +907,14 @@ static SessionObjIter_Ref_t CreateSessionObjIter
     }
 
     // Get the address offset of the list of session objs change counter for the proc to inspect.
-    uintptr_t listChgCntAddrOffset = GetRemoteAddress(PidToInspect,
+    uintptr_t listChgCntAddrOffset = target_GetRemoteAddress(PidToInspect,
                                                   msgSession_GetSessionObjListChgCntRef());
 
     // Initialize the list.
     InitRemoteDlsListAccessObj(&iteratorPtr->sessionList);
 
     // Get the listChgCntRef for the process-under-inspection.
-    if (TargetReadAddress(PidToInspect, listChgCntAddrOffset,
+    if (target_ReadAddress(PidToInspect, listChgCntAddrOffset,
                           &(iteratorPtr->sessionList.ListChgCntRef),
                           sizeof(iteratorPtr->sessionList.ListChgCntRef)) != LE_OK)
     {
@@ -1119,7 +923,7 @@ static SessionObjIter_Ref_t CreateSessionObjIter
 
     return iteratorPtr;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1135,7 +939,7 @@ static size_t GetMemPoolListChgCnt
 )
 {
     size_t memPoolListChgCnt;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->memPoolList.ListChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->memPoolList.ListChgCntRef),
                           &memPoolListChgCnt, sizeof(memPoolListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool list change counter"));
@@ -1159,7 +963,7 @@ static size_t GetThreadObjListChgCnt
 )
 {
     size_t threadObjListChgCnt;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->threadObjList.ListChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->threadObjList.ListChgCntRef),
                           &threadObjListChgCnt, sizeof(threadObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter"));
@@ -1187,13 +991,13 @@ static size_t GetThreadMemberObjListChgCnt
 )
 {
     size_t threadObjListChgCnt, threadMemberObjListChgCnt;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->threadObjList.ListChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->threadObjList.ListChgCntRef),
                           &threadObjListChgCnt, sizeof(threadObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread obj list change counter"));
     }
 
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->threadMemberObjList.ListChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->threadMemberObjList.ListChgCntRef),
                           &threadMemberObjListChgCnt, sizeof(threadMemberObjListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread member obj list change counter"));
@@ -1214,7 +1018,7 @@ static size_t GetRefMapListChgCnt
 )
 {
     size_t refMapListChgCnt;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->refMapList.ListChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->refMapList.ListChgCntRef),
                           &refMapListChgCnt, sizeof(refMapListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("saferef list change counter"));
@@ -1223,7 +1027,7 @@ static size_t GetRefMapListChgCnt
     return refMapListChgCnt;
 }
 
-
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Gets the interface object map change counter from the specified iterator.
@@ -1238,7 +1042,7 @@ static size_t GetInterfaceObjMapChgCnt
 )
 {
     size_t interfaceObjMapChgCnt;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->interfaceObjMap.mapChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->interfaceObjMap.mapChgCntRef),
                           &interfaceObjMapChgCnt, sizeof(interfaceObjMapChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface obj map change counter"));
@@ -1263,7 +1067,7 @@ static size_t GetSessionListChgCnt
 )
 {
     size_t sessionListChgCnt;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)(iterator->sessionList.ListChgCntRef),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)(iterator->sessionList.ListChgCntRef),
                           &sessionListChgCnt, sizeof(sessionListChgCnt)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("session list change counter"));
@@ -1271,6 +1075,7 @@ static size_t GetSessionListChgCnt
 
     return GetInterfaceObjMapChgCnt((InterfaceObjIter_Ref_t)iterator) + sessionListChgCnt;
 }
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -1427,6 +1232,7 @@ static le_sls_Link_t* GetNextSlsLink
  *      Pointer to a link of a node in the remote process
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static le_hashmap_Link_t* GetNextHashmapLink
 (
     RemoteHashmapListAccess_t* listInfoRef,    ///< [IN] Object for accessing a list in the remote process.
@@ -1474,7 +1280,7 @@ static le_mem_Pool_t* GetNextMemPool
     le_mem_Pool_t* poolPtr = CONTAINER_OF(linkPtr, le_mem_Pool_t, poolLink);
 
     // Read the pool into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)poolPtr, &(memPoolIterRef->currMemPool),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)poolPtr, &(memPoolIterRef->currMemPool),
                           sizeof(memPoolIterRef->currMemPool)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mempool object"));
@@ -1509,7 +1315,7 @@ static thread_Obj_t* GetNextThreadObj
     thread_Obj_t* threadObjPtr = CONTAINER_OF(linkPtr, thread_Obj_t, link);
 
     // Read the thread obj into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)threadObjPtr, &(threadObjIterRef->currThreadObj),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)threadObjPtr, &(threadObjIterRef->currThreadObj),
                           sizeof(threadObjIterRef->currThreadObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
@@ -1538,7 +1344,7 @@ static le_dls_Link_t* GetThreadMemberObjList
         case INSPECT_INSP_TYPE_TIMER:
             {
                 timer_ThreadRec_t* timerPtr = le_mem_ForceAlloc(TimerRecPool);
-                if (TargetReadAddress(PidToInspect,
+                if (target_ReadAddress(PidToInspect,
                             (uintptr_t)threadObjRef->timerRecPtr[TimerTypeIndex],
                             timerPtr,
                             sizeof(timer_ThreadRec_t)) != LE_OK)
@@ -1548,11 +1354,11 @@ static le_dls_Link_t* GetThreadMemberObjList
                 threadObjRef->timerRecPtr[TimerTypeIndex] = timerPtr;
                 return threadObjRef->timerRecPtr[TimerTypeIndex]->activeTimerList.headLinkPtr;
             }
-            break;
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         case INSPECT_INSP_TYPE_MUTEX:
             return threadObjRef->mutexRec.lockedMutexList.headLinkPtr;
-            break;
+#endif
 
         default:
             INTERNAL_ERR("unexpected thread member object type %d.", memberObjType);
@@ -1582,18 +1388,20 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
     switch (memberObjType)
     {
         case INSPECT_INSP_TYPE_TIMER:
-            // an empty statement for the label to belong to, since a declaration is not a statement
-            // in C.
-            ;
+        {
             TimerIter_Ref_t timerIterRef = (TimerIter_Ref_t)threadMemberObjItrRef;
             currThreadMemberObjLinkPtr = &(timerIterRef->currTimer.link);
             break;
+        }
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         case INSPECT_INSP_TYPE_MUTEX:
-            ;
+        {
             MutexIter_Ref_t mutexIterRef = (MutexIter_Ref_t)threadMemberObjItrRef;
             currThreadMemberObjLinkPtr = &(mutexIterRef->currMutex.lockedByThreadLink);
             break;
+        }
+#endif
 
         default:
             INTERNAL_ERR("unexpected thread member object type %d.", memberObjType);
@@ -1616,6 +1424,14 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         // There are no more thread objects on the list (or list is empty)
         if (remThreadObjNextLinkPtr == NULL)
         {
+            // free last timer if applicable
+            if ((memberObjType == INSPECT_INSP_TYPE_TIMER) &&
+                localThreadObjRef->timerRecPtr[TimerTypeIndex])
+            {
+                le_mem_Release(localThreadObjRef->timerRecPtr[TimerTypeIndex]);
+                localThreadObjRef->timerRecPtr[TimerTypeIndex] = NULL;
+            }
+
             if ((memberObjType == INSPECT_INSP_TYPE_TIMER) &&
                 (TimerTypeIndex == TIMER_NON_WAKEUP))
             {
@@ -1628,7 +1444,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
                                  thread_Obj_t, link);
 
                 // Read the thread obj into our own memory, and update the local reference
-                if (TargetReadAddress(PidToInspect, (uintptr_t)headThreadObjPtr,
+                if (target_ReadAddress(PidToInspect, (uintptr_t)headThreadObjPtr,
                                       localThreadObjRef,
                                       sizeof(thread_Obj_t)) != LE_OK)
                 {
@@ -1665,7 +1481,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
         }
 
         // Read the thread obj into our own memory, and update the local reference
-        if (TargetReadAddress(PidToInspect, (uintptr_t)remThreadObjPtr,
+        if (target_ReadAddress(PidToInspect, (uintptr_t)remThreadObjPtr,
                               localThreadObjRef,
                               sizeof(thread_Obj_t)) != LE_OK)
         {
@@ -1715,7 +1531,7 @@ static Timer_t* GetNextTimer
     Timer_t* remTimerPtr = CONTAINER_OF(remThreadMemberObjNextLinkPtr, Timer_t, link);
 
     // Read the timer into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)remTimerPtr, &(timerIterRef->currTimer),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)remTimerPtr, &(timerIterRef->currTimer),
                           sizeof(timerIterRef->currTimer)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("timer object"));
@@ -1724,7 +1540,7 @@ static Timer_t* GetNextTimer
     return &(timerIterRef->currTimer);
 }
 
-
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 //--------------------------------------------------------------------------------------------------
 /**
  * See GetNextTimer.
@@ -1751,7 +1567,7 @@ static Mutex_t* GetNextMutex
     Mutex_t* remMutexPtr = CONTAINER_OF(remThreadMemberObjNextLinkPtr, Mutex_t, lockedByThreadLink);
 
     // Read the mutex into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)remMutexPtr, &(mutexIterRef->currMutex),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)remMutexPtr, &(mutexIterRef->currMutex),
                           sizeof(mutexIterRef->currMutex)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("mutex object"));
@@ -1813,7 +1629,7 @@ static Semaphore_t* GetNextSemaphore
     while (remSemaphorePtr == NULL);
 
     // Read the semaphore into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)remSemaphorePtr, &(semaIterRef->currSemaphore),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)remSemaphorePtr, &(semaIterRef->currSemaphore),
                           sizeof(semaIterRef->currSemaphore)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("semaphore object"));
@@ -1821,7 +1637,7 @@ static Semaphore_t* GetNextSemaphore
 
     return &(semaIterRef->currSemaphore);
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1849,7 +1665,7 @@ static void* GetNextRefMap
     struct le_ref_Map* refPtr = CONTAINER_OF(linkPtr, struct le_ref_Map, entry);
 
     // Read the safeRef into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)refPtr, &(refMapIterRef->currRefMap),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)refPtr, &(refMapIterRef->currRefMap),
                           sizeof(refMapIterRef->currRefMap)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("refmap object"));
@@ -1859,6 +1675,7 @@ static void* GetNextRefMap
 }
 
 
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Gets the pointer to the next interface instance object. For other detail see GetNextMemPool.
@@ -1897,7 +1714,7 @@ static void* GetNextInterfaceObjPtr
         }
 
         // So we haven't run out of buckets yet. Then update our interface object list.
-        if (TargetReadAddress(PidToInspect,
+        if (target_ReadAddress(PidToInspect,
                               (uintptr_t)(iterator->interfaceObjMap.bucketsPtr + iterator->currIndex),
                               &(iterator->interfaceObjList.List),
                               sizeof(iterator->interfaceObjList.List)) != LE_OK)
@@ -1918,7 +1735,7 @@ static void* GetNextInterfaceObjPtr
     le_hashmap_Entry_t* remEntryPtr = CONTAINER_OF(remEntryNextLinkPtr, le_hashmap_Entry_t, entryListLink);
 
     // Read the entry object into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)remEntryPtr,
+    if (target_ReadAddress(PidToInspect, (uintptr_t)remEntryPtr,
                           &(iterator->currEntry), sizeof(iterator->currEntry)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("entry object"));
@@ -1951,7 +1768,7 @@ static msgInterface_UnixService_t* GetNextServiceObj
     }
 
     // Read the service object into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)serviceObjPtr, &(serviceObjIterRef->currServiceObj),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)serviceObjPtr, &(serviceObjIterRef->currServiceObj),
                           sizeof(serviceObjIterRef->currServiceObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("service object"));
@@ -1986,7 +1803,7 @@ static msgInterface_ClientInterface_t* GetNextClientObj
     }
 
     // Read the client interface object into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)clientObjPtr, &(clientObjIterRef->currClientObj),
+    if (target_ReadAddress(PidToInspect, (uintptr_t)clientObjPtr, &(clientObjIterRef->currClientObj),
                           sizeof(clientObjIterRef->currClientObj)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("client interface object"));
@@ -2028,7 +1845,7 @@ static msgSession_UnixSession_t* GetNextSessionObj
         }
 
         // Read the interface object into our own memory.
-        if (TargetReadAddress(PidToInspect, (uintptr_t)interfaceObjPtr,
+        if (target_ReadAddress(PidToInspect, (uintptr_t)interfaceObjPtr,
                               &(currInterfaceObj), sizeof(currInterfaceObj)) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("interface object"));
@@ -2047,7 +1864,7 @@ static msgSession_UnixSession_t* GetNextSessionObj
                                                               msgSession_UnixSession_t, link);
 
     // Read the session object into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)remSessionObjPtr,
+    if (target_ReadAddress(PidToInspect, (uintptr_t)remSessionObjPtr,
                           &(sessionObjIterRef->currSessionObj),
                           sizeof(sessionObjIterRef->currSessionObj)) != LE_OK)
     {
@@ -2056,7 +1873,7 @@ static msgSession_UnixSession_t* GetNextSessionObj
 
     return &(sessionObjIterRef->currSessionObj);
 }
-
+#endif
 
 // TODO: migrate the above to a separate module.
 //--------------------------------------------------------------------------------------------------
@@ -2075,8 +1892,14 @@ static void PrintHelp
         "              Legato process.\n"
         "\n"
         "SYNOPSIS:\n"
-        "    inspect <pools|saferefs|threads|timers|mutexes|semaphores> [OPTIONS] PID\n"
+        "    inspect <pools|saferefs|threads|timers|mutexes|semaphores> [OPTIONS]"
+#if LE_CONFIG_LINUX
+                                                                                 " PID"
+#endif
+                                                                                      "\n"
+#if LE_CONFIG_LINUX
         "    inspect ipc <servers|clients [sessions]> [OPTIONS] PID\n"
+#endif
         "\n"
         "DESCRIPTION:\n"
         "    inspect pools              Prints the memory pools usage for the specified process.\n"
@@ -2084,12 +1907,16 @@ static void PrintHelp
         "    inspect threads            Prints the info of threads for the specified process.\n"
         "    inspect timers             Prints the info of timers in all threads for the"
                                         " specified process.\n"
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         "    inspect mutexes            Prints the info of mutexes in all threads for the"
                                         " specified process.\n"
         "    inspect semaphores         Prints the info of semaphores in all threads for the"
                                         " specified process.\n"
+#endif
+#if LE_CONFIG_LINUX
         "    inspect ipc                Prints the info of ipc in all threads for the"
                                         " specified process.\n"
+#endif
         "\n"
         "OPTIONS:\n"
         "    -f\n"
@@ -2189,6 +2016,7 @@ static ColumnInfo_t ThreadObjTableInfo[] =
     {"NAME",             "%*s", NULL, "%*s",  MAX_THREAD_NAME_SIZE, true,  0, true},
     {"JOINABLE",         "%*s", NULL, "%*u",  sizeof(bool),         false, 0, true},
     {"STARTED",          "%*s", NULL, "%*u",  sizeof(bool),         false, 0, true},
+#if LE_CONFIG_LINUX
     {"DETACHSTATE",      "%*s", NULL, "%*s",  0,                    true,  0, true},
     {"SCHED POLICY",     "%*s", NULL, "%*s",  0,                    true,  0, true},
     {"SCHED PARAM",      "%*s", NULL, "%*u",  sizeof(int),          false, 0, true},
@@ -2197,6 +2025,7 @@ static ColumnInfo_t ThreadObjTableInfo[] =
     {"GUARD SIZE",       "%*s", NULL, "%*zu", sizeof(size_t),       false, 0, true},
     {"STACK ADDR",       "%*s", NULL, "%*X",  sizeof(uint64_t),     false, 0, true},
     {"STACK SIZE",       "%*s", NULL, "%*zu", sizeof(size_t),       false, 0, true}
+#endif
 };
 static size_t ThreadObjTableInfoSize = NUM_ARRAY_MEMBERS(ThreadObjTableInfo);
 
@@ -2212,6 +2041,7 @@ static ColumnInfo_t TimerTableInfo[] =
 };
 static size_t TimerTableInfoSize = NUM_ARRAY_MEMBERS(TimerTableInfo);
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 static ColumnInfo_t MutexTableInfo[] =
 {
     {"NAME",         "%*s", NULL, "%*s", MAX_NAME_BYTES,       true,  0, true},
@@ -2227,6 +2057,7 @@ static ColumnInfo_t SemaphoreTableInfo[] =
     {"WAITING LIST", "%*s", NULL, "%*s", MAX_THREAD_NAME_SIZE,           true,  0, true}
 };
 static size_t SemaphoreTableInfoSize = NUM_ARRAY_MEMBERS(SemaphoreTableInfo);
+#endif
 
 static ColumnInfo_t RefMapTableInfo[] =
 {
@@ -2236,6 +2067,7 @@ static ColumnInfo_t RefMapTableInfo[] =
 };
 static size_t RefMapTableInfoSize = NUM_ARRAY_MEMBERS(RefMapTableInfo);
 
+#if LE_CONFIG_LINUX
 static ColumnInfo_t ServiceObjTableInfo[] =
 {
     {"INTERFACE NAME", "%*s", NULL, "%*s",  LIMIT_MAX_IPC_INTERFACE_NAME_BYTES, true,  0, true},
@@ -2263,7 +2095,7 @@ static ColumnInfo_t SessionObjTableInfo[] =
     {"FD",             "%*s", NULL, "%*d", sizeof(int),                        false, 0, false}
 };
 static size_t SessionObjTableInfoSize = NUM_ARRAY_MEMBERS(SessionObjTableInfo);
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2277,6 +2109,7 @@ typedef struct
 }
 DefnStrMapping_t;
 
+#if LE_CONFIG_LINUX
 // pthread attribute: detach state
 static DefnStrMapping_t ThreadObjDetachStateTbl[] =
 {
@@ -2373,7 +2206,7 @@ static DefnStrMapping_t SessionStateTbl[] =
     }
 };
 static int SessionStateTblSize = NUM_ARRAY_MEMBERS(SessionStateTbl);
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2383,6 +2216,7 @@ static int SessionStateTblSize = NUM_ARRAY_MEMBERS(SessionStateTbl);
  *      A pointer to the textual description in the table.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static char* DefnToStr
 (
     int defn,                ///< [IN] The enum/define that we want to look up the description for.
@@ -2409,6 +2243,7 @@ static char* DefnToStr
  * For a given table of number and text, find out the max number of characters out of all text.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static size_t FindMaxStrSizeFromTable
 (
     DefnStrMapping_t* table, ///< [IN] Table ref.
@@ -2474,6 +2309,7 @@ static void InitDisplayTable
     // sizes to the thread object display table.
     if (table == ThreadObjTableInfo)
     {
+#if LE_CONFIG_LINUX
         InitDisplayTableMaxDataSize("DETACHSTATE", table, tableSize,
                                     FindMaxStrSizeFromTable(ThreadObjDetachStateTbl,
                                                             ThreadObjDetachStateTblSize));
@@ -2489,6 +2325,7 @@ static void InitDisplayTable
         InitDisplayTableMaxDataSize("CONTENTION SCOPE", table, tableSize,
                                     FindMaxStrSizeFromTable(ThreadObjContentionScopeTbl,
                                                             ThreadObjContentionScopeTblSize));
+#endif
     }
     else if (table == MemPoolTableInfo)
     {
@@ -2498,6 +2335,7 @@ static void InitDisplayTable
                                                                        superPoolStrLen;
         InitDisplayTableMaxDataSize("SUB-POOL", table, tableSize, subPoolColumnStrLen);
     }
+#if LE_CONFIG_LINUX
     else if (table == ServiceObjTableInfo)
     {
         InitDisplayTableMaxDataSize("STATE", table, tableSize,
@@ -2510,6 +2348,7 @@ static void InitDisplayTable
                                     FindMaxStrSizeFromTable(SessionStateTbl,
                                                             SessionStateTblSize));
     }
+#endif
 
     int i;
     for (i = 0; i < tableSize; i++)
@@ -2576,6 +2415,7 @@ static void InitDisplay
             InitDisplayTable(TimerTableInfo, TimerTableInfoSize);
             break;
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         case INSPECT_INSP_TYPE_MUTEX:
             InitDisplayTable(MutexTableInfo, MutexTableInfoSize);
             break;
@@ -2583,11 +2423,13 @@ static void InitDisplay
         case INSPECT_INSP_TYPE_SEMAPHORE:
             InitDisplayTable(SemaphoreTableInfo, SemaphoreTableInfoSize);
             break;
+#endif
 
         case INSPECT_INSP_TYPE_SAFE_REF:
             InitDisplayTable(RefMapTableInfo, RefMapTableInfoSize);
             break;
 
+#if LE_CONFIG_LINUX
         case INSPECT_INSP_TYPE_IPC_SERVERS:
             InitDisplayTable(ServiceObjTableInfo, ServiceObjTableInfoSize);
             break;
@@ -2600,6 +2442,7 @@ static void InitDisplay
         case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
             InitDisplayTable(SessionObjTableInfo, SessionObjTableInfoSize);
             break;
+#endif
 
         default:
             INTERNAL_ERR("Failed to initialize display table - unexpected inspect type %d.",
@@ -2674,6 +2517,7 @@ static void PrintInfo
  * Nothing is printed for all other columns and no column spacers are printed.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static void PrintUnderColumn
 (
     char* colTitle,      ///< [IN] As a key for lookup, title of column to print the string under.
@@ -2771,6 +2615,7 @@ static int PrintInspectHeader
             tableSize = TimerTableInfoSize;
             break;
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         case INSPECT_INSP_TYPE_MUTEX:
             strncpy(inspectTypeString, "Mutexes", inspectTypeStringSize);
             table = MutexTableInfo;
@@ -2782,6 +2627,7 @@ static int PrintInspectHeader
             table = SemaphoreTableInfo;
             tableSize = SemaphoreTableInfoSize;
             break;
+#endif
 
         case INSPECT_INSP_TYPE_SAFE_REF:
             strncpy(inspectTypeString, "Safe References", inspectTypeStringSize);
@@ -2789,6 +2635,7 @@ static int PrintInspectHeader
             tableSize = RefMapTableInfoSize;
             break;
 
+#if LE_CONFIG_LINUX
         case INSPECT_INSP_TYPE_IPC_SERVERS:
             strncpy(inspectTypeString, "IPC Server Interface", inspectTypeStringSize);
             table = ServiceObjTableInfo;
@@ -2812,6 +2659,7 @@ static int PrintInspectHeader
             table = SessionObjTableInfo;
             tableSize = SessionObjTableInfoSize;
             break;
+#endif
 
         default:
             INTERNAL_ERR("unexpected inspect type %d.", InspectType);
@@ -2893,6 +2741,7 @@ static int PrintInspectHeader
 // The "array" can contain any valid json values, represented by strings.
 // Before calling this function, the formatting should have been taken cared of for the data in the
 // array.
+__attribute__((unused))
 static void ExportArrayToJson
 (
     char*         array,     ///< [IN] json array.
@@ -2921,6 +2770,7 @@ static void ExportArrayToJson
 
 // string
 // double quotes are added per json standard.
+__attribute__((unused))
 static void ExportStrToJson
 (
     char*         field,     ///< [IN] the data to be exported to json.
@@ -2952,6 +2802,7 @@ static void ExportStrToJson
 // Note that json has only a "number" type, so the export functions for all numbers such as size_t,
 // int, uint32_t, etc. should have the same function content.
 // size_t
+__attribute__((unused))
 static void ExportSizeTToJson
 (
     size_t        field, // param comments same as ExportStrToJson
@@ -2978,6 +2829,7 @@ static void ExportSizeTToJson
 }
 
 // int
+__attribute__((unused))
 static void ExportIntToJson
 (
     int           field, // param comments same as ExportStrToJson
@@ -3004,6 +2856,7 @@ static void ExportIntToJson
 }
 
 // double
+__attribute__((unused))
 static void ExportDoubleToJson
 (
     double        field, // param comments same as ExportStrToJson
@@ -3030,6 +2883,7 @@ static void ExportDoubleToJson
 }
 
 // uint32_t
+__attribute__((unused))
 static void ExportUint32ToJson
 (
     uint32_t      field, // param comments same as ExportStrToJson
@@ -3056,6 +2910,7 @@ static void ExportUint32ToJson
 }
 
 // uint64_t
+__attribute__((unused))
 static void ExportUint64ToJson
 (
     uint64_t      field, // param comments same as ExportStrToJson
@@ -3083,6 +2938,7 @@ static void ExportUint64ToJson
 
 // bool
 // "true" or "false" are outputted per json standard.
+__attribute__((unused))
 static void ExportBoolToJson
 (
     bool          field, // param comments same as ExportStrToJson
@@ -3123,6 +2979,7 @@ static void ExportBoolToJson
 //--------------------------------------------------------------------------------------------------
 
 // string
+__attribute__((unused))
 static void FillStrColField
 (
     char*         field,     ///< [IN] the data to be printed to the ColField of the table.
@@ -3139,6 +2996,7 @@ static void FillStrColField
 }
 
 // size_t
+__attribute__((unused))
 static void FillSizeTColField
 (
     size_t        field, // param comments same as FillStrColField
@@ -3155,6 +3013,7 @@ static void FillSizeTColField
 }
 
 // int
+__attribute__((unused))
 static void FillIntColField
 (
     int           field, // param comments same as FillStrColField
@@ -3171,6 +3030,7 @@ static void FillIntColField
 }
 
 // double
+__attribute__((unused))
 static void FillDoubleColField
 (
     double        field, // param comments same as FillStrColField
@@ -3187,6 +3047,7 @@ static void FillDoubleColField
 }
 
 // uint32_t
+__attribute__((unused))
 static void FillUint32ColField
 (
     uint32_t      field, // param comments same as FillStrColField
@@ -3203,6 +3064,7 @@ static void FillUint32ColField
 }
 
 // uint64_t
+__attribute__((unused))
 static void FillUint64ColField
 (
     uint64_t      field, // param comments same as FillStrColField
@@ -3220,6 +3082,7 @@ static void FillUint64ColField
 
 // bool
 // "T" or "F" are printed instead of "1" or "0".
+__attribute__((unused))
 static void FillBoolColField
 (
     bool          field, // param comments same as FillStrColField
@@ -3362,6 +3225,7 @@ static int PrintThreadObjInfo
 {
     int lineCount = 0;
 
+#if LE_CONFIG_LINUX
     int detachState;
     if (pthread_attr_getdetachstate(&threadObjRef->attr, &detachState) != 0)
     {
@@ -3411,6 +3275,7 @@ static int PrintThreadObjInfo
     {
         INTERNAL_ERR("pthread_attr_getstack failed.");
     }
+#endif
 
     // Output thread object info
     int index = 0;
@@ -3423,6 +3288,7 @@ static int PrintThreadObjInfo
                                                                     ThreadObjTableInfoSize, &index);
         FillBoolColField  ((threadObjRef->state != THREAD_STATE_NEW), ThreadObjTableInfo,
                                                                     ThreadObjTableInfoSize, &index);
+#if LE_CONFIG_LINUX
         FillStrColField   (detachStateStr,                          ThreadObjTableInfo,
                                                                     ThreadObjTableInfoSize, &index);
         FillStrColField   (schedPolicyStr,                          ThreadObjTableInfo,
@@ -3439,6 +3305,7 @@ static int PrintThreadObjInfo
                                                                     ThreadObjTableInfoSize, &index);
         FillSizeTColField (stackSize,                               ThreadObjTableInfo,
                                                                     ThreadObjTableInfoSize, &index);
+#endif
 
         PrintInfo(ThreadObjTableInfo, ThreadObjTableInfoSize);
         lineCount++;
@@ -3465,6 +3332,7 @@ static int PrintThreadObjInfo
                                                           ThreadObjTableInfoSize, &index, &printed);
         ExportBoolToJson  ((threadObjRef->state != THREAD_STATE_NEW), ThreadObjTableInfo,
                                                           ThreadObjTableInfoSize, &index, &printed);
+#if LE_CONFIG_LINUX
         ExportStrToJson   (detachStateStr,                ThreadObjTableInfo,
                                                           ThreadObjTableInfoSize, &index, &printed);
         ExportStrToJson   (schedPolicyStr,                ThreadObjTableInfo,
@@ -3481,6 +3349,7 @@ static int PrintThreadObjInfo
                                                           ThreadObjTableInfoSize, &index, &printed);
         ExportSizeTToJson (stackSize,                     ThreadObjTableInfo,
                                                           ThreadObjTableInfoSize, &index, &printed);
+#endif
 
         printf("]");
     }
@@ -3558,6 +3427,7 @@ static int PrintTimerInfo
 }
 
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 //--------------------------------------------------------------------------------------------------
 /**
  * Helper functions for GetWaitingListThreadNames
@@ -3692,7 +3562,7 @@ static void GetWaitingListThreadNames
         currThreadPtr = getThreadPtrFromLinkFunc(currNodePtr);
 
         // Read the thread obj into the local memory.
-        if (TargetReadAddress(PidToInspect, (uintptr_t)currThreadPtr, &localThreadObjCopy,
+        if (target_ReadAddress(PidToInspect, (uintptr_t)currThreadPtr, &localThreadObjCopy,
                               sizeof(localThreadObjCopy)) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread object"));
@@ -3714,7 +3584,7 @@ static void GetWaitingListThreadNames
 
         // Get the ptr to the the next node link on the waiting list, by reading the thread record
         // to the local memory first. GetNextDlsLink must operate on a ref to a locally existing link.
-        if (TargetReadAddress(PidToInspect, (uintptr_t)currNodePtr,
+        if (target_ReadAddress(PidToInspect, (uintptr_t)currNodePtr,
                               &localThreadRecCopy, threadRecSize) != LE_OK)
         {
             INTERNAL_ERR(REMOTE_READ_ERR("thread record with waiting list"));
@@ -3727,6 +3597,7 @@ static void GetWaitingListThreadNames
 
     *threadNameNumPtr = i;
 }
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -3738,6 +3609,7 @@ static void GetWaitingListThreadNames
  *      Estimated size of the JSON array.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static int EstimateJsonArraySizeFromStrings
 (
     char** stringArray, ///< [IN] Array of strings to construct the json array with.
@@ -3767,6 +3639,7 @@ static int EstimateJsonArraySizeFromStrings
  * the input array.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static void ConstructJsonArrayFromStrings
 (
     char** stringArray, ///< [IN] Array of strings to construct the json array with.
@@ -3797,6 +3670,7 @@ static void ConstructJsonArrayFromStrings
 }
 
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 //--------------------------------------------------------------------------------------------------
 /**
  * Print mutex information to stdout.
@@ -3942,6 +3816,7 @@ static int PrintSemaphoreInfo
 
     return lineCount;
 }
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -3950,6 +3825,7 @@ static int PrintSemaphoreInfo
  * match, the out buffer is emptied.
  */
 //--------------------------------------------------------------------------------------------------
+__attribute__((unused))
 static void LookupThreadName
 (
     size_t threadObjSafeRefAddr,   ///< [IN] thread obj safe ref used to look up thread name.
@@ -4046,7 +3922,7 @@ static int PrintRefMapInfo
 }
 
 
-
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Print service object information to stdout.
@@ -4063,7 +3939,7 @@ static int PrintServiceObjInfo
     msgProtocol_Protocol_t protocol;
 
     // Read the protocol object into our own memory.
-    if (TargetReadAddress(PidToInspect, (uintptr_t)serviceObjRef->interface.id.protocolRef, &protocol,
+    if (target_ReadAddress(PidToInspect, (uintptr_t)serviceObjRef->interface.id.protocolRef, &protocol,
                           sizeof(protocol)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("protocol object"));
@@ -4147,7 +4023,7 @@ static int PrintClientObjInfo
 
     // Retrieve the protocol object. Read the protocol object into our own memory.
     msgProtocol_Protocol_t protocol;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)clientObjRef->interface.id.protocolRef, &protocol,
+    if (target_ReadAddress(PidToInspect, (uintptr_t)clientObjRef->interface.id.protocolRef, &protocol,
                           sizeof(protocol)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("protocol object"));
@@ -4215,7 +4091,7 @@ static int PrintSessionObjInfo
 
     // Retrieve the interface object. Read the interface object into our own memory.
     msgInterface_Interface_t interface;
-    if (TargetReadAddress(PidToInspect, (uintptr_t)sessionObjRef->interfaceRef, &interface,
+    if (target_ReadAddress(PidToInspect, (uintptr_t)sessionObjRef->interfaceRef, &interface,
                           sizeof(interface)) != LE_OK)
     {
         INTERNAL_ERR(REMOTE_READ_ERR("interface object"));
@@ -4272,7 +4148,7 @@ static int PrintSessionObjInfo
 
     return lineCount;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4419,6 +4295,7 @@ static void InspectFunc
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintTimerInfo;
             break;
 
+#if LE_CONFIG_LINUX_TARGET_TOOLS
         case INSPECT_INSP_TYPE_MUTEX:
             createIterFunc    = (CreateIterFunc_t)    CreateMutexIter;
             getListChgCntFunc = (GetListChgCntFunc_t) GetThreadMemberObjListChgCnt;
@@ -4432,6 +4309,7 @@ static void InspectFunc
             getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextSemaphore;
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintSemaphoreInfo;
             break;
+#endif
 
         case INSPECT_INSP_TYPE_SAFE_REF:
             createIterFunc    = (CreateIterFunc_t)    CreateRefMapIter;
@@ -4440,6 +4318,7 @@ static void InspectFunc
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintRefMapInfo;
             break;
 
+#if LE_CONFIG_LINUX
         case INSPECT_INSP_TYPE_IPC_SERVERS:
             createIterFunc    = (CreateIterFunc_t)    CreateServiceObjIter;
             getListChgCntFunc = (GetListChgCntFunc_t) GetInterfaceObjMapChgCnt;
@@ -4461,6 +4340,7 @@ static void InspectFunc
             getNextNodeFunc   = (GetNextNodeFunc_t)   GetNextSessionObj;
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintSessionObjInfo;
             break;
+#endif
 
         default:
             INTERNAL_ERR("unexpected inspect type %d.", inspectType);
@@ -4532,15 +4412,15 @@ static void RefreshTimerHandler
     le_timer_Ref_t timerRef
 )
 {
-    TargetStop(PidToInspect);
+    target_Stop(PidToInspect);
 
     // Perform the inspection.
     InspectFunc(InspectType);
 
-    TargetStart(PidToInspect);
+    target_Start(PidToInspect);
 }
 
-
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Function called when a signal is received to stop tracing
@@ -4551,10 +4431,8 @@ static void ExitEventHandler
     int sigNum
 )
 {
-    TargetStop(PidToInspect);
-    TargetDetach(PidToInspect);
-
-    exit(0);
+    target_Stop(PidToInspect);
+    target_DetachAndExit(PidToInspect);
 }
 
 
@@ -4647,7 +4525,7 @@ static void IpcInterfaceTypeHandler
     // Handle the optional "sessions" argument.
     le_arg_AddPositionalCallback(IpcSessionArgHandler);
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -4671,6 +4549,7 @@ static void CommandArgHandler
     {
         InspectType = INSPECT_INSP_TYPE_TIMER;
     }
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     else if (strcmp(command, "mutexes") == 0)
     {
         InspectType = INSPECT_INSP_TYPE_MUTEX;
@@ -4679,24 +4558,33 @@ static void CommandArgHandler
     {
         InspectType = INSPECT_INSP_TYPE_SEMAPHORE;
     }
+#endif
     else if (strcmp(command, "saferefs") == 0)
     {
         InspectType = INSPECT_INSP_TYPE_SAFE_REF;
     }
+#if LE_CONFIG_LINUX
     else if (strcmp(command, "ipc") == 0)
     {
         le_arg_AddPositionalCallback(IpcInterfaceTypeHandler);
     }
+#endif
     else
     {
         fprintf(stderr, "Invalid command '%s'.\n", command);
         exit(EXIT_FAILURE);
     }
 
+#if !LE_CONFIG_RTOS
+    // For non-RTOS systems, take a PID.  For RTOSes there's no PID needed as it's a single memory
+    // space
     if (strcmp(command, "ipc") != 0)
     {
         le_arg_AddPositionalCallback(PidArgHandler);
     }
+#else
+    PidToInspect = 1;
+#endif
 }
 
 
@@ -4749,72 +4637,17 @@ static void FormatOptionCallback
 
 
 //--------------------------------------------------------------------------------------------------
-/**
- * Create a memory pool for the iterators depending on the inspect type.
- **/
-//--------------------------------------------------------------------------------------------------
-static void InitIteratorPool
-(
-    InspType_t inspectType ///< [IN] What to inspect.
-)
-{
-    size_t size;
-
-    switch (inspectType)
-    {
-        case INSPECT_INSP_TYPE_MEM_POOL:
-            size = sizeof(MemPoolIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_THREAD_OBJ:
-            size = sizeof(ThreadObjIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_TIMER:
-            size = sizeof(TimerIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_MUTEX:
-            size = sizeof(MutexIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_SEMAPHORE:
-            size = sizeof(SemaphoreIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_SAFE_REF:
-            size = sizeof(RefMapIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_IPC_SERVERS:
-            // Make the block size big enough to accomodate either one.
-            // Technically a little wasteful.
-            size = sizeof(ThreadObjIter_t) > sizeof(ServiceObjIter_t) ?
-                   sizeof(ThreadObjIter_t) : sizeof(ServiceObjIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_IPC_CLIENTS:
-            size = sizeof(ClientObjIter_t);
-            break;
-
-        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
-        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
-            size = sizeof(ThreadObjIter_t) > sizeof(SessionObjIter_t) ?
-                   sizeof(ThreadObjIter_t) : sizeof(SessionObjIter_t);
-            break;
-
-        default:
-            INTERNAL_ERR("unexpected inspect type %d.", inspectType);
-    }
-
-    IteratorPool = le_mem_CreatePool("Iterators", size);
-    TimerRecPool = le_mem_CreatePool("TimerRec", sizeof(timer_ThreadRec_t));
-}
-
-
-//--------------------------------------------------------------------------------------------------
 COMPONENT_INIT
 {
+    // On RTOS all variables need to be explicitly re-initialized as COMPONENT_INIT will be
+    // re-entered each time "inspect" is called.
+    RefreshInterval = DEFAULT_REFRESH_INTERVAL;
+    refreshTimer = NULL;
+    IsOutputJson = false;
+    IsFollowing = false;
+    IsVerbose = false;
+    TimerTypeIndex = TIMER_NON_WAKEUP;
+
     // The command-line has a command string followed by a PID.
     le_arg_AddPositionalCallback(CommandArgHandler);
 
@@ -4836,31 +4669,41 @@ COMPONENT_INIT
     le_arg_Scan();
 
     // Create a memory pool for iterators.
-    InitIteratorPool(InspectType);
+    if (!IteratorPool)
+    {
+        IteratorPool = le_mem_InitStaticPool(IteratorPool, 1, sizeof(AnyIter_t));
+    }
 
-    TargetAttach(PidToInspect);
+    if (!TimerRecPool)
+    {
+        TimerRecPool = le_mem_InitStaticPool(TimerRecPool, 1, sizeof(timer_ThreadRec_t));
+    }
+
+    target_Attach(PidToInspect);
 
     InitDisplay(InspectType);
 
-    TargetStop(PidToInspect);
+    target_Stop(PidToInspect);
 
     // Start the inspection.
     InspectFunc(InspectType);
 
     if (!IsFollowing)
     {
-        TargetDetach(PidToInspect);
-        exit(EXIT_SUCCESS);
+        target_Start(PidToInspect);
+        target_DetachAndExit(PidToInspect);
     }
     else
     {
-        TargetStart(PidToInspect);
+        target_Start(PidToInspect);
 
+#if LE_CONFIG_LINUX
         // Register for SIGTERM so we can detach from process
         le_sig_Block(SIGTERM);
         le_sig_Block(SIGHUP);
 
         le_sig_SetEventHandler(SIGTERM, ExitEventHandler);
         le_sig_SetEventHandler(SIGHUP, ExitEventHandler);
+#endif
     }
 }

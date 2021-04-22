@@ -1,9 +1,15 @@
 cflags:
 {
     -I$LEGATO_ROOT/framework/liblegato
+    -I$LEGATO_ROOT/framework/tools/target/inspect
 }
 
 sources:
 {
-    inspect.c
+    ../../inspect/inspect.c
+#if ${MK_CONFIG_INSPECT_FREERTOS} = y
+    ../../inspect/target_freertos.c
+#else
+    ../../inspect/target_rtos.c
+#endif
 }
