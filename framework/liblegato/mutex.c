@@ -105,7 +105,7 @@ le_mutex_Ref_t le_ifgen_InitMutexRef = NULL;
 #define UNLOCK_MUTEX_LIST() LE_ASSERT(pthread_mutex_unlock(&MutexListMutex) == 0)
 
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 /// Lock a mutex's Waiting List Mutex.
 #define LOCK_WAITING_LIST(mutexPtr) \
             LE_ASSERT(pthread_mutex_lock(&(mutexPtr)->waitingListMutex) == 0)
@@ -169,7 +169,7 @@ le_mutex_Ref_t CreateMutex
     Mutex_t* mutexPtr = le_mem_ForceAlloc(MutexPoolRef);
     mutexPtr->mutexListLink = LE_DLS_LINK_INIT;
     mutexPtr->lockingThreadRef = NULL;
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     mutexPtr->lockedByThreadLink = LE_DLS_LINK_INIT;
     mutexPtr->waitingList = LE_DLS_LIST_INIT;
     pthread_mutex_init(&mutexPtr->waitingListMutex, NULL);  // Default attributes = Fast mutex.
@@ -220,7 +220,7 @@ le_mutex_Ref_t CreateMutex
     return mutexPtr;
 }
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 //--------------------------------------------------------------------------------------------------
 /**
  * Adds a thread's Mutex Record to a Mutex object's waiting list.
@@ -284,7 +284,7 @@ static void MarkLocked
 )
 //--------------------------------------------------------------------------------------------------
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     if (perThreadRecPtr)
     {
         MutexListChangeCount++;
@@ -323,7 +323,7 @@ static void MarkUnlocked
 )
 //--------------------------------------------------------------------------------------------------
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     mutex_ThreadRec_t* perThreadRecPtr = thread_TryGetMutexRecPtr();
 
     if (!perThreadRecPtr)
@@ -341,7 +341,7 @@ static void MarkUnlocked
 }
 
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 //--------------------------------------------------------------------------------------------------
 /**
  * The thread is dying.  Make sure no mutexes are held by it and clean up thread-specific data.
@@ -431,7 +431,7 @@ void mutex_ThreadInit
 )
 //--------------------------------------------------------------------------------------------------
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     mutex_ThreadRec_t* perThreadRecPtr = thread_GetMutexRecPtr();
 
     perThreadRecPtr->waitingOnMutex = NULL;
@@ -552,7 +552,7 @@ void le_mutex_Lock
 
     mutex_ThreadRec_t* perThreadRecPtr = thread_TryGetMutexRecPtr();
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     if (perThreadRecPtr)
     {
         AddToWaitingList(mutexRef, perThreadRecPtr);
@@ -561,7 +561,7 @@ void le_mutex_Lock
 
     result = pthread_mutex_lock(&mutexRef->mutex);
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     if (perThreadRecPtr)
     {
         RemoveFromWaitingList(mutexRef, perThreadRecPtr);

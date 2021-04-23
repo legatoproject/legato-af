@@ -57,6 +57,8 @@ COMMON_SRC_DIR := $(LEGATO_ROOT)/framework/daemons
 LINUX_SRC_DIR := $(COMMON_SRC_DIR)/linux
 RTOS_SRC_DIR := $(COMMON_SRC_DIR)/rtos
 
+LIBJANSSON = $(LIB_DIR)/libjansson.so
+
 export HOST_ARCH ?= $(shell uname -m)
 export TOOLS_ARCH ?= $(HOST_ARCH)
 
@@ -110,6 +112,7 @@ endif
 
 # Add appropriate rules for feature/OS selections
 ALL_PARTS_y := liblegato daemons
+ALL_PARTS_$(LE_CONFIG_LINUX) += $(LIBJANSSON)
 DAEMONS_y   :=
 
 # Currently, these options are not user configurable:
@@ -135,7 +138,9 @@ ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
 ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
 # Only build Linux target tools as part of the framework.  RTOS
 # target tools need to be included in the .sdef directly.
-ALL_PARTS_$(LE_CONFIG_LINUX_TARGET_TOOLS) += targetTools
+ifeq ($(LE_CONFIG_LINUX),y)
+ALL_PARTS_$(LE_BUILD_TARGET_TOOLS) += targetTools
+endif
 
 # The liblegato build is done by this ninja build script.
 NINJA_SCRIPT := $(BUILD_DIR)/build.ninja
@@ -245,10 +250,27 @@ all: $(ALL_PARTS_y)
 
 
 .PHONY: targetTools
-targetTools: liblegato
+targetTools: liblegato $(LIBJANSSON)
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.targetTools
 
+# Currently, config tool and some Linux platform services depends on libjansson,
+# which is built using CMake.
+$(LIBJANSSON): $(LIB_DIR)
+	$(Q)mkdir -p $(BUILD_DIR)/libjansson
+	$(L) CMAKE $@
+	$(Q)cd $(BUILD_DIR)/libjansson && \
+		cmake $(LEGATO_ROOT)/3rdParty/jansson \
+			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
+			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
+			-DBUILD_SHARED_LIBS=ON \
+			-DJANSSON_BUILD_SHARED_LIBS=ON \
+			-DJANSSON_WITHOUT_TESTS=ON \
+			-DJANSSON_EXAMPLES=OFF \
+			-DJANSSON_BUILD_DOCS=OFF $(VOUTPUT) 2>&1
+	$(L) MAKE $@
+	$(Q)make -C $(BUILD_DIR)/libjansson $(VOUTPUT)
+	$(Q)cp -d $(BUILD_DIR)/libjansson/lib/libjansson.so* $(LIB_DIR)
 
 .PHONY: liblegato
 liblegato: $(LIB_DIR) $(NINJA_SCRIPT)

@@ -86,7 +86,6 @@ endif
 # Add the framework's bin directory to the PATH environment variable.
 export PATH := $(PATH):$(LEGATO_ROOT)/bin
 
-LIBJANSSON = $(LIB_DIR)/libjansson.so
 JANSSON_INC_DIR = $(LEGATO_ROOT)/build/$(TARGET)/framework/libjansson/include/
 TOOLS_SRC_DIR = $(LEGATO_ROOT)/framework/tools/target
 LINUX_TOOLS_SRC_DIR = $(TOOLS_SRC_DIR)/linux
@@ -103,24 +102,7 @@ all: $(BUILD_PRODUCTS)
 $(LIB_DIR):
 	$(Q)mkdir -p $@
 
-# Currently, the config tool depends on libjansson, which is built using CMake.
-$(LIBJANSSON): $(LIB_DIR)
-	$(Q)mkdir -p $(BUILD_DIR)/libjansson
-	$(L) CMAKE $@
-	$(Q)cd $(BUILD_DIR)/libjansson && \
-		cmake $(LEGATO_ROOT)/3rdParty/jansson \
-			-DCMAKE_TOOLCHAIN_FILE=$(LEGATO_ROOT)/cmake/toolchain.yocto.cmake \
-			-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=$(LIB_DIR) \
-			-DBUILD_SHARED_LIBS=ON \
-			-DJANSSON_BUILD_SHARED_LIBS=ON \
-			-DJANSSON_WITHOUT_TESTS=ON \
-			-DJANSSON_EXAMPLES=OFF \
-			-DJANSSON_BUILD_DOCS=OFF $(VOUTPUT) 2>&1
-	$(L) MAKE $@
-	$(Q)make -C $(BUILD_DIR)/libjansson $(VOUTPUT)
-	$(Q)cp -d $(BUILD_DIR)/libjansson/lib/libjansson.so* $(LIB_DIR)
-
-config: $(LIBJANSSON)
+config:
 	$(L) MKEXE $(BIN_DIR)/$@
 	$(Q)mkexe -o $(BIN_DIR)/$@ $(LINUX_TOOLS_SRC_DIR)/config \
 			-i $(JANSSON_INC_DIR) \

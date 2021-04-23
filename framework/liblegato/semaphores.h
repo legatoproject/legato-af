@@ -20,7 +20,7 @@
 typedef struct le_sem_t
 {
     le_dls_Link_t       semaphoreListLink;   ///< Used to link onto the process's Semaphore List.
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     le_dls_List_t       waitingList;         ///< List of threads waiting for this semaphore.
     pthread_mutex_t     waitingListMutex;    ///< Pthreads mutex used to protect the waiting list.
 #endif
@@ -32,7 +32,7 @@ typedef struct le_sem_t
 Semaphore_t;
 
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 //--------------------------------------------------------------------------------------------------
 /**
  * Semaphore Thread Record.

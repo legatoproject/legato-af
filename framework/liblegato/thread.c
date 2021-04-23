@@ -836,7 +836,7 @@ mutex_ThreadRec_t* thread_GetMutexRecPtr
     void
 )
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     return &((GetCurrentThreadPtr())->mutexRec);
 #else
     return NULL;
@@ -853,7 +853,7 @@ mutex_ThreadRec_t* thread_TryGetMutexRecPtr
     void
 )
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     thread_Obj_t* threadObjPtr = TryGetCurrentThreadPtr();
 
     if (threadObjPtr)
@@ -879,7 +879,7 @@ sem_ThreadRec_t* thread_GetSemaphoreRecPtr
     void
 )
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     return &((GetCurrentThreadPtr())->semaphoreRec);
 #else
     return NULL;
@@ -897,7 +897,7 @@ sem_ThreadRec_t* thread_TryGetSemaphoreRecPtr
     void
 )
 {
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     thread_Obj_t* threadObjPtr = TryGetCurrentThreadPtr();
 
     if (threadObjPtr)

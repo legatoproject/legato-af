@@ -80,7 +80,7 @@
 typedef struct MemPoolIter*         MemPoolIter_Ref_t;
 typedef struct ThreadObjIter*       ThreadObjIter_Ref_t;
 typedef struct TimerIter*           TimerIter_Ref_t;
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 typedef struct MutexIter*           MutexIter_Ref_t;
 typedef struct SemaphoreIter*       SemaphoreIter_Ref_t;
 #endif
@@ -104,7 +104,7 @@ typedef enum
     INSPECT_INSP_TYPE_MEM_POOL,
     INSPECT_INSP_TYPE_THREAD_OBJ,
     INSPECT_INSP_TYPE_TIMER,
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     INSPECT_INSP_TYPE_MUTEX,
     INSPECT_INSP_TYPE_SEMAPHORE,
 #endif
@@ -303,7 +303,7 @@ typedef union {
     MemPoolIter_t poolIter;
     ThreadObjIter_t threadIter;
     TimerIter_t timerIter;
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     MutexIter_t mutexIter;
     SemaphoreIter_t semIter;
 #endif
@@ -607,7 +607,7 @@ static void* CreateThreadMemberObjIter
             getListChgCntRefFunc = timer_GetTimerListChgCntRef;
             break;
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         case INSPECT_INSP_TYPE_MUTEX:
             getListChgCntRefFunc = mutex_GetMutexListChgCntRef;
             break;
@@ -685,7 +685,7 @@ static TimerIter_Ref_t CreateTimerIter
     return (TimerIter_Ref_t)CreateThreadMemberObjIter(INSPECT_INSP_TYPE_TIMER);
 }
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 static MutexIter_Ref_t CreateMutexIter
 (
     void
@@ -1355,7 +1355,7 @@ static le_dls_Link_t* GetThreadMemberObjList
                 return threadObjRef->timerRecPtr[TimerTypeIndex]->activeTimerList.headLinkPtr;
             }
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         case INSPECT_INSP_TYPE_MUTEX:
             return threadObjRef->mutexRec.lockedMutexList.headLinkPtr;
 #endif
@@ -1394,7 +1394,7 @@ static le_dls_Link_t* GetNextThreadMemberObjLinkPtr
             break;
         }
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         case INSPECT_INSP_TYPE_MUTEX:
         {
             MutexIter_Ref_t mutexIterRef = (MutexIter_Ref_t)threadMemberObjItrRef;
@@ -1540,7 +1540,7 @@ static Timer_t* GetNextTimer
     return &(timerIterRef->currTimer);
 }
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 //--------------------------------------------------------------------------------------------------
 /**
  * See GetNextTimer.
@@ -1907,7 +1907,7 @@ static void PrintHelp
         "    inspect threads            Prints the info of threads for the specified process.\n"
         "    inspect timers             Prints the info of timers in all threads for the"
                                         " specified process.\n"
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         "    inspect mutexes            Prints the info of mutexes in all threads for the"
                                         " specified process.\n"
         "    inspect semaphores         Prints the info of semaphores in all threads for the"
@@ -2041,7 +2041,7 @@ static ColumnInfo_t TimerTableInfo[] =
 };
 static size_t TimerTableInfoSize = NUM_ARRAY_MEMBERS(TimerTableInfo);
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 static ColumnInfo_t MutexTableInfo[] =
 {
     {"NAME",         "%*s", NULL, "%*s", MAX_NAME_BYTES,       true,  0, true},
@@ -2415,7 +2415,7 @@ static void InitDisplay
             InitDisplayTable(TimerTableInfo, TimerTableInfoSize);
             break;
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         case INSPECT_INSP_TYPE_MUTEX:
             InitDisplayTable(MutexTableInfo, MutexTableInfoSize);
             break;
@@ -2615,7 +2615,7 @@ static int PrintInspectHeader
             tableSize = TimerTableInfoSize;
             break;
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         case INSPECT_INSP_TYPE_MUTEX:
             strncpy(inspectTypeString, "Mutexes", inspectTypeStringSize);
             table = MutexTableInfo;
@@ -3427,7 +3427,7 @@ static int PrintTimerInfo
 }
 
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 //--------------------------------------------------------------------------------------------------
 /**
  * Helper functions for GetWaitingListThreadNames
@@ -3670,7 +3670,7 @@ static void ConstructJsonArrayFromStrings
 }
 
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
 //--------------------------------------------------------------------------------------------------
 /**
  * Print mutex information to stdout.
@@ -4295,7 +4295,7 @@ static void InspectFunc
             printNodeInfoFunc = (PrintNodeInfoFunc_t) PrintTimerInfo;
             break;
 
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
         case INSPECT_INSP_TYPE_MUTEX:
             createIterFunc    = (CreateIterFunc_t)    CreateMutexIter;
             getListChgCntFunc = (GetListChgCntFunc_t) GetThreadMemberObjListChgCnt;
@@ -4549,7 +4549,7 @@ static void CommandArgHandler
     {
         InspectType = INSPECT_INSP_TYPE_TIMER;
     }
-#if LE_CONFIG_LINUX_TARGET_TOOLS
+#if LE_CONFIG_MUTEX_SEM_TRACE
     else if (strcmp(command, "mutexes") == 0)
     {
         InspectType = INSPECT_INSP_TYPE_MUTEX;
