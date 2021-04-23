@@ -1624,6 +1624,71 @@ static void FtpClientStateMachine
 
 //--------------------------------------------------------------------------------------------------
 /**
+ *  Do name resolution with IPv4 or IPv6
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t FtpServerDnsQuery
+(
+    le_ftpClient_SessionRef_t sessionRef, ///< [IN] ftp client session ref
+    char *buf,                            ///< [OUT] Buffer for storing IP address
+    size_t bufLen                         ///< [IN] Buffer size in bytes
+)
+{
+    struct addrinfo hints, *servInfo;
+    char serverIp[INET6_ADDRSTRLEN]={0};
+
+    memset(&hints, 0, sizeof(hints));
+
+    sessionRef->ipAddrFamily = AF_UNSPEC;
+
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = 0;
+
+    if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
+    {
+        hints.ai_family = AF_INET6;
+        if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
+        {
+            LE_ERROR("Error on function: getaddrinfo");
+            return LE_UNAVAILABLE;
+        }
+        sessionRef->ipAddrFamily = AF_INET6;
+    }
+    else
+    {
+        sessionRef->ipAddrFamily = AF_INET;
+    }
+
+    if (AF_INET == sessionRef->ipAddrFamily)
+    {
+        if (NULL == inet_ntop(AF_INET, &(((struct sockaddr_in *)servInfo->ai_addr)->sin_addr),
+                serverIp, INET6_ADDRSTRLEN))
+        {
+            LE_ERROR("Error on inet_ntop(AF_INET).");
+            freeaddrinfo(servInfo);
+            return LE_FAULT;
+        }
+    }
+    else
+    {
+        if (NULL == inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)servInfo->ai_addr)->sin6_addr),
+                serverIp, INET6_ADDRSTRLEN))
+        {
+            LE_ERROR("Error on inet_ntop(AF_INET6).");
+            freeaddrinfo(servInfo);
+            return LE_FAULT;
+        }
+    }
+
+    freeaddrinfo(servInfo);
+    strlcpy(buf, serverIp, bufLen);
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Connect to a remote FTP server with specified usr/pwd
  *
  *  @return LE_OK on success or an appropriate error code on failure.
@@ -1652,8 +1717,15 @@ static le_result_t FtpClientConnectServer
         return LE_FAULT;
     }
 
+    char serverIpAddr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
+    if (FtpServerDnsQuery(sessionRef, serverIpAddr, sizeof(serverIpAddr)) != LE_OK)
+    {
+        LE_ERROR("Failed to query the IP address of server %s", sessionRef->serverStr);
+        return LE_UNAVAILABLE;
+    }
+
     // Create the control socket.
-    sessionRef->ctrlSocketRef = le_socket_Create(sessionRef->serverStr,
+    sessionRef->ctrlSocketRef = le_socket_Create(serverIpAddr,
                                                  sessionRef->serverPort,
                                                  sessionRef->srcIpAddr, TCP_TYPE);
     if (NULL == sessionRef->ctrlSocketRef)
@@ -1773,71 +1845,6 @@ static void FtpClientDisconnectServer
         // For other cases force to close the client.
         FtpClientClose(sessionRef);
     }
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  Do name resolution with IPv4 or IPv6
- */
-//--------------------------------------------------------------------------------------------------
-static le_result_t FtpServerDnsQuery
-(
-    le_ftpClient_SessionRef_t sessionRef  ///< [IN] ftp client session ref
-)
-{
-    struct addrinfo hints, *servInfo;
-    char serverIp[INET6_ADDRSTRLEN]={0};
-
-    memset(&hints, 0, sizeof(hints));
-
-    sessionRef->ipAddrFamily = AF_UNSPEC;
-
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = 0;
-
-    if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
-    {
-        hints.ai_family = AF_INET6;
-        if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
-        {
-            LE_ERROR("Error on function: getaddrinfo");
-            return LE_UNAVAILABLE;
-        }
-        sessionRef->ipAddrFamily = AF_INET6;
-    }
-    else
-    {
-        sessionRef->ipAddrFamily = AF_INET;
-    }
-
-   // ai_addr = servInfo->ai_addr;
-
-    if (AF_INET == sessionRef->ipAddrFamily)
-    {
-        if (NULL == inet_ntop(AF_INET, &(((struct sockaddr_in *)servInfo->ai_addr)->sin_addr),
-                serverIp, INET6_ADDRSTRLEN))
-        {
-            LE_ERROR("Error on inet_ntop(AF_INET).");
-            freeaddrinfo(servInfo);
-            return LE_FAULT;
-        }
-    }
-    else
-    {
-        if (NULL == inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)servInfo->ai_addr)->sin6_addr),
-                serverIp, INET6_ADDRSTRLEN))
-        {
-            LE_ERROR("Error on inet_ntop(AF_INET6).");
-            freeaddrinfo(servInfo);
-            return LE_FAULT;
-        }
-    }
-
-    freeaddrinfo(servInfo);
-    strlcpy(sessionRef->serverStr, serverIp, sizeof(sessionRef->serverStr));
-    return LE_OK;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -1985,11 +1992,6 @@ le_result_t le_ftpClient_ConnectOnSrcAddr
         return LE_OK;
     }
 
-    if (LE_OK != FtpServerDnsQuery(sessionRef))
-    {
-        return LE_UNAVAILABLE;
-    }
-
     memcpy(sessionRef->srcIpAddr, srcAddr, LE_MDC_IPV6_ADDR_MAX_BYTES);
     // Start sync operation.
     sessionRef->operation = OP_CONNECT;
@@ -2030,12 +2032,6 @@ LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
     if (sessionRef->isConnected)
     {
         return LE_OK;
-    }
-
-    if (LE_OK != FtpServerDnsQuery(sessionRef))
-    {
-        LE_ERROR("FTPS Server name resolution failed.");
-        return LE_UNAVAILABLE;
     }
 
     // Store reference to certificate
@@ -2419,4 +2415,3 @@ le_result_t le_ftpClient_Size
 
     return LE_FAULT;
 }
-
