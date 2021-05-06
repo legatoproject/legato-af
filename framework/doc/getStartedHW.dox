@@ -165,7 +165,7 @@ sources:
 @section getStartedHW_adef Create App
 
 Next lets turn your helloWorld component into an App.  Apps are the execution environment for your
-code, they contain one ore more executables that run together in a "Sandbox".  Your executables are
+code, they contain one or more executables that run together in a "Sandbox".  Your executables are
 made by combining one or more components.  Processes are the running executables that are actively
 running in memory.  Apps may expose external API's but generally contain all the components,
 executables, setting and files to run within it's own environment.
@@ -345,6 +345,7 @@ $ app stop helloWorld                   # add the target IP if DEST_IP not set
 Run @c app @c --help for all options on controlling apps on your target from your dev machine.
 
 @c app @c list - lists all the installed apps on the target
+
 @c app @c remove <appName> removes the app from the target
 
 Next we are going to add a second app, communicate between the two apps and build the apps into
