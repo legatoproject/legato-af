@@ -5,8 +5,8 @@ a target.  Each module will have a different toolchain as the libraries and tool
 often dependent on the kernel/os version.  The toolchain also includes all the kernel headers that
 are needed to build kernel objects and libraries used to enable additional hardware on your target.
 
-While the toolchains are target/module specific we walk through installing toolchains as well as
-providing best practices to manage the toolchains as they are needed to build kernel modules,
+While the toolchains are target/module specific, we will walk through installing toolchains as well
+as providing best practices to manage the toolchains as they are needed to build kernel modules,
 applications, and the runtime environment for your target.  The Legato Application Framework does
 not maintain any of the toolchains but does test toolchains to ensure that they work with the
 Application Framework.
@@ -27,9 +27,9 @@ $ mv poky* old_toolchains
 @endverbatim
 
 
-Each target maintains it's own unique toolchain as the toolchain needs to be built as part of the OS
+Each target maintains its own unique toolchain as the toolchain needs to be built as part of the OS
 distribution.  Visit [source.sierrawireless.com](https://source.sierrawireless.com/) to download and
-install the toolchain for your target.
+install the toolchain for your target.  Optionally Leaf can be used to download the Legato SDK.
 
 | Module         | Download Site                                                                                                                         |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -63,41 +63,43 @@ Enter target directory for SDK (default: /opt/swi/SWI9X07Y_02.18.06.00):
 Extracting SDK...done
 Setting it up...done
 SDK has been successfully set up and is ready to be used.
-Each time you wish to use the SDK in a new shell session, you need to source the environment setup script e.g.
- $ . /opt/swi/SWI9X07Y_02.18.06.00/environment-setup-armv7a-neon-poky-linux-gnueabi
+Each time you wish to use the SDK in a new shell session, you need to source the environment setup
+script e.g.
+$ . /opt/swi/SWI9X07Y_02.18.06.00/environment-setup-armv7a-neon-poky-linux-gnueabi
 @endverbatim
 
-@warning If you need to move the location of the toolchain once it's installed you must uninstall
-and reinstall the toolchain. Moving the files after installation will break the toolchain.
+@warning If you need to move the location of the toolchain once it is installed, then you must
+uninstall and reinstall the toolchain. Moving the files after installation will break the toolchain.
+
+@warning If you use this SDK for builds other than a Legato build, you must source the appropriate
+environment setup script.  This script sets the environment variables such as $CC for
+cross-compilation.
 
 @subsection basicBuildLegato_ToolchainSWI_KO Run Kernel Build Scripts
 
-Installing the toolchain als runs the kernel build scripts, but because this creates a hard link to
-the header files if you need to change/update the toolchain or switch to a different module you
+Installing the toolchain also runs the kernel build scripts. This creates a hard link to
+the header files. So if you need to change/update the toolchain or switch to a different module you
 must manually run the kernel build setup script again.
 
-Default path:
-WPX5XX: @c /opt/swi/<toolchainVersion>/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
-WP76XX and WP77XX: @c /opt/swi/<toolchainVersion>/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
+Default path for WPX5XX, WP76XX and WP77XX:
+@c /opt/swi/<toolchainVersion>/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi
 
 Example for the WP76XX, WP77XX (Release 10):
 @verbatim
 $ export PATH=/opt/swi/SWI9X07Y_02.18.06.00/sysroots/x86_64-pokysdk-linux/usr/bin/arm-poky-linux-gnueabi:$PATH
 @endverbatim
 
-
 Change directory to: @c <toolchain path>/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel.
-The module path for the WPX5XX is @c /opt/swi/y17-ext and the default module path for the
-WP76XX/WP77XX is @c /opt/swi/y22-ext.
+
+The default module path for the WPX5XX/WP76XX/WP77XX is @c /opt/swi/<toolchainVersion>.
 
 Example for WP76XX, WP77XX:
 @verbatim
 $ cd /opt/swi/SWI9X07Y_02.18.06.00/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/src/kernel
 @endverbatim
 
-
-Take ownership of the files in the directory and run make scripts, when done return ownership to the
-root user.
+Take ownership of the files in the directory and run the make scripts. When done return ownership
+to the root user.
 
 @note The root user does not know the path to the Legato compiler so file ownership must be
 temporarily transferred to yourself so that the scripts build properly and then given back when the
@@ -114,7 +116,7 @@ for your target device.
 
 @section basicBuildToolchain_RaspbToolChain Raspberry Pi Toolchain
 
-If you are building Legato AF directly on a Raspberry Pi then no toolchain is needed and you only
+If you are building Legato AF directly on a Raspberry Pi, then no toolchain is needed and you only
 need to install @b native @b [GCC](https://gcc.gnu.org/install/).  If you are cross-compiling
 the Legato AF on a Linux machine for use on a Raspberry Pi Device, then you will need to install
 Raspberry Pi's toolchain.
