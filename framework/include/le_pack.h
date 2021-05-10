@@ -246,7 +246,7 @@ LE_DECLARE_INLINE bool le_pack_PackSemanticTag
 )
 {
     LE_UNUSED(bufferPtr);
-    LE_UNUSED(bufferPtr);
+    LE_UNUSED(value);
 
     return true;
 }
@@ -1562,6 +1562,8 @@ LE_DECLARE_INLINE bool le_pack_CheckSemanticTag
     return le_pack_UnpackSemanticTag(bufferPtr, &tagId) && (tagId == expectedTagId);
 #else
     // No tagging, assume tags always match
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(expectedTagId);
     return true;
 #endif
 }
@@ -1766,6 +1768,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint8
 
     return le_pack_UnpackUint8_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1792,6 +1796,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint16
 
     return le_pack_UnpackUint16_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1818,6 +1824,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint32
 
     return le_pack_UnpackUint32_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1844,6 +1852,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint64
 
     return le_pack_UnpackUint64_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1870,6 +1880,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt8
 
     return le_pack_UnpackInt8_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1896,6 +1908,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt16
 
     return le_pack_UnpackInt16_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1922,6 +1936,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt32
 
     return le_pack_UnpackInt32_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -1948,6 +1964,8 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt64
 
     return le_pack_UnpackInt64_rpc(bufferPtr, valuePtr);
 #else
+    LE_UNUSED(bufferPtr);
+    LE_UNUSED(tagId);
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
 #endif
@@ -2003,6 +2021,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackSizeUint32Tuple
 #ifdef LE_CONFIG_RPC
     return le_pack_UnpackSizeUint32Tuple_rpc(bufferPtr, sizePtr, valuePtr, semanticTagPtr);
 #else
+    LE_UNUSED(semanticTagPtr);
     bool result;
     result = le_pack_UnpackSize(bufferPtr, sizePtr);
     if (result)
@@ -2031,6 +2050,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackSizeUint64Tuple
 #ifdef LE_CONFIG_RPC
     return le_pack_UnpackSizeUint64Tuple_rpc(bufferPtr, sizePtr, valuePtr, semanticTagPtr);
 #else
+    LE_UNUSED(semanticTagPtr);
     bool result;
     result = le_pack_UnpackSize(bufferPtr, sizePtr);
     if (result)
@@ -2190,6 +2210,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackReference
 #ifdef LE_CONFIG_RPC
     return le_pack_UnpackReference_rpc(bufferPtr, refPtr, semanticTagPtr);
 #else
+    LE_UNUSED(semanticTagPtr);
     uint32_t refAsInt;
     if (!le_pack_UnpackUint32(bufferPtr, &refAsInt))
     {
