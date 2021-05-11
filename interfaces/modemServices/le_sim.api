@@ -592,7 +592,7 @@ ENUM SimMode
 {
     FORCE_EXTERNAL,    ///< Force to select external SIM
     FORCE_INTERNAL,    ///< Select internal SIM if present.
-                       ///< The presence of an external SIM will be ignored
+    PRESENCE_EXTERNAL, ///< The presence of an external SIM will be ignored
     PREF_EXTERNAL,     ///< Select external SIM if present, else select internal SIM
     SIMMODE_MAX
 };
