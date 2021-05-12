@@ -138,6 +138,26 @@ le_result_t pa_lpt_GetNetworkProvidedPagingTimeWindow
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the lowest power saving mode that the module can enter.
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    Operation is not supported.
+ *      - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_lpt_SetPmMode
+(
+    le_lpt_PMMode_t mode    ///< [IN] Power saving mode
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the PSM activation state.
  *
  * @return
