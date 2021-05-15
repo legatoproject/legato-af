@@ -248,29 +248,39 @@ static void NetworkAsyncRecvHandler
         if (result != SUCCESS)
         {
             LE_ERROR("Error calling MQTTYield, result %d", ConvertResultCode(result));
+
+            if (sessionRef->networkStatus == LE_MQTT_NETWORK_STATUS_UP)
+            {
+                goto discon;
+            }
         }
     }
 
     if (events & (POLLRDHUP | POLLHUP | POLLERR | POLLNVAL))
     {
-        if (sessionRef->networkStatus != LE_MQTT_NETWORK_STATUS_DOWN)
+        goto discon;
+    }
+
+    return;
+
+discon:
+    if (sessionRef->networkStatus != LE_MQTT_NETWORK_STATUS_DOWN)
+    {
+        //
+        // Network connection has gone down
+        //
+
+        // Update the network status to reflect the change
+        sessionRef->networkStatus = LE_MQTT_NETWORK_STATUS_DOWN;
+
+        if (sessionRef->handlerFunc)
         {
-            //
-            // Network connection has gone down
-            //
-
-            // Update the network status to reflect the change
-            sessionRef->networkStatus = LE_MQTT_NETWORK_STATUS_DOWN;
-
-            if (sessionRef->handlerFunc)
-            {
-                /* Call the client's message handler */
-                sessionRef->handlerFunc(sessionRef,
-                                        LE_MQTT_CLIENT_CONNECTION_DOWN,
-                                        NULL,
-                                        NULL,
-                                        sessionRef->contextPtr);
-            }
+            /* Call the client's message handler */
+            sessionRef->handlerFunc(sessionRef,
+                                    LE_MQTT_CLIENT_CONNECTION_DOWN,
+                                    NULL,
+                                    NULL,
+                                    sessionRef->contextPtr);
         }
     }
 }
@@ -383,8 +393,11 @@ static void StopNetworkKeepAliveService
     le_mqttClient_SessionRef_t sessionRef    ///< [IN] Session reference.
 )
 {
-    le_timer_Delete(sessionRef->keepAliveTimerRef);
-    sessionRef->keepAliveTimerRef = NULL;
+    if (sessionRef->keepAliveTimerRef)
+    {
+        le_timer_Delete(sessionRef->keepAliveTimerRef);
+        sessionRef->keepAliveTimerRef = NULL;
+    }
 }
 
 
@@ -571,6 +584,9 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
     sessionRef->data.keepAliveInterval = (configPtr->keepAliveIntervalMs / 1000);
     sessionRef->data.cleansession = configPtr->cleanSession;
 
+    /* Initialize the keep alive timer reference to NULL*/
+    sessionRef->keepAliveTimerRef = NULL;
+
     LE_INFO("Created client session, clientID [%s], sessionRef [%p]",
             sessionRef->data.clientID.cstring, sessionRef);
 
@@ -629,7 +645,6 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     if (result != LE_OK)
     {
         LE_ERROR("NetworkConnect() failed, result %d", result);
-        le_mem_Release(sessionRef);
         return LE_NO_MEMORY;
     }
 
