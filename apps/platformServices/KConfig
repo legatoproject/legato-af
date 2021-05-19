@@ -100,10 +100,10 @@ config AVC_HTTP_TIMEOUT_MS
 
 config AVC_FEATURE_EDM
   bool "Enable Extended Device Management (EDM)"
-  depends on EXPERIMENTAL
+  default y if LINUX
   default n
   ---help---
-  Enable Extended Device Management (EDM)
+  Enable SIM Reachability / Extended Device Management (EDM)
 
 endmenu # end "AirVantage Connector"
 
