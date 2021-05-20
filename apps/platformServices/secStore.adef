@@ -49,13 +49,16 @@ extern:
 #endif
 }
 
-#if ${LEGATO_SECSTORE_PA} = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
 #if ${LE_CONFIG_LINUX} = ""
 extern:
 {
+#if ${LEGATO_SECSTORE_PA} = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
     secStore.le_pa_secStoreTz.le_cfg
-}
 #endif
+#if ${LEGATO_SECSTORE_PA} = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreIks
+    secStore.le_pa_secStoreIks.le_cfg
+#endif
+}
 #endif
 
 
