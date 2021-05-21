@@ -239,7 +239,7 @@ LE_SHARED void dcsTech_CollectChannelQueryResults(le_dcs_Technology_t technology
                                                      le_dcs_ChannelInfo_t *channelList,
                                                      size_t listSize);
 le_result_t dcsTech_AllowChannelStart(le_dcs_Technology_t tech, const char *channelName);
-le_result_t dcsTech_GetChannelList(le_dcs_Technology_t tech);
+LE_SHARED le_result_t dcsTech_GetChannelList(le_dcs_Technology_t tech);
 void *dcsTech_CreateTechRef(le_dcs_Technology_t tech, const char *channelName);
 void dcsTech_ReleaseTechRef(le_dcs_Technology_t tech, void *techRef);
 bool dcsTech_GetOpState(le_dcs_channelDb_t *channelDb);
