@@ -2,17 +2,18 @@ sandboxed: false
 
 executables:
 {
-    dcsDaemon = ( $LEGATO_ROOT/components/dataConnectionService/dcsDaemon
-                  $LEGATO_ROOT/components/dataConnectionService/dcs
-                  $LEGATO_ROOT/components/dataConnectionService/dcsNet
-                  $LEGATO_ROOT/components/dataConnectionService/dcsCellular
-    #if ${LE_CONFIG_ENABLE_WIFI} = y
-                  $LEGATO_ROOT/components/dataConnectionService/dcsWifi
-    #endif
+    dcsDaemon = (
     #if ${LE_CONFIG_ENABLE_ETHERNET} = y
                   $LEGATO_ROOT/components/dataConnectionService/dcsEthernet
     #endif
-                )
+    #if ${LE_CONFIG_ENABLE_WIFI} = y
+                  $LEGATO_ROOT/components/dataConnectionService/dcsWifi
+    #endif
+                  $LEGATO_ROOT/components/dataConnectionService/dcsCellular
+                  $LEGATO_ROOT/components/dataConnectionService/dcsNet
+                  $LEGATO_ROOT/components/dataConnectionService/dcs
+                  $LEGATO_ROOT/components/dataConnectionService/dcsDaemon
+                 )
     dcsInternal = ( $LEGATO_ROOT/components/dataConnectionService/dcsInternal )
 }
 

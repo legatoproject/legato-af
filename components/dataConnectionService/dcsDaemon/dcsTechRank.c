@@ -405,6 +405,28 @@ static le_result_t GetTechnologyString
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Translate le_data technology definition to le_dcs technology definition
+ */
+//--------------------------------------------------------------------------------------------------
+static le_dcs_Technology_t DataTechToDcsTech
+(
+    le_data_Technology_t dataTech
+)
+{
+    switch (dataTech)
+    {
+        case LE_DATA_CELLULAR:
+            return LE_DCS_TECH_CELLULAR;
+        case LE_DATA_WIFI:
+            return LE_DCS_TECH_WIFI;
+        default:
+            return LE_DCS_TECH_UNKNOWN;
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initialize the list of technologies to use with the default values
  */
 //--------------------------------------------------------------------------------------------------
@@ -420,10 +442,13 @@ static void InitDefaultTechList
     // Fill technologies list with default values
     for (i = 0; i < DCS_TECH_NUMBER; i++)
     {
-        if (LE_OK == le_data_SetTechnologyRank(listRank, DefaultTechList[i]))
+        if (LE_OK == le_dcsTech_GetChannelList(DataTechToDcsTech(DefaultTechList[i])))
         {
-            // Technology was correctly added to the list, increase the rank
-            listRank++;
+            if (LE_OK == le_data_SetTechnologyRank(listRank, DefaultTechList[i]))
+            {
+                // Technology was correctly added to the list, increase the rank
+                listRank++;
+            }
         }
     }
 }

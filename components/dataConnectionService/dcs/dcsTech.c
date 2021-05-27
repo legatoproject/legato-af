@@ -340,6 +340,15 @@ le_result_t le_dcsTech_Start
     {
         case LE_DCS_TECH_CELLULAR:
             ret = le_dcsCellular_Start(channelDb->techRef);
+
+            // Treat packet switch state down as temporary down.
+            // Cover use case of dcsDaemon where it will retry the moment PS state is re-attached
+            if (ret == LE_UNAVAILABLE)
+            {
+                LE_DEBUG("Cellular channel packet state down.");
+                le_dcs_ChannelEventNotifier(channelDb->channelRef, LE_DCS_EVENT_TEMP_DOWN);
+                return ret;
+            }
             break;
 #ifdef LE_CONFIG_ENABLE_WIFI
         case LE_DCS_TECH_WIFI:

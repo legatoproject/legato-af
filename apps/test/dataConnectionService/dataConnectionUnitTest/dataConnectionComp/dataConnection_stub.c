@@ -1472,3 +1472,16 @@ le_result_t le_net_ChangeRoute
 {
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Stub function to get its list of all available channels.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_dcsTech_GetChannelList
+(
+    le_dcs_Technology_t tech
+)
+{
+    return LE_UNSUPPORTED;
+}
