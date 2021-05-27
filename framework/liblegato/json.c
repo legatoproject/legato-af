@@ -12,7 +12,7 @@
 
 /// Maximum number of bytes allowed in a string value, object member name, or number's text
 /// including the null terminator.
-#define MAX_STRING_BYTES 1024
+#define MAX_STRING_BYTES    LE_CONFIG_JSON_PARSER_BUFFER_SIZE
 
 
 //--------------------------------------------------------------------------------------------------
