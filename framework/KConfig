@@ -4,6 +4,14 @@
 # Copyright (C) Sierra Wireless Inc.
 #
 
+### Hidden Options ###
+
+config LINUX_TARGET_TOOLS
+  bool
+  depends on LINUX && BUILD_TARGET_TOOLS
+  default y
+  select MEM_POOL_STATS
+
 ### Core Options ###
 
 config CUSTOM_FA
@@ -27,7 +35,6 @@ config BUILD_TARGET_TOOLS
   bool "Build on-target command-line tools"
   default n if CUSTOM_OS
   default y
-  select MEM_POOL_STATS if LINUX
   ---help---
   Include Legato's command-line tools (inspect, config, sdir, etc.) for the
   target.
@@ -524,15 +531,6 @@ config MEM_POOL_STATS
    - Number of overflows
    - Number of allocations
    - Maximum blocks used
-
-config MUTEX_SEM_TRACE
-  bool "Trace mutex and semaphore usage"
-  default n if REDUCE_FOOTPRINT
-  default y
-  ---help---
-  Track all mutexes and semaphores used by Legato applications.  Enables
-  showing which threads own or are waiting for each mutex and semaphore
-  through the "inspect" tool.
 
 config LOG_FUNCTION_NAMES
   bool "Log function names"

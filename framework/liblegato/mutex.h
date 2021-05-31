@@ -21,7 +21,7 @@ typedef struct le_mutex
 {
     le_dls_Link_t       mutexListLink;      ///< Used to link onto the process's Mutex List.
     le_thread_Ref_t     lockingThreadRef;   ///< Reference to the thread that holds the lock.
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     le_dls_Link_t       lockedByThreadLink; ///< Used to link onto the thread's locked mutexes list.
     le_dls_List_t       waitingList;        ///< List of threads waiting for this mutex.
     pthread_mutex_t     waitingListMutex;   ///< Pthreads mutex used to protect the waiting list.
@@ -36,7 +36,7 @@ typedef struct le_mutex
 Mutex_t;
 
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 //--------------------------------------------------------------------------------------------------
 /**
  * Mutex Thread Record.

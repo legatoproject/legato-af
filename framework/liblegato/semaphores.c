@@ -128,7 +128,7 @@ LE_DEFINE_INLINE le_sem_Ref_t le_sem_FindSemaphore
 );
 #endif /* end LE_CONFIG_SEM_NAMES_ENABLED */
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
 
 /// Lock a semaphore's Waiting List Mutex.
 #define LOCK_WAITING_LIST(semaphorePtr) \
@@ -176,7 +176,7 @@ static void RemoveFromWaitingList
 
     UNLOCK_WAITING_LIST(semaphorePtr);
 }
-#endif /* end LE_CONFIG_MUTEX_SEM_TRACE */
+#endif /* end LE_CONFIG_LINUX_TARGET_TOOLS */
 
 
 // ==============================
@@ -230,7 +230,7 @@ void sem_ThreadInit
 )
 //--------------------------------------------------------------------------------------------------
 {
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     sem_ThreadRec_t* perThreadRecPtr = thread_GetSemaphoreRecPtr();
 
     perThreadRecPtr->waitingOnSemaphore  = NULL;
@@ -269,7 +269,7 @@ le_sem_Ref_t _le_sem_Create
     // Allocate a semaphore object and initialize it.
     Semaphore_t* semaphorePtr = le_mem_ForceAlloc(SemaphorePoolRef);
     semaphorePtr->semaphoreListLink = LE_DLS_LINK_INIT;
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     semaphorePtr->waitingList = LE_DLS_LIST_INIT;
     pthread_mutex_init(&semaphorePtr->waitingListMutex, NULL);  // Default attributes = Fast mutex.
 #endif
@@ -314,7 +314,7 @@ void le_sem_Delete
     le_dls_Remove(&SemaphoreList, &semaphorePtr->semaphoreListLink);
     UNLOCK_SEMAPHORE_LIST();
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     LOCK_WAITING_LIST(semaphorePtr);
     if ( le_dls_Peek(&semaphorePtr->waitingList)==NULL ) {
         UNLOCK_WAITING_LIST(semaphorePtr);
@@ -401,7 +401,7 @@ void le_sem_Wait
 {
     int result;
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     sem_ThreadRec_t* perThreadRecPtr = thread_TryGetSemaphoreRecPtr();
 
     if (perThreadRecPtr)
@@ -414,7 +414,7 @@ void le_sem_Wait
 
     result = sem_wait(&semaphorePtr->semaphore);
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     if (perThreadRecPtr)
     {
         RemoveFromWaitingList(semaphorePtr, perThreadRecPtr);
@@ -491,7 +491,7 @@ le_result_t le_sem_WaitWithTimeOut
     timeOut.tv_sec = wakeUpTime.sec;
     timeOut.tv_nsec = wakeUpTime.usec * 1000;
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     // Retrieve reference thread
     sem_ThreadRec_t* perThreadRecPtr = thread_TryGetSemaphoreRecPtr();
     if (perThreadRecPtr)
@@ -505,7 +505,7 @@ le_result_t le_sem_WaitWithTimeOut
 
     result = sem_timedwait(&semaphorePtr->semaphore,&timeOut);
 
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     if (perThreadRecPtr)
     {
         // Remove from waiting list (on Legato threads)

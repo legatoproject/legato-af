@@ -55,7 +55,7 @@ typedef struct thread_Obj
     le_thread_MainFunc_t         mainFunc;          ///< The main function for the thread.
     void                        *context;           ///< Context value to be passed to mainFunc.
     le_dls_List_t                destructorList;    ///< The destructor list for this thread.
-#if LE_CONFIG_MUTEX_SEM_TRACE
+#if LE_CONFIG_LINUX_TARGET_TOOLS
     mutex_ThreadRec_t            mutexRec;          ///< The thread's mutex record.
     sem_ThreadRec_t              semaphoreRec;      ///< the thread's semaphore record.
 #endif
