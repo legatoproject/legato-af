@@ -695,8 +695,8 @@ void {{apiName}}_{{function.name}}Respond
         strncpy(_cmdRef->outputBuffers[{{loop.index0}}],
                 {{parameter|FormatParameterName}},
                 _cmdRef->bufferSize[{{loop.index0}}]);
-        ((char*)_cmdRef->outputBuffers[{{loop.index0}}])[_cmdRef->bufferSize[{{loop.index0}}]]
-            = '\0';
+        ((char*)_cmdRef->outputBuffers[{{loop.index0}}])[_cmdRef->bufferSize[{{loop.index0}}] ?
+            _cmdRef->bufferSize[{{loop.index0}}] -1 : 0] = '\0';
         {%- else %}
         memcpy(_cmdRef->outputBuffers[{{loop.index0}}],
                {{parameter|FormatParameterName}},
