@@ -999,6 +999,16 @@ static void SetupSmackOnlyCap
     smack_SetRule("qmuxd", "rwx", "_");
     smack_SetRule("_", "rwx", "qmuxd");
 
+    smack_SetRule("qteelistener", "rwx", "_");
+    smack_SetRule("qteelistener", "rw", "syslog");
+    // Label qseecom device as an intermediary to 'qteelistener'
+    smack_SetRule("qteelistener", "rw", "qseecom");
+    smack_SetLabel("/dev/qseecom", "qseecom");
+#if defined(LE_CONFIG_ENABLE_IOT_KEYSTORE_API) || defined(LE_CONFIG_SECSTORE_IKS_BACKEND)
+    // Give secStore app access to qseecom device
+    smack_SetRule("app.secStore", "rw", "qseecom");
+#endif
+
     // Set admin label for the supervisor.
     smack_SetMyLabel("admin");
 
