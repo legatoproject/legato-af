@@ -76,7 +76,9 @@ class SerialPort:
         def __init__(self, fd, **kwargs):
             # Hold a reference so file object is not garbage collected
             self.fd = fd
-            super(SerialPort.ttyspawn, self).__init__(fd.fileno(), encoding='utf-8', **kwargs)
+            super(SerialPort.ttyspawn, self).__init__(fd.fileno(),
+                                                      encoding='utf-8', codec_errors='replace',
+                                                      **kwargs)
 
         # Ubuntu 14.04 does not have __enter__ and __exit__ in pexpect, so define
         # them here.
@@ -187,7 +189,7 @@ class SerialPort:
         return self._baudrate
 
     @baudrate.setter
-    def set_baudrate(self, baudrate):
+    def baudrate(self, baudrate):
         """
         Change the baud rate.
 
@@ -241,6 +243,7 @@ def connect_target(app_name, target_name, baudrate=115200):
                 port.baudrate = 115200
                 app.expect(["Hit '\\\\r' or '\\\\e' key to stop autoboot:", '[0-9]'])
                 app.send("\r")
+                app.expect_exact('\n#', timeout=10)
                 gotConsole=1
                 break
             elif prompt == 1:
@@ -255,20 +258,11 @@ def connect_target(app_name, target_name, baudrate=115200):
                         port.baudrate = 115200
                 app.send("\r")
         assert gotConsole
-        # Switch baud rates (if neede)
-        app.send("env set baudrate {}\r\r".format(baudrate))
-        result = app.expect(
-            ["## Switch baudrate [^\r\n]* ENTER \\.\\.\\.",
-                "# \r\n# "])
-        if result == 0:
-            port.baudrate = baudrate
-            port.flush()
-            app.send("\r")
         app.send("boot\r")
-        time.sleep(1)
+        time.sleep(3)
         app.send("\r")
         for _ in range(5):
-            result = app.expect_exact(["\n>", pexpect.TIMEOUT], timeout=15)
+            result = app.expect_exact(["\n>", pexpect.TIMEOUT], timeout=1)
             if result == 0:
                 break
             app.send("\r")
@@ -404,7 +398,7 @@ class LegatoTestStep:
         """Evaluate the test line and pass or fail based on the output of the test process."""
         self._run = True
 
-        tap_regex = " [|] TAP [|] ([^\r\n]*)\r\n"
+        tap_regex = "TAP [|] ([^\r\n]*)\r\n"
         if hasattr(self._process, "tap_regex"):
             tap_regex = self._process.tap_regex
 
