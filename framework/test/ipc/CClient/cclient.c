@@ -232,6 +232,25 @@ static void TestMaxString(void)
                strlen(inString), strlen(outString));
 }
 
+static void TestStringBound(void)
+{
+    char inString[99];
+    char outString[100];
+    int sizeIn = sizeof(inString);
+    int sizeOut = sizeof(outString);
+    memset(inString, 0xef, sizeIn);
+    inString[sizeIn - 1] = '\0';
+
+    memset(outString, 0xde, sizeof(outString));
+    ipcTest_ROT13String(inString, outString, sizeOut - 1);
+
+    LE_TEST_OK(outString[sizeOut - 1] == 0xde,
+               "last byte shall be keep intact");
+    LE_TEST_OK(strlen(outString) + 2 == sizeof(outString),
+               "length of string: %"PRIuS", size of buffer: %"PRIuS,
+               strlen(outString), sizeof(outString));
+}
+
 static void TestStringNull(void)
 {
     static const char *inString = "Hello NULL World";
@@ -521,6 +540,7 @@ COMPONENT_INIT
     TestReferenceNull();
     TestSmallString();
     TestMaxString();
+    TestStringBound();
     TestSmallByteString();
     TestCborByteString();
     TestStringNull();
