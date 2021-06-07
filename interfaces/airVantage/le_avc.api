@@ -1418,3 +1418,17 @@ FUNCTION SetNatTimeout
 (
     uint32 timeout IN                             ///< Timeout (unit: seconds)
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Check whether the session is started for a given Server Id.
+ *
+ * @return
+ *      - true if session is started
+ *      - false otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION bool IsSessionStarted
+(
+    uint16 serverId IN                  ///< Short Server ID
+);
