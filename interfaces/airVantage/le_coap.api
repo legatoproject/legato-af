@@ -240,6 +240,7 @@ ENUM Code
     CODE_412_PRECONDITION_FAILED = 0x8C,
     CODE_413_REQUEST_ENTITY_TOO_LARGE = 0x8D,
     CODE_415_UNSUPPORTED_CONTENT_FORMAT = 0x8F,
+    CODE_429_TOO_MANY_REQUESTS = 0x9D,
     CODE_500_INTERNAL_SERVER_ERROR = 0xA0,
     CODE_501_NOT_IMPLEMENTED = 0xA1,
     CODE_502_BAD_GATEWAY = 0xA2,
@@ -288,7 +289,8 @@ ENUM PushStatus
     PUSH_IN_PROGRESS,     ///< Push in progress
     PUSH_SUCCESS,         ///< Push success
     PUSH_FAILED,          ///< Push failed
-    PUSH_TERMINATE        ///< Push terminated
+    PUSH_TERMINATE,       ///< Push terminated
+    PUSH_TIMEOUT          ///< Push timeout
 };
 
 
@@ -406,3 +408,21 @@ FUNCTION le_result_t Push
     StreamStatus streamStatus               IN,         ///< Status of transmit stream
     uint8 payload[MAX_PAYLOAD_NUM_BYTES]    IN          ///< CoAP Payload
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function retrieves the last CoAP error code for a CoAP push
+ *
+ * If the last CoAP push leads to a timeout, this function will return LE_FAULT if it's called.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_BAD_PARAMETER on incorrect parameter
+ *      - LE_FAULT if failed.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLastErrorCode
+(
+    Code   errorCode                       OUT         ///< Error code
+);
+
