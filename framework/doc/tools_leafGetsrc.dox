@@ -8,14 +8,17 @@ or
 leaf getsrc MODULE [--user|--workspace|--profile] [--disable]
 @endverbatim
 
-@c leaf @c getsrc command allows users to toggle the required module in source mode, and to trigger
-the source code fetching operation for a module.
+@c leaf @c getsrc command allows users to toggle the required module in source mode, and to
+trigger the source code fetching operation for a module.
 
 If used without specifying any @c MODULE, the command will return all available source modules
 within the current profile.
 
 If used with a @c MODULE parameter, the command will toggle the corresponding feature in source
 mode, and trigger the fetching operation (specific for each module).
+
+@note <b>The @c leaf @c getsrc command will show an error unless the user has accepted the license
+on https://swi-license.legato.io .</b>
 
 @section toolsLeafGetsrc_Options Options
 
@@ -32,7 +35,7 @@ profile (if --profile is used; default if not specified).
 
 @c @b --disable <br>
 
-Allows a user to get back to binary mode instead of source code mode.
+Allows a user to switch back to binary mode from source code mode.
 
 @section toolsLeafGetsrc_Examples Examples
 
@@ -46,41 +49,42 @@ Trigger source code fetching
 leaf getsrc mymodule
 @endverbatim
 
-Get back to binary mode
+Switch back to binary mode
 @verbatim
 leaf getsrc mymodule --disable
 @endverbatim
 
 @section toolsLeafGetsrc_Behavior Behavior
 
-As an high level command, using leaf getsrc
+As a high level command, using leaf getsrc
 is equivalent to chaining the following steps:
 @verbatim
 leaf feature list
 @endverbatim
-Verifies if the feature corresponding to the required source module exist. It must have
-the same name that the MODULE, with a -src suffix (will be called MODULEFEATURE).
+Verifies if the feature corresponding to the required source module exists. It must have
+the same name as the MODULE, with a -src suffix (will be called MODULEFEATURE).
 @verbatim
 leaf feature query MODULEFEATURE
 @endverbatim
 
-Then the command verifies if the feature is already toggled in source mode.
+Then the command verifies if the feature is already toggled to source mode.
 @verbatim
 leaf feature toggle MODULEFEATURE source
 @endverbatim
 
-If necessary, the command toggles the feature in source mode.
+If necessary, the command toggles the feature to source mode.
 @verbatim
 leaf profile sync
 @endverbatim
 
 If necessary (if the feature value changed), the profile provisioning is triggered to update the
 leaf-data structure.
-
+@verbatim
 source fetching operation trigger
+@endverbatim
 
 The last step is to trigger the source fetching operation. It is assumed to be handled by an
-executable named with @c MODULEFEATURE and a @c -sync suffix, provided on the @c $PATH by the
+executable named @c MODULEFEATURE with a @c -sync suffix, provided on the @c $PATH by the
 installed packages.
 
 Copyright (C) Sierra Wireless Inc.

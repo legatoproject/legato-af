@@ -15,16 +15,18 @@ AirVantage:
 The Yocto source code (to rebuild the Linux Distro) is also partially public. Many of the 3rd party proprietary binaries
 (that are not open source) that are used to communicate with the modem hardware are released privately.
 
-Access to the private repositories is possible for anyone registered on GitHub by accepting a license
-on https://swi-license.legato.io .
+<b>Access to the private repositories is possible for anyone registered on GitHub by accepting a license
+on https://swi-license.legato.io .</b>
 
 @note In the future you will also be able to upstream changes and patches to the Legato team for
 inclusion in our builds.
 
+
 @section toolsGitHub_setup First Time Set up
 
-Before being able to download and use the source code for both Legato and Linux users register to GitHub and set up SSH keys to their dev machine.
-Once the SSH keys are set up then you are able to pull the source code and get all the tracked changes.
+Before being able to download and use the source code for both the Legato Application Framework and
+the Linux Distribution, users must register to GitHub and set up SSH keys to their dev machine.
+Once the SSH keys are set up, you are then able to pull the source code and get all the tracked changes.
 
 The following steps only need to be done the first time you are connecting your development machine
 to GitHub.
@@ -41,7 +43,7 @@ If you have not created RSA keys for your linux development machine, follow thes
 - Open @c ~/.ssh/id_rsa.pub and register the SSH key in https://github.com/settings/keys
 
 If you already have a @c ~/.ssh/id_rsa.pub created, go to https://github.com/settings/keys and register
-a new key by clicking on <b>New SSH key</b>, then copy & paste the content of the file in @c Key.
+a new key by clicking on <b>New SSH key</b>.  Then copy & paste the content of the file in @c Key.
 Finally, name that key in @c Title, and click <b>Add SSH key</b>.
 
 @note @c id_rsa.pub is your public key and can be shared, while the key contained in @c id_rsa is your
@@ -55,7 +57,7 @@ the @c legatoproject organisation.
 
 You can check that access was granted successfuly by accessing https://github.com/legatoproject/test-access/ .
 
-If you face any issue with that process, please document it my creating a new topic on the [Legato forum](https://forum.legato.io).
+If you face any issue with that process, please document it by creating a new topic on the [Legato forum](https://forum.legato.io).
 
 @section toolsGitHub_repo Repo and Git
 
@@ -80,7 +82,8 @@ $ sudo apt-get install repo
 
 @section toolsGitHub_manifests Manifests
 
-For each new release, a new manifest is published on GitHub, the manifest specifies all the different repositories and revisions needed to build either the Legato source code and/or the Linux
+For each new release, a new manifest is published on GitHub. The manifest specifies all the different
+repositories and revisions needed to build either the Legato source code and/or the Linux
 Distribution.
 
 Manifests can be found by cloning the manifest repo or by [browsing the manifest repo](https://github.com/legatoproject/manifest/).
@@ -103,16 +106,16 @@ To clone the source code (both Linux and Legato) for a specific release use the 
 specify the path to the manifest.
 
 @verbatim
-repo init -u ssh://git@github.com/legatoproject/manifest -m products/<target>/releases/<ReleaseXX>.xml -g default,-cache; repo sync
+repo init -u ssh://git@github.com/legatoproject/manifest -m products/<target>/releases/<ReleaseXX>.xml -g default,-cache,proprietary; repo sync
 @endverbatim
 
 For example to get Release 13 for the wp76xx target:
 @verbatim
-repo init -u ssh://git@github.com/legatoproject/manifest -m products/wp76xx/releases/Release13.xml -g default,-cache; repo sync
+repo init -u ssh://git@github.com/legatoproject/manifest -m products/wp76xx/releases/Release13.xml -g default,-cache,proprietary; repo sync
 @endverbatim
 
 @warning If you are downloading the product release, you are only able to upgrade Legato to the
-Legato version that is released with the Sierra Wireless product version. e.g., You can clone the
+Legato version that is released with the Sierra Wireless product version. e.g. You can clone the
 Legato version published with Release 13. Any interim Legato versions will need to be cloned into
 their own repository.
 

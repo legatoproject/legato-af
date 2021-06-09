@@ -5,13 +5,18 @@ environment for Legato.
 
 @section toolsLeaf_install Install Leaf
 
-To install leaf download and setup our debian package from the Sierra Wireless Tools Repository:
+To install leaf, download and setup our debian package from the Sierra Wireless Tools Repository:
 @verbatim
 $ wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/leaf_latest.deb && sudo apt install /tmp/leaf_latest.deb
 $ mkdir ~/myWorkspace; cd ~/myWorkspace
 @endverbatim
 
 To list all available leaf help pages: @c leaf @c help @c --list
+
+Refer to @subpage toolsGitHub "GitHub" for source code and the proprietary apps/libraries for
+Legato Application Framework and Linux Distro.
+
+@note The user must accept the license on https://swi-license.legato.io .</b>
 
 @section toolsLeaf_commands Leaf Commands
 
