@@ -34,7 +34,7 @@ buildVars:
     LEGATO_AUDIO_PA_PCM_DEFAULT =
         ${LEGATO_ROOT}/components/audio/platformAdaptor/default/le_pa_pcm_default
     LEGATO_AVC_PA_DEFAULT =
-        ${LEGATO_ROOT}/components/airVantage/platformAdaptor/default/le_pa_avc_default
+        ${LEGATO_ROOT}/apps/platformServices/airVantageConnector/platformAdaptor/default/le_pa_avc_default
     LEGATO_GNSS_PA_DEFAULT =
         ${LEGATO_ROOT}/components/positioning/platformAdaptor/default/le_pa_gnss_default
     LEGATO_MODEM_PA_DEFAULT =

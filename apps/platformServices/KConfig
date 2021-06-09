@@ -100,7 +100,9 @@ config AVC_HTTP_TIMEOUT_MS
 
 config AVC_FEATURE_EDM
   bool "Enable Extended Device Management (EDM)"
-  default y if LINUX
+  default y if TARGET_WP750X
+  default y if TARGET_WP76XX
+  default y if TARGET_WP77XX
   default n
   ---help---
   Enable SIM Reachability / Extended Device Management (EDM)
