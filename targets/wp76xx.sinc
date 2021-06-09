@@ -26,7 +26,7 @@ buildVars:
     #endif
 
     LEGATO_GNSS_PA = ${LEGATO_QMI_GNSS_PA}
-    //LEGATO_AVC_PA = ${LEGATO_QMI_AVC_PA}
+    LEGATO_AVC_PA = ${PA_DIR}/at/components/le_pa_avc
     LEGATO_SECSTORE_PA = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
 
     #if ${LE_CONFIG_ENABLE_IOT_KEYSTORE_API} = y
