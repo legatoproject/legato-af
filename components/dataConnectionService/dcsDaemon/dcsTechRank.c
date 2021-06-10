@@ -417,7 +417,7 @@ static le_result_t GetTechnologyString
     return result;
 }
 
-
+#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Translate le_data technology definition to le_dcs technology definition
@@ -438,7 +438,7 @@ static le_dcs_Technology_t DataTechToDcsTech
             return LE_DCS_TECH_UNKNOWN;
     }
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -457,6 +457,7 @@ static void InitDefaultTechList
     // Fill technologies list with default values
     for (i = 0; i < DCS_TECH_NUMBER; i++)
     {
+#if LE_CONFIG_LINUX
         // if technology is supported, we will add it to the default tech list
         if (LE_OK == dcsTech_GetChannelList(DataTechToDcsTech(DefaultTechList[i])))
         {
@@ -466,6 +467,13 @@ static void InitDefaultTechList
                 listRank++;
             }
         }
+#else
+        if (LE_OK == le_data_SetTechnologyRank(listRank, DefaultTechList[i]))
+        {
+            // Technology was correctly added to the list, increase the rank
+            listRank++;
+        }
+#endif
     }
 }
 
