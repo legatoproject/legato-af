@@ -1584,3 +1584,22 @@ le_result_t clkSync_GetCurrentTime
     }
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to trigger the given technology in the argument to get its list of all available
+ * channels
+ *
+ * @return
+
+ *     - The function returns LE_OK upon a successful trigger; otherwise, some other
+ *       le_result_t failure cause
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t dcsTech_GetChannelList
+(
+    le_dcs_Technology_t tech
+)
+{
+    return LE_OK;
+}

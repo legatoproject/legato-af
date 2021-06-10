@@ -227,8 +227,7 @@ config IMA_SMACK
 
 config ENABLE_IOT_KEYSTORE_API
   bool "Enable IoT KeyStore library"
-  default y if LINUX && TARGET_WP76XX
-  default y if LINUX && TARGET_WP77XX
+  depends on EXPERIMENTAL
   default n
   ---help---
   Enable Legato API for the IoT KeyStore library.
