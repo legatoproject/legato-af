@@ -941,7 +941,7 @@ static int32_t OpenSerialDevice
 {
     int32_t fd;
 
-    fd = le_fd_Open(deviceName, O_RDWR | O_NONBLOCK);
+    fd = le_fd_Open(deviceName, O_RDWR);
     if (-1 == fd)
     {
         LE_ERROR("Failed to open device");
