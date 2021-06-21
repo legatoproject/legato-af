@@ -131,7 +131,6 @@
 //--------------------------------------------------------------------------------------------------
 #define IS_PARAM_CHAR(X)          ( IS_NUMBER(X) || \
                                     IS_STAR_OR_HASH_SIGN (X) || \
-                                    IS_PLUS_OR_MINUS(X) || \
                                     IS_HEXA(X) || \
                                     IS_BETWEEN_A_AND_F(X) )
 
