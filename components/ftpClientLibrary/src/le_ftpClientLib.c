@@ -1729,6 +1729,8 @@ static le_result_t FtpClientConnectServer
     if (FtpServerDnsQuery(sessionRef, serverIpAddr, sizeof(serverIpAddr)) != LE_OK)
     {
         LE_ERROR("Failed to query the IP address of server %s", sessionRef->serverStr);
+        le_timer_Delete(sessionRef->timerRef);
+        sessionRef->timerRef = NULL;
         return LE_UNAVAILABLE;
     }
 
@@ -1740,6 +1742,8 @@ static le_result_t FtpClientConnectServer
     {
         LE_ERROR("Failed to create control socket for server %s:%u.", sessionRef->serverStr,
                  sessionRef->serverPort);
+        le_timer_Delete(sessionRef->timerRef);
+        sessionRef->timerRef = NULL;
         return LE_FAULT;
     }
 
