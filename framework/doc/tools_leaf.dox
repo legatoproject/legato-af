@@ -11,12 +11,15 @@ $ wget https://downloads.sierrawireless.com/tools/leaf/leaf_latest.deb -O /tmp/l
 $ mkdir ~/myWorkspace; cd ~/myWorkspace
 @endverbatim
 
+The user must accept the Sierra Wireless license when installing leaf.
+
 To list all available leaf help pages: @c leaf @c help @c --list
 
 Refer to @subpage toolsGitHub "GitHub" for source code and the proprietary apps/libraries for
 Legato Application Framework and Linux Distro.
 
-@note The user must accept the license on https://swi-license.legato.io .</b>
+@note The user must also accept the license on https://swi-license.legato.io in order to download
+the source code from GitHub.</b>
 
 @section toolsLeaf_commands Leaf Commands
 
