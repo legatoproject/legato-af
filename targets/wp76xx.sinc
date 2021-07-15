@@ -42,7 +42,7 @@ buildVars:
     // needed for time series.
     LDFLAG_LEGATO_TIMESERIES = '-lz -ltinycbor'
 
-    MK_CONFIG_SECSTORE_DISABLE_LIMIT = y
+    //MK_CONFIG_SECSTORE_DISABLE_LIMIT = y
 }
 
 cflags:
@@ -75,5 +75,7 @@ cflags:
 
     // LwM2MCore flags
     -DLWM2M_OBJECT_9
-    -DMK_CONFIG_SECSTORE_DISABLE_LIMIT
+
+    // SecStore disable limit flags
+    //-DMK_CONFIG_SECSTORE_DISABLE_LIMIT
 }
