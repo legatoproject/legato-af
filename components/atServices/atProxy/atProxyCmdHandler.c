@@ -367,7 +367,12 @@ static le_result_t CreateParameterList
                 }
                 else
                 {
-                    if (parameters[i-1] == AT_TOKEN_COMMA)
+                    // Any of these conditions means current parameter is omitted when current
+                    // character is a comma:
+                    // (1) the previous one character is a comma as well
+                    // (2) the previous one character is the operator (=)
+                    if ( (parameters[i-1] == AT_TOKEN_COMMA) ||
+                         (parameters[i-1] == AT_TOKEN_EQUAL) )
                     {
                         startIndex = i;
                         result = PackParameterList(
@@ -392,6 +397,26 @@ static le_result_t CreateParameterList
                 {
                     // Marks the end of the new parameter (list)
                     // Pack the Parameters in the Parameter List
+                    result = PackParameterList(
+                                 atCmdPtr,
+                                 parameters,
+                                 startIndex,
+                                 i,
+                                 stringParam);
+
+                    if (result != LE_OK)
+                    {
+                        return result;
+                    }
+
+                    // Reset the startIndex and string parameter flag
+                    startIndex = AT_PROXY_PARAMETER_NONE;
+                    stringParam = false;
+                }
+                else if (parameters[i-1] == AT_TOKEN_COMMA)
+                {
+                    // Pack the empty parameter in the end
+                    startIndex = i;
                     result = PackParameterList(
                                  atCmdPtr,
                                  parameters,
