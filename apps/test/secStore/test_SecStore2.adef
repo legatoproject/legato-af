@@ -1,5 +1,7 @@
 start: manual
 
+maxSecureStorageBytes: 11000
+
 executables:
 {
     secStoreTest2 = ( secStoreTest2 )

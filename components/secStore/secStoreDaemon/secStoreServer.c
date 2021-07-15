@@ -682,6 +682,27 @@ static void GetClientPath
 }
 
 #if !MK_CONFIG_SECSTORE_DISABLE_LIMIT
+#define MAX_CLIENT_LIMIT_NUM 64
+
+typedef struct
+{
+    char key[SECSTORE_MAX_PATH_BYTES];
+    int value;
+} MapContext_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Hash map of client limit
+ */
+//--------------------------------------------------------------------------------------------------
+static le_hashmap_Ref_t clientLimitMap = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Pool of Map Data
+ */
+//--------------------------------------------------------------------------------------------------
+static le_mem_PoolRef_t mapDataPool = NULL;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -714,12 +735,31 @@ static le_result_t CheckClientLimit
     appCfg_DeleteIter(iter);
 
     // Get the current amount of space used by the client.
+    le_result_t result;
     size_t usedSpace = 0;
-    le_result_t result = pa_secStore_GetSize(clientPathPtr, &usedSpace);
-
-    if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
+    
+    // Add map to decrease the pa_secStore_GetSize() calling times
+    MapContext_t* map = (MapContext_t *)le_hashmap_Get(clientLimitMap, clientPathPtr);
+    if(NULL == map)
     {
-        return result;
+        result = pa_secStore_GetSize(clientPathPtr, &usedSpace);
+        
+        if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
+        {
+            return result;
+        }
+
+        map = (MapContext_t *) le_mem_TryAlloc(mapDataPool);
+        if(map)
+        {
+            strcpy(map->key, clientPathPtr);
+            map->value = usedSpace;
+            le_hashmap_Put(clientLimitMap, map->key, map);
+        }
+    }
+    else
+    {
+        usedSpace = map->value;
     }
 
     // Get the size of the item in the secure storage if it already exists.
@@ -740,6 +780,12 @@ static le_result_t CheckClientLimit
     // Calculate if replacing the item would fit within the limit.
     if (((ssize_t)(secStoreLimit - usedSpace + origItemSize - itemSize)) >= 0)
     {
+        MapContext_t* map = (MapContext_t *)le_hashmap_Get(clientLimitMap, clientPathPtr);
+        if(map)
+        {
+            map->value += itemSize;
+            map->value -= origItemSize;
+        }
         return LE_OK;
     }
 
@@ -881,6 +927,16 @@ static le_result_t PrepareOp
 #if MK_CONFIG_SECSTORE_DISABLE_LIMIT
         LE_UNUSED(checkLimit);
 #else /* !MK_CONFIG_SECSTORE_DISABLE_LIMIT */
+        // need to clean map at delete flow
+        if(0 == bufNumElements)
+        {
+            MapContext_t* map = (MapContext_t *)le_hashmap_Get(clientLimitMap, path);
+            if(map)
+            {
+                le_hashmap_Remove(clientLimitMap, map->key);
+                le_mem_Release(map);
+            }
+        }
         if (checkLimit)
         {
             // Check the available limit for the client.
@@ -2049,6 +2105,15 @@ COMPONENT_INIT
                                   CleanupClientIterators,
                                   NULL);
 #endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
+
+#if !MK_CONFIG_SECSTORE_DISABLE_LIMIT
+    mapDataPool = le_mem_CreatePool("MapDataPool", sizeof(MapContext_t));
+
+    le_mem_ExpandPool(mapDataPool, MAX_CLIENT_LIMIT_NUM);
+
+    clientLimitMap = le_hashmap_Create  ( "ClientLimitMap", MAX_CLIENT_LIMIT_NUM,
+                    le_hashmap_HashString, le_hashmap_EqualsString);
+#endif
 
 #if LE_CONFIG_SOTA
     SystemIndexPool = le_mem_CreatePool("SystemIndexPool", sizeof(SystemsIndex_t));
