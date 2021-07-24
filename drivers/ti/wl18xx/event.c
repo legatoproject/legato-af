@@ -1,7 +1,6 @@
 /*
  * This file is part of wl12xx
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 2012 Texas Instruments. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -80,11 +79,7 @@ static int wlcore_smart_config_sync_event(struct wl1271 *wl, u8 sync_channel,
 	wl1271_debug(DEBUG_EVENT,
 		     "SMART_CONFIG_SYNC_EVENT_ID, freq: %d (chan: %d band %d)",
 		     freq, sync_channel, sync_band);
-#ifdef CONFIG_ARCH_MSM9615
-	skb = cfg80211_vendor_event_alloc(wl->hw->wiphy, 20,
-#else
 	skb = cfg80211_vendor_event_alloc(wl->hw->wiphy, NULL, 20,
-#endif
 					  WLCORE_VENDOR_EVENT_SC_SYNC,
 					  GFP_KERNEL);
 
@@ -105,11 +100,7 @@ static int wlcore_smart_config_decode_event(struct wl1271 *wl,
 	wl1271_debug(DEBUG_EVENT, "SMART_CONFIG_DECODE_EVENT_ID");
 	wl1271_dump_ascii(DEBUG_EVENT, "SSID:", ssid, ssid_len);
 
-#ifdef CONFIG_ARCH_MSM9615
-	skb = cfg80211_vendor_event_alloc(wl->hw->wiphy,
-#else
 	skb = cfg80211_vendor_event_alloc(wl->hw->wiphy, NULL,
-#endif
 					  ssid_len + pwd_len + 20,
 					  WLCORE_VENDOR_EVENT_SC_DECODE,
 					  GFP_KERNEL);

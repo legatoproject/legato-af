@@ -1,7 +1,6 @@
 /*
  * This file is part of wl1271
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 2009-2010 Nokia Corporation
  *
  * Contact: Luciano Coelho <luciano.coelho@nokia.com>
@@ -465,12 +464,10 @@ static int wl1271_suspend(struct device *dev)
 	mmc_pm_flag_t sdio_flags;
 	int ret = 0;
 
-#ifndef CONFIG_ARCH_MSM9615
 	if (!wl) {
 		dev_err(dev, "no wilink module was probed\n");
 		goto out;
 	}
-#endif
 
 	dev_dbg(dev, "wl1271 suspend. wow_enabled: %d\n",
 		wl->wow_enabled);

@@ -1,7 +1,6 @@
 /*
  * This file is part of wl18xx
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 2012 Texas Instruments. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -118,10 +117,8 @@ static int wl18xx_scan_send(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 				 req->ssids ? req->ssids[0].ssid_len : 0,
 				 req->ie,
 				 req->ie_len,
-#ifndef CONFIG_ARCH_MSM9615
 				 NULL,
 				 0,
-#endif
 				 false);
 		if (ret < 0) {
 			wl1271_error("2.4GHz PROBE request template failed");
@@ -137,10 +134,8 @@ static int wl18xx_scan_send(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 				 req->ssids ? req->ssids[0].ssid_len : 0,
 				 req->ie,
 				 req->ie_len,
-#ifndef CONFIG_ARCH_MSM9615
 				 NULL,
 				 0,
-#endif
 				 false);
 		if (ret < 0) {
 			wl1271_error("5GHz PROBE request template failed");
@@ -174,11 +169,7 @@ static
 int wl18xx_scan_sched_scan_config(struct wl1271 *wl,
 				  struct wl12xx_vif *wlvif,
 				  struct cfg80211_sched_scan_request *req,
-#ifdef CONFIG_ARCH_MSM9615
-				  struct ieee80211_sched_scan_ies *ies)
-#else
 				  struct ieee80211_scan_ies *ies)
-#endif
 {
 	struct wl18xx_cmd_scan_params *cmd;
 	struct wlcore_scan_channels *cmd_channels = NULL;
@@ -236,15 +227,9 @@ int wl18xx_scan_sched_scan_config(struct wl1271 *wl,
 				    SCAN_TYPE_PERIODIC);
 	wl18xx_adjust_channels(cmd, cmd_channels);
 
-#ifdef CONFIG_ARCH_MSM9615
-	cmd->short_cycles_sec = cpu_to_le16(req->short_interval);
-	cmd->long_cycles_sec = cpu_to_le16(req->long_interval);
-	cmd->short_cycles_count = req->n_short_intervals;
-#else
 	cmd->short_cycles_sec = 0;
 	cmd->long_cycles_sec = cpu_to_le16(req->interval);
 	cmd->short_cycles_count = 0;
-#endif
 
 	cmd->total_cycles = 0;
 
@@ -260,15 +245,10 @@ int wl18xx_scan_sched_scan_config(struct wl1271 *wl,
 				 cmd->role_id, band,
 				 req->ssids ? req->ssids[0].ssid : NULL,
 				 req->ssids ? req->ssids[0].ssid_len : 0,
-#ifdef CONFIG_ARCH_MSM9615
-				 ies->ie[band],
-				 ies->len[band],
-#else
 				 ies->ies[band],
 				 ies->len[band],
 				 ies->common_ies,
 				 ies->common_ie_len,
-#endif
 				 true);
 		if (ret < 0) {
 			wl1271_error("2.4GHz PROBE request template failed");
@@ -282,15 +262,10 @@ int wl18xx_scan_sched_scan_config(struct wl1271 *wl,
 				 cmd->role_id, band,
 				 req->ssids ? req->ssids[0].ssid : NULL,
 				 req->ssids ? req->ssids[0].ssid_len : 0,
-#ifdef CONFIG_ARCH_MSM9615
-				 ies->ie[band],
-				 ies->len[band],
-#else
 				 ies->ies[band],
 				 ies->len[band],
 				 ies->common_ies,
 				 ies->common_ie_len,
-#endif
 				 true);
 		if (ret < 0) {
 			wl1271_error("5GHz PROBE request template failed");
@@ -314,11 +289,7 @@ out:
 
 int wl18xx_sched_scan_start(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 			    struct cfg80211_sched_scan_request *req,
-#ifdef CONFIG_ARCH_MSM9615
-			    struct ieee80211_sched_scan_ies *ies)
-#else
 			    struct ieee80211_scan_ies *ies)
-#endif
 {
 	return wl18xx_scan_sched_scan_config(wl, wlvif, req, ies);
 }
