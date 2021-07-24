@@ -1,7 +1,6 @@
 /*
  * This file is part of wl1271
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 2009-2010 Nokia Corporation
  *
  * Contact: Luciano Coelho <luciano.coelho@nokia.com>
@@ -38,11 +37,7 @@ void wl1271_scan_complete_work(struct work_struct *work);
 int wl1271_scan_sched_scan_config(struct wl1271 *wl,
 				     struct wl12xx_vif *wlvif,
 				     struct cfg80211_sched_scan_request *req,
-#ifdef CONFIG_ARCH_MSM9615
-				     struct ieee80211_sched_scan_ies *ies);
-#else
 				     struct ieee80211_scan_ies *ies);
-#endif
 int wl1271_scan_sched_scan_start(struct wl1271 *wl, struct wl12xx_vif *wlvif);
 void wlcore_scan_sched_scan_results(struct wl1271 *wl);
 

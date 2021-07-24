@@ -2,7 +2,6 @@
 /*
  * This file is part of wlcore
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 2008-2010 Nokia Corporation
  * Copyright (C) 2011-2013 Texas Instruments Inc.
  *
@@ -573,11 +572,7 @@ static int wlcore_irq_locked(struct wl1271 *wl)
 		 * wl1271_ps_elp_wakeup cannot be called concurrently.
 		 */
 		clear_bit(WL1271_FLAG_IRQ_RUNNING, &wl->flags);
-#ifdef CONFIG_ARCH_MSM9615
-		smp_mb__after_clear_bit();
-#else
 		smp_mb__after_atomic();
-#endif
 
 		ret = wlcore_fw_status(wl, wl->fw_status);
 		if (ret < 0)
@@ -1159,16 +1154,11 @@ static int wl12xx_chip_wakeup(struct wl1271 *wl, bool plt)
 		goto out;
 
 	ret = wl12xx_fetch_firmware(wl, plt);
-#ifdef CONFIG_ARCH_MSM9615
-	if (ret < 0)
-		goto out;
-#else
 	if (ret < 0) {
 		kfree(wl->fw_status);
 		kfree(wl->raw_fw_status);
 		kfree(wl->tx_res_if);
 	}
-#endif
 
 out:
 	return ret;
@@ -3707,14 +3697,9 @@ out:
 
 static int wl1271_op_hw_scan(struct ieee80211_hw *hw,
 			     struct ieee80211_vif *vif,
-#ifdef CONFIG_ARCH_MSM9615
-			     struct cfg80211_scan_request *req)
-{
-#else
 			     struct ieee80211_scan_request *hw_req)
 {
 	struct cfg80211_scan_request *req = &hw_req->req;
-#endif
 	struct wl1271 *wl = hw->priv;
 	int ret;
 	u8 *ssid = NULL;
@@ -3809,11 +3794,7 @@ out:
 static int wl1271_op_sched_scan_start(struct ieee80211_hw *hw,
 				      struct ieee80211_vif *vif,
 				      struct cfg80211_sched_scan_request *req,
-#ifdef CONFIG_ARCH_MSM9615
-				      struct ieee80211_sched_scan_ies *ies)
-#else
 				      struct ieee80211_scan_ies *ies)
-#endif
 {
 	struct wl1271 *wl = hw->priv;
 	struct wl12xx_vif *wlvif = wl12xx_vif_to_data(vif);

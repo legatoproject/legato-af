@@ -1,7 +1,6 @@
 /*
  * This file is part of wl18xx
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 2012 Texas Instruments. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -123,10 +122,6 @@ int wl18xx_scan_stop(struct wl1271 *wl, struct wl12xx_vif *wlvif);
 void wl18xx_scan_completed(struct wl1271 *wl, struct wl12xx_vif *wlvif);
 int wl18xx_sched_scan_start(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 			    struct cfg80211_sched_scan_request *req,
-#ifdef CONFIG_ARCH_MSM9615
-			    struct ieee80211_sched_scan_ies *ies);
-#else
 			    struct ieee80211_scan_ies *ies);
-#endif
 void wl18xx_scan_sched_scan_stop(struct wl1271 *wl, struct wl12xx_vif *wlvif);
 #endif

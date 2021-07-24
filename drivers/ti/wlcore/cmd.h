@@ -1,7 +1,6 @@
 /*
  * This file is part of wl1271
  *
- * Copyright (C) Sierra Wireless Inc.
  * Copyright (C) 1998-2009 Texas Instruments. All rights reserved.
  * Copyright (C) 2009 Nokia Corporation
  *
@@ -65,12 +64,8 @@ int wl1271_cmd_build_ps_poll(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 int wl12xx_cmd_build_probe_req(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 			       u8 role_id, u8 band,
 			       const u8 *ssid, size_t ssid_len,
-#ifdef CONFIG_ARCH_MSM9615
-			       const u8 *ie, size_t ie_len, bool sched_scan);
-#else
 			       const u8 *ie, size_t ie_len, const u8 *common_ie,
 			       size_t common_ie_len, bool sched_scan);
-#endif
 struct sk_buff *wl1271_cmd_build_ap_probe_req(struct wl1271 *wl,
 					      struct wl12xx_vif *wlvif,
 					      struct sk_buff *skb);
