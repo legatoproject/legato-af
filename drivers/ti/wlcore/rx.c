@@ -59,28 +59,27 @@ static u32 wlcore_rx_get_align_buf_size(struct wl1271 *wl, u32 pkt_len)
 static void wl1271_rx_status(struct wl1271 *wl,
 			     struct wl1271_rx_descriptor *desc,
 			     struct ieee80211_rx_status *status,
-			     u8 beacon)
+			     u8 beacon, u8 probe_rsp)
 {
 	memset(status, 0, sizeof(struct ieee80211_rx_status));
 
 	if ((desc->flags & WL1271_RX_DESC_BAND_MASK) == WL1271_RX_DESC_BAND_BG)
-		status->band = IEEE80211_BAND_2GHZ;
+		status->band = NL80211_BAND_2GHZ;
 	else
-		status->band = IEEE80211_BAND_5GHZ;
+		status->band = NL80211_BAND_5GHZ;
 
 	status->rate_idx = wlcore_rate_to_idx(wl, desc->rate, status->band);
 
 	/* 11n support */
 	if (desc->rate <= wl->hw_min_ht_rate)
-		status->flag |= RX_FLAG_HT;
+		status->encoding = RX_ENC_HT;
 
 	/*
-	 * Read the signal level and antenna diversity indication.
-	 * The msb in the signal level is always set as it is a
-	 * negative number.
-	 * The antenna indication is the msb of the rssi.
-	 */
-
+	* Read the signal level and antenna diversity indication.
+	* The msb in the signal level is always set as it is a
+	* negative number.
+	* The antenna indication is the msb of the rssi.
+	*/
 	status->signal = ((desc->rssi & RSSI_LEVEL_BITMASK) | BIT(7));
 	status->antenna = ((desc->rssi & ANT_DIVERSITY_BITMASK) >> 7);
 
@@ -107,6 +106,9 @@ static void wl1271_rx_status(struct wl1271 *wl,
 		}
 	}
 
+	if (beacon || probe_rsp)
+		status->boottime_ns = ktime_get_boot_ns();
+
 	if (beacon)
 		wlcore_set_pending_regdomain_ch(wl, (u16)desc->channel,
 						status->band);
@@ -118,7 +120,6 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 	struct wl1271_rx_descriptor *desc;
 	struct sk_buff *skb;
 	struct ieee80211_hdr *hdr;
-	u8 *buf;
 	u8 beacon = 0;
 	u8 is_data = 0;
 	u8 reserved = 0, offset_to_data = 0;
@@ -150,7 +151,6 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 	if (desc->packet_class == WL12XX_RX_CLASS_LOGGER) {
 		size_t len = length - sizeof(*desc);
 		wl12xx_copy_fwlog(wl, data + sizeof(*desc), len);
-		wake_up_interruptible(&wl->fwlog_waitq);
 		return 0;
 	}
 
@@ -176,15 +176,13 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 	/* reserve the unaligned payload(if any) */
 	skb_reserve(skb, reserved);
 
-	buf = skb_put(skb, pkt_data_len);
-
 	/*
 	 * Copy packets from aggregation buffer to the skbs without rx
 	 * descriptor and with packet payload aligned care. In case of unaligned
 	 * packets copy the packets in offset of 2 bytes guarantee IP header
 	 * payload aligned to 4 bytes.
 	 */
-	memcpy(buf, data + sizeof(*desc), pkt_data_len);
+	skb_put_data(skb, data + sizeof(*desc), pkt_data_len);
 	if (rx_align == WLCORE_RX_BUF_PADDED)
 		skb_pull(skb, RX_BUF_ALIGN);
 
@@ -196,7 +194,8 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 	if (ieee80211_is_data_present(hdr->frame_control))
 		is_data = 1;
 
-	wl1271_rx_status(wl, desc, IEEE80211_SKB_RXCB(skb), beacon);
+	wl1271_rx_status(wl, desc, IEEE80211_SKB_RXCB(skb), beacon,
+			 ieee80211_is_probe_resp(hdr->frame_control));
 	wlcore_hw_set_rx_csum(wl, desc, skb);
 
 	seq_num = (le16_to_cpu(hdr->seq_ctrl) & IEEE80211_SCTL_SEQ) >> 4;
@@ -207,11 +206,6 @@ static int wl1271_rx_handle_data(struct wl1271 *wl, u8 *data, u32 length,
 
 	skb_queue_tail(&wl->deferred_rx_queue, skb);
 	queue_work(wl->freezable_wq, &wl->netstack_work);
-
-#ifdef CONFIG_HAS_WAKELOCK
-	/* let the frame some time to propagate to user-space */
-	wake_lock_timeout(&wl->rx_wake, HZ);
-#endif
 
 	return is_data;
 }
@@ -228,7 +222,13 @@ int wlcore_rx(struct wl1271 *wl, struct wl_fw_status *status)
 	u8 hlid;
 	enum wl_rx_buf_align rx_align;
 	int ret = 0;
-	int orig_cnt = wl->rx_counter, diff;
+
+	/* update rates per link */
+	hlid = status->counters.hlid;
+
+	if (hlid < WLCORE_MAX_LINKS)
+		wl->links[hlid].fw_rate_mbps =
+				status->counters.tx_last_rate_mbps;
 
 	while (drv_rx_counter != fw_rx_counter) {
 		buf_size = 0;
@@ -304,13 +304,6 @@ int wlcore_rx(struct wl1271 *wl, struct wl_fw_status *status)
 	}
 
 	wl12xx_rearm_rx_streaming(wl, active_hlids);
-
-	diff = wl->rx_counter - orig_cnt;
-	if (diff > 32) {
-		wl1271_error("invalid Rx completed packets %d\n", diff);
-	} else {
-		wl->rx_completions[diff-1]++;
-	}
 
 out:
 	return ret;

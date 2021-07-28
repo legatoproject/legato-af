@@ -30,27 +30,50 @@
 #define MSM_WIFI_IRQ_ALIAS_GPIO		"WIFI_IRQ"	/* IOT0_GPIO1 */
 #define MSM_WLAN_EN_ALIAS_GPIO		"WLAN_EN"	/* IOT0_GPIO3 */
 
-static struct wl12xx_platform_data *platform_data;
 
-int wl12xx_set_platform_data(const struct wl12xx_platform_data *data)
+static struct wl1251_platform_data *wl1251_platform_data;
+static struct wl12xx_static_platform_data *wl12xx_static_platform_data;
+
+int __init wl1251_set_platform_data(const struct wl1251_platform_data *data)
 {
-
-	if (platform_data)
+	if (wl1251_platform_data)
 		return -EBUSY;
-
 	if (!data)
 		return -EINVAL;
 
-	platform_data = kmemdup(data, sizeof(*data), GFP_KERNEL);
-	if (!platform_data)
+	wl1251_platform_data = kmemdup(data, sizeof(*data), GFP_KERNEL);
+	if (!wl1251_platform_data)
 		return -ENOMEM;
 
 	return 0;
 }
 
-struct wl12xx_platform_data *wl12xx_get_platform_data(void)
+struct wl1251_platform_data *wl1251_get_platform_data(void)
 {
-	struct wl12xx_platform_data msm_wl12xx_pdata;
+	if (!wl1251_platform_data)
+		return ERR_PTR(-ENODEV);
+
+	return wl1251_platform_data;
+}
+//EXPORT_SYMBOL(wl1251_get_platform_data); Commented to avoid duplication with WLAN_VENDOR_TI enabled kernel.
+
+int wl12xx_set_platform_data(const struct wl12xx_static_platform_data *data)
+{
+	if (wl12xx_static_platform_data)
+		return -EBUSY;
+	if (!data)
+		return -EINVAL;
+
+	wl12xx_static_platform_data = kmemdup(data, sizeof(*data), GFP_KERNEL);
+	if (!wl12xx_static_platform_data)
+		return -ENOMEM;
+
+	return 0;
+}
+
+struct wl12xx_static_platform_data *wl12xx_get_platform_data(void)
+{
+	struct wl12xx_static_platform_data msm_wl12xx_pdata;
 	int ret;
 	struct gpio_desc *desc;
 
@@ -71,16 +94,14 @@ struct wl12xx_platform_data *wl12xx_get_platform_data(void)
 	if (msm_wl12xx_pdata.irq < 0)
 		return ERR_PTR(-ENODEV);
 
-	msm_wl12xx_pdata.use_eeprom = true;
-	msm_wl12xx_pdata.board_ref_clock = WL12XX_REFCLOCK_38;
-	msm_wl12xx_pdata.board_tcxo_clock = 0;
+	msm_wl12xx_pdata.ref_clock_freq = 38400000;
+	msm_wl12xx_pdata.tcxo_clock_freq = 19200000;
 
 	ret = wl12xx_set_platform_data(&msm_wl12xx_pdata);
 
-	if (!platform_data)
+	if (!wl12xx_static_platform_data)
 		return ERR_PTR(-ENOMEM);
 
-	return platform_data;
-
+	return wl12xx_static_platform_data;
 }
-//EXPORT_SYMBOL(wl12xx_get_platform_data); Commented to avoid duplication with WL_TI enabled kernel.
+//EXPORT_SYMBOL(wl12xx_get_platform_data); Commented to avoid duplication with WLAN_VENDOR_TI enabled kernel.

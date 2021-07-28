@@ -1,16 +1,102 @@
 ###################################################################################################
-## This file contains the LXSWI version from where the sources are manually copied.              ##
+## This file contains the LXSWI version from where the sources are manually copied, and also     ##
+## instructions on how to upgrade them.                                                          ##
 ## (To be removed if/when code is sourced from yocto/kernel repo directly)                       ##
 ###################################################################################################
-## Date          LXSWI Version   Change-sets                                                     ##
-##-------------+---------------+-----------------------------------------------------------------##
-## 2019/12/16   LXSWI2.5-11.0    - testmode.c included in wlcore.ko;                             ##
-##                               - wilink_platform_data.c is customised to hardcode platform data##
-##                                 and included in wlcore_sdio.ko;                               ##
-##                               - WP85 kernel (possibily TI 4.0.x backported on 3.14.29ltsi)    ##
-##                                 specific changes are superimposed on WP76 kernel (possibly    ##
-##                                 TI 4.1.x backported on 3.18.140). CONFIG_ARCH_MSM9615.        ##
+## Date          LXSWI Version     Change-sets                                                   ##
+##-------------+-----------------+---------------------------------------------------------------##
+## 2019/12/16   LXSWI2.5-11.0      - testmode.c included in wlcore.ko;                           ##
+##                                 - wilink_platform_data.c is customised to hardcode platform   ##
+##                                   data and included in wlcore_sdio.ko;                        ##
+##                                 - WP85 kernel (possibily TI 4.0.x backported on 3.14.29ltsi)  ##
+##                                   specific changes are superimposed on WP76 kernel (possibly  ##
+##                                   TI 4.1.x backported on 3.18.140). CONFIG_ARCH_MSM9615.      ##
 ##                                                                                               ##
-##-------------+---------------+---------------+-------------------------------------------------##
-##                                                                                               ##
+##-------------+-----------------+---------------------------------------------------------------##
+## 2021/08/18   LXSWI3.1-1.0.rc3   Aligned to Kernel-4.14 sources. No backward compatibility to  ##
+##                                 3.x or WP85.                                                  ##
 ###################################################################################################
+
+How to upgrade sources:
+-----------------------
+# !!!Attention:
+# This upgrade should be done only after TI driver is brought up successfully in SWI Yocto build
+# workspace with the necessary customisations from Sierra Wireless. Legato drivers maintain this
+# custom copy with further customisations to make them work even when TI configs are disabled in
+# Kernel build. The build should be done with the upgraded toolchain as well.
+#
+# 0. Source is the Kernel repo from lxswi workspace. Set LXSWI_SRC (SWI LINUX source) path
+#    accordingly.
+#
+# 1. Copy the latest sources
+cp -r ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wlcore/* drivers/ti/wlcore/
+cp -r ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wl18xx/* drivers/ti/wl18xx/
+cp -r ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wl12xx/* drivers/ti/wl12xx/
+cp ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wilink_platform_data.c drivers/ti/wlcore/wilink_platform_data.c
+#
+# 2. Make a temporary commit.
+git add .
+git commit -a --allow-empty-message -m ''
+#
+# 3. Manually merge the customised files while retaining the customisations in
+#    0001-Support-TI-drivers-when-TI_WIFI-is-not-enabled-in-Ke.patch.
+git checkout HEAD~1 -- drivers/ti/wlcore/testmode.c drivers/ti/wlcore/wilink_platform_data.c
+# testmode.c
+meld ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wlcore/testmode.c drivers/ti/wlcore/testmode.c
+# wilink_platform_data.c:
+meld ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wilink_platform_data.c drivers/ti/wlcore/wilink_platform_data.c
+#  wilink_platform_data.c: wl12xx_get_platform_data() is derived from mdm9607_wl18xx_init() in
+#  arch/arm/mach-msm/board-mdm9607.c
+meld ${LXSWI_SRC}/kernel/arch/arm/mach-msm/board-mdm9607.c drivers/ti/wlcore/wilink_platform_data.c
+#
+# 4. Update the patch for future reference.
+git add drivers/ti/wlcore/testmode.c drivers/ti/wlcore/wilink_platform_data.c
+git commit -s
+# Update with the same commit message from 0001-Support-TI-drivers-when-TI_WIFI-is-not-enabled-in-Ke.patch.
+git format-patch -1
+mv 0001-Support-TI-drivers-when-TI_WIFI-is-not-enabled-in-Ke.patch drivers/ti/
+#
+# 5. Check the following configs and Makefiles and update the cflags in the .mdef files if
+#    necessary.
+#
+#    Kconfigs:
+#     ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/Kconfig
+#     ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wlcore/Kconfig
+#     ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wl18xx/Kconfig
+#    Makefiles:
+#     ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/Makefile
+#     ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wlcore/Makefile
+#     ${LXSWI_SRC}/kernel/drivers/net/wireless/ti/wl18xx/Makefile
+#    mdefs:
+#     drivers/ti/wlcore/wlcore.mdef
+#     drivers/ti/wlcore/wlcore_sdio.mdef
+#     drivers/ti/wl18xx/wl18xx.mdef
+#
+# 6. Remove unused files: Makefiles and Kconfigs. Legato build framework generates the necessary
+#    Makefiles.
+\rm drivers/ti/*/Kconfig
+\rm drivers/ti/*/Makefile
+#
+# 7. Update firmware files and the associated license. The firmware files are generated by SWI Linux
+#    Yocto build.
+cp ${LXSWI_BUILD_ROOTFS_PATH}/lib/firmware/ti-connectivity/wl18xx-fw-4.bin drivers/ti/wlcore/bin/wl18xx-fw-4.bin
+cp ${LXSWI_BUILD_ROOTFS_PATH}/lib/firmware/ti-connectivity/wl18xx-conf.bin drivers/ti/wlcore/bin/wl18xx-conf.bin
+cp ${LXSWI_WS_BUILD_PATH}/tmp/deploy/licenses/wl18xx-fw/LICENCE drivers/ti/wlcore/bin/
+#
+#
+# 8. Build and validate the changes.
+#
+# 9. Squash the last 2 commits.
+git reset --soft HEAD~2
+#
+# 10. Commit the whole set of changes together.
+#
+# Note: Patching files as in Step-3 can be done at build time through externalBuild using standard
+# patch tool and makefiles. However, the simplicity of .mdef will be lost.
+
+TODO
+----
+1. Make the firmware files available in toolchain and source them from there. Step 7 can then be
+   removed.
+2. Move to prebuilt .ko's instead of maitaining sources in Legato. The .ko's should be made
+   available in toolchain. This README can then be removed.
