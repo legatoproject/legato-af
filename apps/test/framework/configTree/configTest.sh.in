@@ -123,8 +123,8 @@ ExecWithTimeout 10 0 @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe
 
 
 # Now, tell them to hang around to make sure that the automatic timeouts work.
-ExecWithTimeout 10 ${CONFIG_ERROR_EXIT:-69} @EXECUTABLE_OUTPUT_PATH@/configDropReadExe hangAround
-ExecWithTimeout 10 ${CONFIG_ERROR_EXIT:-69} @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe hangAround
+ExecWithTimeout 10 ${CONFIG_ERROR_EXIT:-1} @EXECUTABLE_OUTPUT_PATH@/configDropReadExe hangAround
+ExecWithTimeout 10 ${CONFIG_ERROR_EXIT:-1} @EXECUTABLE_OUTPUT_PATH@/configDropWriteExe hangAround
 
 
 

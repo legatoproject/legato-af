@@ -2120,9 +2120,7 @@ FaultAction_t proc_SigChildHandler
 
     // If the process has reached its fault limit, take action to stop
     // the apparently futile attempts to start this thing.
-    // Do not calculate a double fault for child's process that is stopped by another process
-    if ( (WEXITSTATUS(procExitStatus) != EXIT_UNAVAILABLE) &&
-          ReachedFaultLimit(procRef, faultAction, prevFaultTime) )
+    if (ReachedFaultLimit(procRef, faultAction, prevFaultTime))
     {
         if (sysStatus_IsGood())
         {
