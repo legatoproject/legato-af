@@ -78,19 +78,6 @@ le_result_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Standard exit codes.
- *
- * @note The value follow standardize exit codes of BSD(Berkeley software distribution),
- * detail in file <sysexits.h>.
- *
- * Present exit status of process that is stopped by loss of a service or resource.
- */
-//--------------------------------------------------------------------------------------------------
-#define EXIT_UNAVAILABLE 69
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * ON/OFF type.
  *
  */

@@ -840,8 +840,6 @@ static void ClientSocketHangUp
 )
 //--------------------------------------------------------------------------------------------------
 {
-    static bool exitCalled = false;
-
     TRACE("Socket closed for session with service (%s:%s).",
           le_msg_GetInterfaceName(sessionPtr->interfaceRef),
           le_msg_GetProtocolIdStr(le_msg_GetInterfaceProtocol(sessionPtr->interfaceRef)));
@@ -869,18 +867,10 @@ static void ClientSocketHangUp
             // recover from the session closing down on it.
             else
             {
-                LE_ERROR("Session closed by server (%s:%s).",
+                LE_FATAL("Session closed by server (%s:%s).",
                          le_msg_GetInterfaceName(sessionPtr->interfaceRef),
                          le_msg_GetProtocolIdStr(
                                             le_msg_GetInterfaceProtocol(sessionPtr->interfaceRef)));
-
-                if (LE_ATOMIC_TEST_AND_SET(&exitCalled, LE_ATOMIC_ORDER_ACQ_REL))
-                {
-                    pthread_exit(NULL);
-                }
-                // Exit process with EXIT_UNAVAILABLE to notify that process is stopped
-                // by another process
-                exit(EXIT_UNAVAILABLE);
             }
             break;
 
