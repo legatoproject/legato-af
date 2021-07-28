@@ -27,6 +27,7 @@
 
 #include "wl18xx.h"
 #include "acx.h"
+#include "cmd.h"
 #include "debugfs.h"
 
 #define WL18XX_DEBUGFS_FWSTATS_FILE(a, b, c) \
@@ -34,13 +35,6 @@
 #define WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(a, b, c) \
 	DEBUGFS_FWSTATS_FILE_ARRAY(a, b, c, wl18xx_acx_statistics)
 
-
-WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug1, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug2, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug3, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug4, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug5, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(debug, debug6, "%u");
 
 WL18XX_DEBUGFS_FWSTATS_FILE(error, error_frame_non_ctrl, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(error, error_frame_ctrl, "%u");
@@ -69,7 +63,6 @@ WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_data_programmed, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_burst_programmed, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_starts, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_stop, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_imm_resp, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_start_templates, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_start_int_templates, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(tx, tx_start_fw_gen, "%u");
@@ -113,8 +106,6 @@ WL18XX_DEBUGFS_FWSTATS_FILE(rx, rx_phy_hdr, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx, rx_timeout, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx, rx_rts_timeout, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx, rx_timeout_wa, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(rx, rx_wa_density_dropped_frame, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(rx, rx_wa_ba_not_expected, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx, defrag_called, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx, defrag_init_called, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx, defrag_in_process_called, "%u");
@@ -134,14 +125,13 @@ WL18XX_DEBUGFS_FWSTATS_FILE(pwr, connection_out_of_sync, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(pwr, cont_miss_bcns_spread,
 				  PWR_STAT_MAX_CONT_MISSED_BCNS_SPREAD);
 WL18XX_DEBUGFS_FWSTATS_FILE(pwr, rcvd_awake_bcns_cnt, "%u");
-
-
-WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, ps_poll_timeouts, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, upsd_timeouts, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, upsd_max_ap_turn, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, ps_poll_max_ap_turn, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, ps_poll_utilization, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(ps_poll, upsd_utilization, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, sleep_time_count, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, sleep_time_avg, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, sleep_cycle_avg, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, sleep_percent, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, ap_sleep_active_conf, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, ap_sleep_user_conf, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pwr, ap_sleep_counter, "%u");
 
 WL18XX_DEBUGFS_FWSTATS_FILE(rx_filter, beacon_filter, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(rx_filter, arp_filter, "%u");
@@ -163,8 +153,6 @@ WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(aggr_size, rx_size,
 				  AGGR_STATS_RX_SIZE_LEN);
 
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, hs_tx_stat_fifo_int, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, tcp_tx_stat_fifo_int, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, tcp_rx_stat_fifo_int, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, enc_tx_stat_fifo_int, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, enc_rx_stat_fifo_int, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, rx_complete_stat_fifo_int, "%u");
@@ -172,21 +160,17 @@ WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, pre_proc_swi, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, post_proc_swi, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, sec_frag_swi, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, pre_to_defrag_swi, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, defrag_to_csum_swi, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, csum_to_rx_xfer_swi, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, defrag_to_rx_xfer_swi, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, dec_packet_in, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, dec_packet_in_fifo_full, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, dec_packet_out, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, cs_rx_packet_in, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(pipeline, cs_rx_packet_out, "%u");
 
 WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(pipeline, pipeline_fifo_full,
 				  PIPE_STATS_HW_FIFO);
 
-WL18XX_DEBUGFS_FWSTATS_FILE(mem, rx_free_mem_blks, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(mem, tx_free_mem_blks, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(mem, fwlog_free_mem_blks, "%u");
-WL18XX_DEBUGFS_FWSTATS_FILE(mem, fw_gen_free_mem_blks, "%u");
+WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(diversity, num_of_packets_per_ant,
+				  DIVERSITY_STATS_NUM_OF_ANT);
+WL18XX_DEBUGFS_FWSTATS_FILE(diversity, total_num_of_toggles, "%u");
 
 WL18XX_DEBUGFS_FWSTATS_FILE(thermal, irq_thr_low, "%u");
 WL18XX_DEBUGFS_FWSTATS_FILE(thermal, irq_thr_high, "%u");
@@ -200,6 +184,8 @@ WL18XX_DEBUGFS_FWSTATS_FILE_ARRAY(calib, fail_count,
 WL18XX_DEBUGFS_FWSTATS_FILE(calib, calib_count, "%u");
 
 WL18XX_DEBUGFS_FWSTATS_FILE(roaming, rssi_level, "%d");
+
+WL18XX_DEBUGFS_FWSTATS_FILE(dfs, num_of_radar_detections, "%d");
 
 static ssize_t conf_read(struct file *file, char __user *user_buf,
 			 size_t count, loff_t *ppos)
@@ -272,8 +258,8 @@ static const struct file_operations clear_fw_stats_ops = {
 };
 
 static ssize_t radar_detection_write(struct file *file,
-			      const char __user *user_buf,
-			      size_t count, loff_t *ppos)
+				     const char __user *user_buf,
+				     size_t count, loff_t *ppos)
 {
 	struct wl1271 *wl = file->private_data;
 	int ret;
@@ -294,7 +280,7 @@ static ssize_t radar_detection_write(struct file *file,
 	if (ret < 0)
 		goto out;
 
-	ret = wlcore_radar_detection_debug(wl, channel);
+	ret = wl18xx_cmd_radar_detection_debug(wl, channel);
 	if (ret < 0)
 		count = ret;
 
@@ -310,6 +296,56 @@ static const struct file_operations radar_detection_ops = {
 	.llseek = default_llseek,
 };
 
+static ssize_t dynamic_fw_traces_write(struct file *file,
+					const char __user *user_buf,
+					size_t count, loff_t *ppos)
+{
+	struct wl1271 *wl = file->private_data;
+	unsigned long value;
+	int ret;
+
+	ret = kstrtoul_from_user(user_buf, count, 0, &value);
+	if (ret < 0)
+		return ret;
+
+	mutex_lock(&wl->mutex);
+
+	wl->dynamic_fw_traces = value;
+
+	if (unlikely(wl->state != WLCORE_STATE_ON))
+		goto out;
+
+	ret = wl1271_ps_elp_wakeup(wl);
+	if (ret < 0)
+		goto out;
+
+	ret = wl18xx_acx_dynamic_fw_traces(wl);
+	if (ret < 0)
+		count = ret;
+
+	wl1271_ps_elp_sleep(wl);
+out:
+	mutex_unlock(&wl->mutex);
+	return count;
+}
+
+static ssize_t dynamic_fw_traces_read(struct file *file,
+					char __user *userbuf,
+					size_t count, loff_t *ppos)
+{
+	struct wl1271 *wl = file->private_data;
+	return wl1271_format_buffer(userbuf, count, ppos,
+				    "%d\n", wl->dynamic_fw_traces);
+}
+
+static const struct file_operations dynamic_fw_traces_ops = {
+	.read = dynamic_fw_traces_read,
+	.write = dynamic_fw_traces_write,
+	.open = simple_open,
+	.llseek = default_llseek,
+};
+
+#ifdef CONFIG_CFG80211_CERTIFICATION_ONUS
 static ssize_t radar_debug_mode_write(struct file *file,
 				      const char __user *user_buf,
 				      size_t count, loff_t *ppos)
@@ -321,7 +357,7 @@ static ssize_t radar_debug_mode_write(struct file *file,
 
 	ret = kstrtoul_from_user(user_buf, count, 10, &value);
 	if (ret < 0) {
-		wl1271_warning("illegal value in radar_debug_mode!");
+		wl1271_warning("illegal radar_debug_mode value!");
 		return -EINVAL;
 	}
 
@@ -359,6 +395,7 @@ static ssize_t radar_debug_mode_read(struct file *file,
 				     size_t count, loff_t *ppos)
 {
 	struct wl1271 *wl = file->private_data;
+
 	return wl1271_format_buffer(userbuf, count, ppos,
 				    "%d\n", wl->radar_debug_mode);
 }
@@ -369,6 +406,7 @@ static const struct file_operations radar_debug_mode_ops = {
 	.open = simple_open,
 	.llseek = default_llseek,
 };
+#endif /* CFG80211_CERTIFICATION_ONUS */
 
 int wl18xx_debugfs_add_files(struct wl1271 *wl,
 			     struct dentry *rootdir)
@@ -389,13 +427,6 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 	}
 
 	DEBUGFS_ADD(clear_fw_stats, stats);
-
-	DEBUGFS_FWSTATS_ADD(debug, debug1);
-	DEBUGFS_FWSTATS_ADD(debug, debug2);
-	DEBUGFS_FWSTATS_ADD(debug, debug3);
-	DEBUGFS_FWSTATS_ADD(debug, debug4);
-	DEBUGFS_FWSTATS_ADD(debug, debug5);
-	DEBUGFS_FWSTATS_ADD(debug, debug6);
 
 	DEBUGFS_FWSTATS_ADD(error, error_frame_non_ctrl);
 	DEBUGFS_FWSTATS_ADD(error, error_frame_ctrl);
@@ -424,7 +455,6 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 	DEBUGFS_FWSTATS_ADD(tx, tx_burst_programmed);
 	DEBUGFS_FWSTATS_ADD(tx, tx_starts);
 	DEBUGFS_FWSTATS_ADD(tx, tx_stop);
-	DEBUGFS_FWSTATS_ADD(tx, tx_imm_resp);
 	DEBUGFS_FWSTATS_ADD(tx, tx_start_templates);
 	DEBUGFS_FWSTATS_ADD(tx, tx_start_int_templates);
 	DEBUGFS_FWSTATS_ADD(tx, tx_start_fw_gen);
@@ -467,8 +497,6 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 	DEBUGFS_FWSTATS_ADD(rx, rx_timeout);
 	DEBUGFS_FWSTATS_ADD(rx, rx_rts_timeout);
 	DEBUGFS_FWSTATS_ADD(rx, rx_timeout_wa);
-	DEBUGFS_FWSTATS_ADD(rx, rx_wa_density_dropped_frame);
-	DEBUGFS_FWSTATS_ADD(rx, rx_wa_ba_not_expected);
 	DEBUGFS_FWSTATS_ADD(rx, defrag_called);
 	DEBUGFS_FWSTATS_ADD(rx, defrag_init_called);
 	DEBUGFS_FWSTATS_ADD(rx, defrag_in_process_called);
@@ -487,13 +515,13 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 	DEBUGFS_FWSTATS_ADD(pwr, connection_out_of_sync);
 	DEBUGFS_FWSTATS_ADD(pwr, cont_miss_bcns_spread);
 	DEBUGFS_FWSTATS_ADD(pwr, rcvd_awake_bcns_cnt);
-
-	DEBUGFS_FWSTATS_ADD(ps_poll, ps_poll_timeouts);
-	DEBUGFS_FWSTATS_ADD(ps_poll, upsd_timeouts);
-	DEBUGFS_FWSTATS_ADD(ps_poll, upsd_max_ap_turn);
-	DEBUGFS_FWSTATS_ADD(ps_poll, ps_poll_max_ap_turn);
-	DEBUGFS_FWSTATS_ADD(ps_poll, ps_poll_utilization);
-	DEBUGFS_FWSTATS_ADD(ps_poll, upsd_utilization);
+	DEBUGFS_FWSTATS_ADD(pwr, sleep_time_count);
+	DEBUGFS_FWSTATS_ADD(pwr, sleep_time_avg);
+	DEBUGFS_FWSTATS_ADD(pwr, sleep_cycle_avg);
+	DEBUGFS_FWSTATS_ADD(pwr, sleep_percent);
+	DEBUGFS_FWSTATS_ADD(pwr, ap_sleep_active_conf);
+	DEBUGFS_FWSTATS_ADD(pwr, ap_sleep_user_conf);
+	DEBUGFS_FWSTATS_ADD(pwr, ap_sleep_counter);
 
 	DEBUGFS_FWSTATS_ADD(rx_filter, beacon_filter);
 	DEBUGFS_FWSTATS_ADD(rx_filter, arp_filter);
@@ -512,8 +540,6 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 	DEBUGFS_FWSTATS_ADD(aggr_size, rx_size);
 
 	DEBUGFS_FWSTATS_ADD(pipeline, hs_tx_stat_fifo_int);
-	DEBUGFS_FWSTATS_ADD(pipeline, tcp_tx_stat_fifo_int);
-	DEBUGFS_FWSTATS_ADD(pipeline, tcp_rx_stat_fifo_int);
 	DEBUGFS_FWSTATS_ADD(pipeline, enc_tx_stat_fifo_int);
 	DEBUGFS_FWSTATS_ADD(pipeline, enc_rx_stat_fifo_int);
 	DEBUGFS_FWSTATS_ADD(pipeline, rx_complete_stat_fifo_int);
@@ -521,19 +547,14 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 	DEBUGFS_FWSTATS_ADD(pipeline, post_proc_swi);
 	DEBUGFS_FWSTATS_ADD(pipeline, sec_frag_swi);
 	DEBUGFS_FWSTATS_ADD(pipeline, pre_to_defrag_swi);
-	DEBUGFS_FWSTATS_ADD(pipeline, defrag_to_csum_swi);
-	DEBUGFS_FWSTATS_ADD(pipeline, csum_to_rx_xfer_swi);
+	DEBUGFS_FWSTATS_ADD(pipeline, defrag_to_rx_xfer_swi);
 	DEBUGFS_FWSTATS_ADD(pipeline, dec_packet_in);
 	DEBUGFS_FWSTATS_ADD(pipeline, dec_packet_in_fifo_full);
 	DEBUGFS_FWSTATS_ADD(pipeline, dec_packet_out);
-	DEBUGFS_FWSTATS_ADD(pipeline, cs_rx_packet_in);
-	DEBUGFS_FWSTATS_ADD(pipeline, cs_rx_packet_out);
 	DEBUGFS_FWSTATS_ADD(pipeline, pipeline_fifo_full);
 
-	DEBUGFS_FWSTATS_ADD(mem, rx_free_mem_blks);
-	DEBUGFS_FWSTATS_ADD(mem, tx_free_mem_blks);
-	DEBUGFS_FWSTATS_ADD(mem, fwlog_free_mem_blks);
-	DEBUGFS_FWSTATS_ADD(mem, fw_gen_free_mem_blks);
+	DEBUGFS_FWSTATS_ADD(diversity, num_of_packets_per_ant);
+	DEBUGFS_FWSTATS_ADD(diversity, total_num_of_toggles);
 
 	DEBUGFS_FWSTATS_ADD(thermal, irq_thr_low);
 	DEBUGFS_FWSTATS_ADD(thermal, irq_thr_high);
@@ -548,9 +569,14 @@ int wl18xx_debugfs_add_files(struct wl1271 *wl,
 
 	DEBUGFS_FWSTATS_ADD(roaming, rssi_level);
 
+	DEBUGFS_FWSTATS_ADD(dfs, num_of_radar_detections);
+
 	DEBUGFS_ADD(conf, moddir);
 	DEBUGFS_ADD(radar_detection, moddir);
+#ifdef CONFIG_CFG80211_CERTIFICATION_ONUS
 	DEBUGFS_ADD(radar_debug_mode, moddir);
+#endif
+	DEBUGFS_ADD(dynamic_fw_traces, moddir);
 
 	return 0;
 

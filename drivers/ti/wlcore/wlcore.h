@@ -40,6 +40,9 @@
 /* wl12xx/wl18xx maximum transmission power (in dBm) */
 #define WLCORE_MAX_TXPWR        25
 
+/* Texas Instruments pre assigned OUI */
+#define WLCORE_TI_OUI_ADDRESS 0x080028
+
 /* forward declaration */
 struct wl1271_tx_hw_descr;
 enum wl_rx_buf_align;
@@ -123,6 +126,9 @@ struct wlcore_ops {
 	int (*smart_config_stop)(struct wl1271 *wl);
 	int (*smart_config_set_group_key)(struct wl1271 *wl, u16 group_id,
 					  u8 key_len, u8 *key);
+	int (*set_cac)(struct wl1271 *wl, struct wl12xx_vif *wlvif,
+		       bool start);
+	int (*dfs_master_restart)(struct wl1271 *wl, struct wl12xx_vif *wlvif);
 };
 
 enum wlcore_partitions {
@@ -180,14 +186,6 @@ struct wl1271_stats {
 	unsigned int excessive_retries;
 };
 
-struct wlcore_aggr_reason {
-	u32 total;
-	u32 buffer_full;
-	u32 fw_buffer_full;
-	u32 other;
-	u32 no_data;
-};
-
 struct wl1271 {
 	bool initialized;
 	struct ieee80211_hw *hw;
@@ -201,6 +199,8 @@ struct wl1271 {
 	struct wl1271_if_operations *if_ops;
 
 	int irq;
+
+	int irq_flags;
 
 	spinlock_t wl_lock;
 
@@ -313,15 +313,12 @@ struct wl1271 {
 	/* FW memory block size */
 	u32 fw_mem_block_size;
 
-	/* Sysfs FW log entry readers wait queue */
-	wait_queue_head_t fwlog_waitq;
-
 	/* Hardware recovery work */
 	struct work_struct recovery_work;
 	bool watchdog_recovery;
 
 	/* Reg domain last configuration */
-	u32 reg_ch_conf_last[2];
+	u32 reg_ch_conf_last[2]  __aligned(8);
 	/* Reg domain pending configuration */
 	u32 reg_ch_conf_pending[2];
 
@@ -343,13 +340,12 @@ struct wl1271 {
 	struct delayed_work scan_complete_work;
 
 	struct ieee80211_vif *roc_vif;
-	unsigned long roc_cookie;
 	struct delayed_work roc_complete_work;
 
 	struct wl12xx_vif *sched_vif;
 
 	/* The current band */
-	enum ieee80211_band band;
+	enum nl80211_band band;
 
 	struct completion *elp_compl;
 	struct delayed_work elp_work;
@@ -357,11 +353,6 @@ struct wl1271 {
 	/* in dBm */
 	int power_level;
 
-#ifdef CONFIG_HAS_WAKELOCK
-	struct wake_lock wake_lock;
-	struct wake_lock rx_wake;
-	struct wake_lock recovery_wake;
-#endif
 	struct wl1271_stats stats;
 
 	__le32 *buffer_32;
@@ -414,9 +405,6 @@ struct wl1271 {
 
 	/* Quirks of specific hardware revisions */
 	unsigned int quirks;
-
-	/* Platform limitations */
-	unsigned int platform_quirks;
 
 	/* number of currently active RX BA sessions */
 	int ba_rx_session_count;
@@ -476,6 +464,10 @@ struct wl1271 {
 	/* HW HT (11n) capabilities */
 	struct ieee80211_sta_ht_cap ht_cap[WLCORE_NUM_BANDS];
 
+	/* the current dfs region */
+	enum nl80211_dfs_regions dfs_region;
+	bool radar_debug_mode;
+
 	/* size of the private FW status data */
 	size_t fw_status_len;
 	size_t fw_status_priv_len;
@@ -510,24 +502,17 @@ struct wl1271 {
 	const struct ieee80211_iface_combination *iface_combinations;
 	u8 n_iface_combinations;
 
-	struct wlcore_aggr_reason *aggr_pkts_reason;
-	u32 aggr_pkts_reason_num;
+	/* dynamic fw traces */
+	u32 dynamic_fw_traces;
 
-	u32 tx_completions[32];
-	u32 rx_completions[32];
-
-	u32 irq_count;
-	u32 irq_loop_count;
-
-	/* the current dfs region */
-	enum nl80211_dfs_regions dfs_region;
-	bool radar_debug_mode;
+	/* time sync zone master */
+	u8 zone_master_mac_addr[ETH_ALEN];
 };
 
 int wlcore_probe(struct wl1271 *wl, struct platform_device *pdev);
 int wlcore_remove(struct platform_device *pdev);
 struct ieee80211_hw *wlcore_alloc_hw(size_t priv_size, u32 aggr_buf_size,
-				     u32 mbox_size, u32 num_tx_desc);
+				     u32 mbox_size);
 int wlcore_free_hw(struct wl1271 *wl);
 int wlcore_set_key(struct wl1271 *wl, enum set_key_cmd cmd,
 		   struct ieee80211_vif *vif,
@@ -538,7 +523,7 @@ void wlcore_update_inconn_sta(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 			      struct wl1271_station *wl_sta, bool in_conn);
 
 static inline void
-wlcore_set_ht_cap(struct wl1271 *wl, enum ieee80211_band band,
+wlcore_set_ht_cap(struct wl1271 *wl, enum nl80211_band band,
 		  struct ieee80211_sta_ht_cap *ht_cap)
 {
 	memcpy(&wl->ht_cap[band], ht_cap, sizeof(*ht_cap));

@@ -544,10 +544,15 @@ static int wl12xx_init_sta_role(struct wl1271 *wl, struct wl12xx_vif *wlvif)
 	return 0;
 }
 
-/* vif-specific intialization */
+/* vif-specific initialization */
 static int wl12xx_init_ap_role(struct wl1271 *wl, struct wl12xx_vif *wlvif)
 {
 	int ret;
+
+	/* Disable filtering */
+	ret = wl1271_acx_group_address_tbl(wl, wlvif, false, NULL, 0);
+	if (ret < 0)
+		return ret;
 
 	ret = wl1271_acx_ap_max_tx_retry(wl, wlvif);
 	if (ret < 0)
@@ -557,7 +562,6 @@ static int wl12xx_init_ap_role(struct wl1271 *wl, struct wl12xx_vif *wlvif)
 	ret = wl1271_acx_tx_power(wl, wlvif, wlvif->power_level);
 	if (ret < 0)
 		return ret;
-
 
 	if (wl->radar_debug_mode)
 		wlcore_cmd_generic_cfg(wl, wlvif,

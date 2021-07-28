@@ -1,0 +1,131 @@
+From eab0476258ac16793e22b38c5503e9151f612ace Mon Sep 17 00:00:00 2001
+From: Anju Kunjumon <akunjumon@sierrawireless.com>
+Date: Tue, 27 Jul 2021 18:34:23 -0700
+Subject: [PATCH] Support TI drivers when TI_WIFI is not enabled in Kernel
+
+Update wl12xx_get_platform_data to retrieve platform data directly and
+not using global variable. The global variable will be updated only if
+TI WiFi configurations are enabled in Kernel build. To make the driver
+in Legato work even when these configurations are disabled at kernel,
+update the function to not rely on the global variable.
+
+Keep testmode.c under CONFIG_NL80211_TESTMODE flag to avoid build errors
+when the configuration is not enabled in Kernel build.
+
+Change-Id: I1ecbb24183d7a1a45515036c5a4fda9b1a9c741f
+Signed-off-by: Anju Kunjumon <akunjumon@sierrawireless.com>
+---
+ drivers/ti/wlcore/testmode.c             |  3 ++
+ drivers/ti/wlcore/wilink_platform_data.c | 46 +++++++++++++++++++-----
+ 2 files changed, 41 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/ti/wlcore/testmode.c b/drivers/ti/wlcore/testmode.c
+index 009ec07c4..1cbe90e8d 100644
+--- a/drivers/ti/wlcore/testmode.c
++++ b/drivers/ti/wlcore/testmode.c
+@@ -1,6 +1,7 @@
+ /*
+  * This file is part of wl1271
+  *
++ * Copyright (C) Sierra Wireless Inc.
+  * Copyright (C) 2010 Nokia Corporation
+  *
+  * Contact: Luciano Coelho <luciano.coelho@nokia.com>
+@@ -20,6 +21,7 @@
+  * 02110-1301 USA
+  *
+  */
++#ifdef CONFIG_NL80211_TESTMODE
+ #include "testmode.h"
+ 
+ #include <linux/slab.h>
+@@ -396,3 +398,4 @@ int wl1271_tm_cmd(struct ieee80211_hw *hw, struct ieee80211_vif *vif,
+ 		return -EOPNOTSUPP;
+ 	}
+ }
++#endif /*CONFIG_NL80211_TESTMODE */
+diff --git a/drivers/ti/wlcore/wilink_platform_data.c b/drivers/ti/wlcore/wilink_platform_data.c
+index d58fda68a..76f62fef7 100644
+--- a/drivers/ti/wlcore/wilink_platform_data.c
++++ b/drivers/ti/wlcore/wilink_platform_data.c
+@@ -1,6 +1,7 @@
+ /*
+  * This file is part of wl12xx
+  *
++ * Copyright (C) Sierra Wireless Inc.
+  * Copyright (C) 2010-2011 Texas Instruments, Inc.
+  *
+  * This program is free software; you can redistribute it and/or
+@@ -23,10 +24,15 @@
+ #include <linux/err.h>
+ #include <linux/wl12xx.h>
+ 
++#include <linux/gpio.h>
++#include <linux/sierra_gpio.h>
++
++#define MSM_WIFI_IRQ_ALIAS_GPIO		"WIFI_IRQ"	/* IOT0_GPIO1 */
++#define MSM_WLAN_EN_ALIAS_GPIO		"WLAN_EN"	/* IOT0_GPIO3 */
++
++
+ static struct wl1251_platform_data *wl1251_platform_data;
+-#ifdef CONFIG_SIERRA
+ static struct wl12xx_static_platform_data *wl12xx_static_platform_data;
+-#endif
+ 
+ int __init wl1251_set_platform_data(const struct wl1251_platform_data *data)
+ {
+@@ -49,10 +55,9 @@ struct wl1251_platform_data *wl1251_get_platform_data(void)
+ 
+ 	return wl1251_platform_data;
+ }
+-EXPORT_SYMBOL(wl1251_get_platform_data);
++//EXPORT_SYMBOL(wl1251_get_platform_data); Commented to avoid duplication with WLAN_VENDOR_TI enabled kernel.
+ 
+-#ifdef CONFIG_SIERRA
+-int __init wl12xx_set_platform_data(const struct wl12xx_static_platform_data *data)
++int wl12xx_set_platform_data(const struct wl12xx_static_platform_data *data)
+ {
+ 	if (wl12xx_static_platform_data)
+ 		return -EBUSY;
+@@ -68,10 +73,35 @@ int __init wl12xx_set_platform_data(const struct wl12xx_static_platform_data *da
+ 
+ struct wl12xx_static_platform_data *wl12xx_get_platform_data(void)
+ {
+-	if (!wl12xx_static_platform_data)
++	struct wl12xx_static_platform_data msm_wl12xx_pdata;
++	int ret;
++	struct gpio_desc *desc;
++
++	memset(&msm_wl12xx_pdata, 0, sizeof(msm_wl12xx_pdata));
++
++	if (gpio_alias_lookup(MSM_WLAN_EN_ALIAS_GPIO, &desc)) {
++		pr_err("wl18xx: NO WLAN_EN gpio");
+ 		return ERR_PTR(-ENODEV);
++	}
++	msm_wl12xx_pdata.wlan_en = desc_to_gpio(desc);
++	pr_info("wl12xx WLAN_EN GPIO: %d\n", msm_wl12xx_pdata.wlan_en);
++	if (gpio_alias_lookup(MSM_WIFI_IRQ_ALIAS_GPIO, &desc)) {
++		pr_err("wl18xx: NO WIFI_IRQ gpio");
++		return ERR_PTR(-ENODEV);
++	}
++	msm_wl12xx_pdata.irq = gpio_to_irq(desc_to_gpio(desc));
++	pr_info("wl12xx IRQ: %d\n", msm_wl12xx_pdata.irq);
++	if (msm_wl12xx_pdata.irq < 0)
++		return ERR_PTR(-ENODEV);
++
++	msm_wl12xx_pdata.ref_clock_freq = 38400000;
++	msm_wl12xx_pdata.tcxo_clock_freq = 19200000;
++
++	ret = wl12xx_set_platform_data(&msm_wl12xx_pdata);
++
++	if (!wl12xx_static_platform_data)
++		return ERR_PTR(-ENOMEM);
+ 
+ 	return wl12xx_static_platform_data;
+ }
+-EXPORT_SYMBOL(wl12xx_get_platform_data);
+-#endif
++//EXPORT_SYMBOL(wl12xx_get_platform_data); Commented to avoid duplication with WLAN_VENDOR_TI enabled kernel.
+-- 
+2.17.1
+
