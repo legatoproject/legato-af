@@ -416,6 +416,19 @@ LE_API_JSON size_t le_json_GetBytesRead
     le_json_ParsingSessionRef_t session ///< Parsing session.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the start and length of the most recent value parsed.
+ *
+ * @returns LE_OK if the call succeeded
+ *          LE_NOT_FOUND if the most recent object parsed is not a value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_json_GetValueOffset
+(
+    size_t *valueStart,   ///< [OUT] Start of the value.  If NULL, start is not returned.
+    size_t *valueLen      ///< [OUT] Length of the value.  If NULL, length is not returned.
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

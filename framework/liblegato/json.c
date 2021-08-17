@@ -62,6 +62,8 @@ typedef struct le_json_ParsingSession
     size_t bytesRead;               ///< # of bytes read from the file descriptor.
     size_t line;                    ///< Line number of the JSON document (starts at 1).
 
+    size_t valueStart;              ///< Start of the innermost value being parsed.
+
     le_json_ErrorHandler_t errorHandler; ///< Function to call when errors happen.
     void* opaquePtr;                ///< Client's opaque pointer passed to le_json_Parse().
 
@@ -487,6 +489,9 @@ static void ParseValue
     // Throw away whitespace until something else comes along.
     if (!isspace(c))
     {
+        // Store the start of the value.
+        parserPtr->valueStart = parserPtr->bytesRead - 1;
+
         if (c == '{')   // Start of an object.
         {
             PushContext(parserPtr, LE_JSON_CONTEXT_OBJECT, GetEventHandler(parserPtr));
@@ -1466,6 +1471,63 @@ size_t le_json_GetBytesRead
 //--------------------------------------------------------------------------------------------------
 {
     return session->bytesRead;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the start and end location of the most recent value parsed.
+ *
+ * @returns LE_OK if the call succeeded
+ *          LE_NOT_FOUND if the most recent object parsed is not a value.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_json_GetValueOffset
+(
+    size_t *valueStart,   ///< [OUT] Start of the value.  If NULL, start is not returned.
+    size_t *valueLen      ///< [OUT] Length of the value.  If NULL, length is not returned.
+)
+//--------------------------------------------------------------------------------------------------
+{
+    Parser_t *session = GetCurrentParser(__func__);
+    Context_t *context = GetContext(session);
+
+    switch (context->type)
+    {
+        case LE_JSON_CONTEXT_STRING:
+        case LE_JSON_CONTEXT_NUMBER:
+        case LE_JSON_CONTEXT_TRUE:
+        case LE_JSON_CONTEXT_FALSE:
+        case LE_JSON_CONTEXT_NULL:
+            /* values -- get location */
+            break;
+        default:
+            return LE_NOT_FOUND;
+    }
+
+    if (valueStart)
+    {
+        *valueStart = session->valueStart;
+    }
+
+    if (valueLen)
+    {
+        size_t valueEnd;
+
+        if (context->type == LE_JSON_CONTEXT_NUMBER)
+        {
+            /* Numbers are recognized on the byte _after_ the end of the
+             * number, so account for that here. */
+            valueEnd = session->bytesRead - 1;
+        }
+        else
+        {
+            valueEnd = session->bytesRead;
+        }
+
+        *valueLen = valueEnd - session->valueStart;
+    }
+
+    return LE_OK;
 }
 
 
