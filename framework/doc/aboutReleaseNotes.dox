@@ -1,133 +1,151 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 20.08.0</b><br>
-Date: <b>October 13th, 2020</b><br>
+Version: <b>Legato 21.05.0</b><br>
+Date: <b>September 2, 2021</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
 @b clone the repositories from GitHub, or view <b>previous released versions</b>.
 
-Get started with the latest version of Legato by installing the SDK through @ref confLeaf "Leaf".
+@section rn2105_Features New Features
 
-Search for the latest version for your target (using wp76xx as an example):
+List of new features in the 21.05.0 Release:
+
+@subsection rn2105_SMACK_OnlyCap_support New SMACK onlycap Features for Kernel 4.14
+
+- SMACK rules have been updated for some daemons, such as "modemService" to have write access
+to "admin".
+- smack_SetOnlyCap() has been fixed to allow for unsetting of ONLYCAP using "-".
+- smack_isMounted() API has been added to check if a file system is mounted.
+- smack_IsOnlyCapSet() API has been added to check if onlycap is set.
+- Bidirectional write permissions has been given to atService() and atQmiLinker(), so that AVC can
+successfully run on kernel 4.14.
+- For le_fs() API, the backend storage uses /tmp/data/le_fs/ when /data/le_fs is not available.
+- Socket permission errors leading to a reboot loop on kernel 4.14 on virtual platform has been
+resolved.
+- Failure to modify permissions on SMACK label directory for SMACK OnlyCap install has been fixed.
+
+@subsection rn2105_Features_IoTKeyStore New IoT KeyStore Features
+
+@note IoT Keystore has been disabled by default in the generic Legato release and has been enabled
+by default on the WP release which works on specific Sierra Wireless hardware.
+
+- IoT Keystore is available on WP76 and FX30 starting with Release 17, and WP77 and FX30 starting
+with Release 15.
+- Security features TrustZone4 and IoT KeyStore have been implemented. Secure data migration has
+been automatically applied when upgrading from an older version of the TrustZone4 to the latest
+version in kernel 4.14.
+- IoT Keystore access has been integrated into Legato's secure storage app. By default, it is
+disabled in the Legato build. This can be enabled using configs "SECSTORE_IKS_BACKEND"
+and "ENABLE_IOT_KEYSTORE_API". Please note that the build of IoT Keystore uses proprietary libraries
+that require the user to be signed in.
+- Legato APIs have been created to access the IoT Keystore library. They will perform cryptographic
+key management and encryption/decryption routines. Additionally a platform adapter component to
+separate access to the library into a platform-specific layer has been added. Also, key
+namespaces between applications have been added, to prevent an application from accessing another
+app's encrypted data.
+- Legato IoT Keystore performance has been optimized, by adding a map to reduce the frequency of
+calling pa_secStore_GetSize().
+- IoT Keystore storage has added access protection access. Only privileged system daemon qseecom
+will be able to access storage. Secure storage app will indirectly access IoT Keystore storage via
+this daemon.
+
+@subsection rn2105_AVC_Features New AVC Features
+- Bootstrap rollback mechanism has been improved to manage more error cases. Logic has been moved
+to another layer of AVC.
+- Improvements have been made to lwm2mcore_CredentialMatch() API which include credential length
+comparison and using memcmp for comparison.
+
+@subsection rn2105_Octave_Features New Octave Upstreaming Features
+- A set of Octave product-layer patches have been ported to Legato code base.
+- DTLS_NAT_TIMEOUT has been added to be configurable using the le_avc_SetNatTimeout() API.
+- lwm2mcore_SetNatTimeout() API has been added to allow the NAT timeout to be set in LwM2MCore.
+- dhub utility has been modified to allow it to perform a data push from a local file.
+- Following API functions have been created:
+	\arg admin_CreateInput() - Create an input resource, which is used to push data into the Data Hub.
+	\arg admin_CreateOutput() - Create an output resource, which is used to receive data output from Data Hub.
+	\arg admin_DeleteResource() - Delete a resource.
+	\arg admin_SetJsonExample() - Set the example value for a JSON-type Input resource.
+	\arg admin_MarkOptional() - Mark an Output resource "optional". (By default, they are marked "mandatory").
+
+- A new API le_coap_GetLastErrorCode() has been added to get last CoAP error code of last push.
+- A new CoAP error has been added: CODE_429_Too_Many_Requests.
+- A new CoAP push status has been added: LE_COAP_PUSH_TIMEOUT.
+
+@subsection rn2105_FX30_Features New FX30 Upstreaming Features
+- Version information has been added in the SDEF file and has been appended to the output of
+"fwupdate query" and "cm info".
+- FX30 patch has been modified to disable the module from switching to the sim's default APN.
+- A tags section has been added that will allow users to specify key-value pairs on a per
+application basis in the adef file. This section will be used for the
+"disableAirVantageManagement" variable and can be expanded with other variables specified by the
+client.
+
+@subsection rn2105_mbedtls_Features New mbedtls Features
+- mbedtls version updated from 2.16.3 to 2.16.8.
+
+@subsection rn2105_Secure_Storage_Features New Secure Storage Features
+- Support has been added to delete all contents from secure storage of an app.
+
+@subsection rn2105_lwm2m_Features New lwm2m Features
+- Piggybacked response on RX stream has been improved.
+- Token generation has been added for le_coap_Push() if provided token length is 0.
+
+@subsection rn2105_deftools_Features New deftools Features
+- A report mode has been added to ifgen which takes an API file and displays the memory required
+for each message buffer, as well as how much data is needed by each function and handler.
+- Check has been added to internal server type to generate internal bindings correctly. App
+modeller now will recognize executables as binary bundles and will allow use of any components
+within the executable.
+
+@subsection rn2105_kernel414_Features New Kernel 4.14 Features
+- Allowed for new UART names in kernel 4.14.
+- Enhanced configEcm to also work with configfs gadgets.
+- TI wifi driver has been integrated to work on kernel 4.14.
+
+@subsection rn2105_Misc_Features New Miscellaneous Features
+- When using the script framework/tools/scripts/releaselegato, a new directory is created first
+before copying the symbolic link.
+- TCF agent and SFTP server have been removed from DevMode tool set.
+- cm tool's input has been enhanced for validation of input values, and now rejects
+back-to-back multiple connects.
+- cm script update_route has been enhanced to filter for only whole words.
+- asyncServer and cRelay components have been added to ipcTest.api to fix virt-arm issues.
+- Default Target to wp77xx in KConfig has been resolved.
+- Missing libresolv.so.2 library have been added.
+- pmTool has been enhanced so that users can get all the information about the settings for their
+GPIOs, ADCs, Timers, Shutdown strategies using
 @verbatim
-$ leaf search -t wp76xx -t latest
+pmtool bootOn status [gpio <gpioNum>] [adc <adcNum>] <timer> <shutdown>
 @endverbatim
 
-Update your profile to the latest version:
-@verbatim
-$ leaf update
-@endverbatim
+@section rn2105_BFeatures Beta Features
 
-@section rn2008_Features New Features
+None
 
-List of new features in the 20.08 Release:
+@section rn2105_AFeatures Alpha Features
 
-@subsection rn2008_Features_wifi New wifiClient.api functions
+None
 
-3 new functions have been added to the @ref c_le_wifi_client:
-- GetCurrentSignalStrength() - returns the signal strength in dBm
-- GetRxData() - returns the data recieved from the access point in bytes
-- GetTxData() - returns the data transmitted to the access point in bytes
+@section rn2105_Fixes Fixed Issues
 
-@subsection rn2008_Features_uplm New ulpm.api function
-
-SetShutDownStratagy() function has been added to the @ref c_le_ulpm to configure the device
-behaviour on shutdown.
-
-@subsection rn2008_Features_logLevels New Log Levels
-
-Framework Daemon Log level settings have been added to the KConfig menus
-
-@verbatim
-Framework --> Daemon Setup --> Framework Daemon Log Level Setting
-
-Options:
-1. SUPERVISOR
-2. SERVICEDIRECTORY
-3. LOGCTRLDAEMON
-4. CONFIGTREE
-5. UPDATEDAEMON
-6. WATCHDOG
-@endverbatim
-
-The log levels can also be set from the build config:
-@verbatim
-LE_<daemon>_LOG_LEVEL= <log level> make <target>
-@endverbatim
-
-Daemons Log Level:
-@verbatim
-LE_SUPERVISOR_LOG_LEVEL (supervisor)
-LE_SERVICEDIRECTORY_LOG_LEVEL (serviceDirectory)
-LE_LOGCTRLDAEMON_LOG_LEVEL (logCtrlDaemon)
-LE_CONFIGTREE_LOG_LEVEL (configTree)
-LE_UPDATEDAEMON_LOG_LEVEL (updateDaemon)
-LE_WATCHDOG_LOG_LEVEL (watchdog)
-@endverbatim
-
-@subsection rn2008_Features_gnss GNSS Extended Ephemeris File change
-
-The le_gnss_EnableExtendedEphemerisFile() is now set to 2 by default instead of 1.
-
-@subsection rn2008_Features_le_audio le_audio API change
-
-A new duration limit is set for the le_audio_PlayDtmf() function. If any of the given DTMF duration
-or pause is greater than 5 seconds, the function will return LE_FAULT.
-
-@subsection rn2008_Features_cmDataConnect cm data connect cmd change
-
-The connection test in the cm data connect tool has been removed as it was causing issues for
-customers.
-
-@subsection rn2008_Features_deprecated Deprecated API/functions
-
-- The QMI_NAS_SET_EVENT_REPORT and QMI_NAS_GET_EVENT_REPORT have been deprecated and removed
-The replacement function is QMI_NAS_INDICATION_REGISTER.
-- QMI_NAS_SET_TECHNOLOGY_PREFERENCE and QMI_NAS_GET_TECHNOLOGY_PREFERENCE  have been deprecated and replaced
-by QMI_NAS_SET_SYSTEM_SELECTION_PREFERENCE and QMI_NAS_GET_SYSTEM_SELECTION_PREFERENCE.
-- le_gnss_GetDop() function has been removed and is replaced by le_gnss_GetDilutionOfPrecision().
-- LE_GNSS_NMEA_MASK_PQXFI has also been removed and replaced by LE_GNSS_NMEA_MASK_PTYPE.
-
-@subsection rn2008_Features_object10 eDRX AirVantage Support
-
-Legato now includes object10 enablement for [eRDX](https://www.sierrawireless.com/iot-blog/iot-blog/2020/06/edrx-lpwa/)
-
-@section rn2008_BFeatures Beta Features
-
-@section rn2008_AFeatures Alpha Features
-
-The following are the list of features that have been added into the 20.08 Release but are still
-being developed and should not be used on production targets. Please provide feedback for these
-features on our [forums](https://forum.legato.io/):
-
-@subsection rn2008_AFeatures_RPC Legato RPC
-
-RPC has been added as an experimental feature (@ref conceptsRPC Remote procedure call). Please refer
-to @ref getStartRPC Legato RPC on how to get started.
-
-@section rn2008_Fixes Fixed Issues
-
-All changes are tagged in GitHub as "20.08.0".  The full list of changes and commit
+All changes are tagged in GitHub as "21.05.0".  The full list of changes and commit
 messages can be found on GitHub.
 
-- [Legato Application Framework 20.08.0 Fixes](https://github.com/legatoproject/legato-af/commits/20.08.0)
-- [Legato WiFi 20.08.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/20.08-release)
-- [Legato AirVantage Connector 20.08.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/20.08-release)
-- [Legato DataHub 20.08.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/20.08-release)
+- [Legato Application Framework 21.05.0 Fixes](https://github.com/legatoproject/legato-af/commits/21.05-release)
+- [Legato WiFi 21.05.0 Fixes](https://github.com/legatoproject/legato-WiFi/commits/21.05-release)
+- [Legato AirVantage Connector 21.05.0 Fixes](https://github.com/legatoproject/legato-Service-AirVantageConnector/commits/21.05-release)
+- [Legato DataHub 21.05.0 Fixes](https://github.com/legatoproject/legato-Service-DataHub/commits/21.05-release)
 
 @note This is only the list of fixes for the Application Framework and Platform Services, for the
-list of changes in the Platform Adapter view the commits under the tag 20.08.0 in individual
+list of changes in the Platform Adapter view the commits under the tag 21.05.0 in individual
 repositories on GitHub.
 
-@section rn2008_KnownIssues Known Issues
+@section rn2105_KnownIssues Known Issues
 
-Giving LE_MRC_BITMASK_RAT_ALL as the input in le_mrc_SetRatPreferences() to set the Radio Access
-Technology (RAT) to auto mode isn't supported on WP77.
+@subsection rn2105_Constraints Constraints and Limitations
 
-@subsection rn2008_Constraints Constraints and Limitations
-
-@subsubsection rn2008_ConstraintsLeImageUpdate Legato Image Update
+@subsubsection rn2105_ConstraintsLeImageUpdate Legato Image Update
 
 @warning Legato image has to be upgraded or downgraded via a bundle across an image incompatibility
 boundary described below.
@@ -140,14 +158,14 @@ Whenever the Legato image is upgraded or downgraded across this boundary line, i
 together with its corresponding LXSWI image in a bundle. Otherwise, Legato would not run and not
 take any image update to recover.
 
-@subsubsection rn2008_ConstraintsLinuxSupport Dev Machine Linux Version
+@subsubsection rn2105_ConstraintsLinuxSupport Dev Machine Linux Version
 
 To develop applications within the Legato Application Framework, a current supported
 [Long Term Support version of Ubuntu Linux](https://ubuntu.com/about/release-cycle) is
 required on your dev machine (or running in a virtual box on Windows).  Ubuntu 18.04 is the current
 @b recommended version to use on your dev machine.
 
-@subsubsection rn2008_ConstECMUSB ECM-USB modem manager issue
+@subsubsection rn2105_ConstECMUSB ECM-USB modem manager issue
 
 Ubuntu 15.10 and newer has Modem Manager version @c 1.4.12-1ubuntu1  installed by default which
 conflicts with the ECM-USB driver when connecting a target.  Modem manager may cause the Ubuntu
@@ -161,10 +179,10 @@ Network Manager to crash on your host and/or your target device to become unavai
 - Uninstall @c modemmanager from Ubuntu or
 - [Downgrade @c modemmanager to version 1.0.0-2ubuntu1](http://packages.ubuntu.com/trusty/modemmanager)
 
-@subsubsection rn2008_ConstTrust FOTA upgrade warning
+@subsubsection rn2105_ConstTrust FOTA upgrade warning
 
 A device that has trustzones enabled, may re-bootstrap (obtain new keys from the AirVantage server)
-durring a FOTA (firmware over-the-air) upgrade.
+during a FOTA (firmware over-the-air) upgrade.
 
 Copyright (C) Sierra Wireless Inc.
 
