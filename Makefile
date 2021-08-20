@@ -247,8 +247,10 @@ ifneq ($(TARGET),nothing)
   export TARGET_CPP                      := $($(TARGET_CAPS)_CPP)
   export TARGET_SYSROOT                  := $($(TARGET_CAPS)_SYSROOT)
 
-  ifeq ($(TARGET_CC),/$(CC_NAME))
-    $(error Unable to find toolchain for target '$(TARGET)')
+  ifeq ($(filter menuconfig_% menuconfig,$(MAKECMDGOALS)),)
+    ifeq ($(TARGET_CC),/$(CC_NAME))
+      $(error Unable to find toolchain for target '$(TARGET)')
+    endif
   endif
 
   # Set the LD, AR, AS, STRIP, OBJCOPY, and READELF variables for use by the Legato framework
