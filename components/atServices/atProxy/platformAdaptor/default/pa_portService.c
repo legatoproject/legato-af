@@ -1,16 +1,13 @@
 /**
- * @file pa_portService.h
+ * @file pa_portService.c
  *
- * AT Proxy platform adaptor interface for port services.
+ * AT Proxy default platform adaptor for port services.
  *
  * Copyright (C) Sierra Wireless Inc.
  */
 
-#ifndef _AT_PROXY_PA_PORTSERVICE_H_INCLUDE_GUARD
-#define _AT_PROXY_PA_PORTSERVICE_H_INCLUDE_GUARD
-
-#include "atProxyCmdHandler.h"
-
+#include "legato.h"
+#include "pa_portService.h"
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -21,10 +18,15 @@
  *      - NULL if the device is not available.
  */
 //--------------------------------------------------------------------------------------------------
-le_port_DeviceRef_t pa_portService_Request
+LE_SHARED le_port_DeviceRef_t pa_portService_Request
 (
     const char* deviceNamePtr  ///< [IN] Device name to be requested.
-);
+)
+{
+    LE_UNUSED(deviceNamePtr);
+
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -38,11 +40,17 @@ le_port_DeviceRef_t pa_portService_Request
  *      - LE_DUPLICATE     Device already opened in data mode
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_portService_SetDataMode
+LE_SHARED le_result_t pa_portService_SetDataMode
 (
     le_port_DeviceRef_t devRef,   ///< [IN] Device reference.
     int* fdPtr                    ///< [OUT] File descriptor of the device.
-);
+)
+{
+    LE_UNUSED(devRef);
+    LE_UNUSED(fdPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -54,11 +62,17 @@ le_result_t pa_portService_SetDataMode
  *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_portService_SetCommandMode
+LE_SHARED le_result_t pa_portService_SetCommandMode
 (
     le_port_DeviceRef_t devRef,           ///< [IN] Device reference.
     le_atServer_DeviceRef_t* deviceRefPtr ///< [OUT] AT server device reference.
-);
+)
+{
+    LE_UNUSED(devRef);
+    LE_UNUSED(deviceRefPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -71,10 +85,15 @@ le_result_t pa_portService_SetCommandMode
  *      - LE_UNAVAILABLE   JSON parsing is not completed.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_portService_Release
+LE_SHARED le_result_t pa_portService_Release
 (
     le_port_DeviceRef_t devRef     ///< [IN] Device reference of port service.
-);
+)
+{
+    LE_UNUSED(devRef);
+
+    return LE_NOT_IMPLEMENTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -86,11 +105,17 @@ le_result_t pa_portService_Release
  *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t pa_portService_GetPortReference
+LE_SHARED le_result_t pa_portService_GetPortReference
 (
     le_atServer_DeviceRef_t atServerDevRef,   ///< [IN] Device reference from AT server.
     le_port_DeviceRef_t* devRefPtr            ///< [OUT] Device reference from port service.
-);
+)
+{
+    LE_UNUSED(atServerDevRef);
+    LE_UNUSED(devRefPtr);
+
+    return LE_NOT_IMPLEMENTED;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -101,10 +126,15 @@ le_result_t pa_portService_GetPortReference
  *      - NULL                             Function failed.
  */
 //--------------------------------------------------------------------------------------------------
-le_atProxy_AtCommandSession_t* pa_portService_GetAtCommandSession
+LE_SHARED le_atProxy_AtCommandSession_t* pa_portService_GetAtCommandSession
 (
     le_port_DeviceRef_t devRef     ///< [IN] Device reference of port service.
-);
+)
+{
+    LE_UNUSED(devRef);
+
+    return NULL;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -113,9 +143,12 @@ le_atProxy_AtCommandSession_t* pa_portService_GetAtCommandSession
  * @return none.
  */
 //--------------------------------------------------------------------------------------------------
-void pa_portService_SendDataModeStatus
+LE_SHARED void pa_portService_SendDataModeStatus
 (
     int fd
-);
+)
+{
+    LE_UNUSED(fd);
 
-#endif /* _AT_PROXY_PA_PORTSERVICE_H_INCLUDE_GUARD */
+    return;
+}

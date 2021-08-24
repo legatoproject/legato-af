@@ -79,6 +79,9 @@ le_result_t le_port_SetDataMode
     // Suspend AT Command mode session
     atProxyCmdHandler_StartDataMode(atCmdSessionPtr);
 
+    // Send data mode status string (e.g., CONNECT)
+    pa_portService_SendDataModeStatus(*fdPtr);
+
     return LE_OK;
 }
 
@@ -93,7 +96,7 @@ le_result_t le_port_SetDataMode
  *      - LE_BAD_PARAMETER Invalid parameter.
  */
 //--------------------------------------------------------------------------------------------------
-le_result_t le_port_SetCommandMode
+LE_SHARED le_result_t le_port_SetCommandMode
 (
     le_port_DeviceRef_t devRef,           ///< [IN] Device reference.
     le_atServer_DeviceRef_t* deviceRefPtr ///< [OUT] AT server device reference.

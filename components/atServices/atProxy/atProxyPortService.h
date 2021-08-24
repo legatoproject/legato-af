@@ -41,3 +41,20 @@ le_result_t atProxyPortService_Release
 (
     le_port_DeviceRef_t devRef     ///< [IN] Device reference of port service.
 );
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function switches the device into AT command mode and returns At server device reference.
+ *
+ * @return
+ *      - LE_OK            Function succeeded.
+ *      - LE_FAULT         Function failed.
+ *      - LE_BAD_PARAMETER Invalid parameter.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_port_SetCommandMode
+(
+    le_port_DeviceRef_t devRef,           ///< [IN] Device reference.
+    le_atServer_DeviceRef_t* deviceRefPtr ///< [OUT] AT server device reference.
+);

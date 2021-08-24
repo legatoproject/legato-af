@@ -9,9 +9,7 @@ provides:
     api:
     {
         le_atServer.api [async]
-#if ${MK_CONFIG_ATSERVER_LITE} = y
         le_port.api
-#endif
     }
 }
 
@@ -20,9 +18,7 @@ sources:
     atProxy.c
     atProxyCmdHandler.c
     atProxyStub.c
-#if ${MK_CONFIG_ATSERVER_LITE} = y
     atProxyPortService.c
-#endif
 }
 
 pools:
