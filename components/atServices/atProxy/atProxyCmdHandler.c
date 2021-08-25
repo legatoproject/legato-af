@@ -249,8 +249,9 @@ static le_result_t PackParameterList
  * Separates the complete AT Command parameter string into individual parameters
  *
  * @return
- *      - LE_OK         Successfully packed a list of parameters
- *      - LE_OVERFLOW   At least one parameter string is too long
+ *      - LE_OK                 Successfully packed a list of parameters
+ *      - LE_OVERFLOW           At least one parameter string is too long
+ *      - LE_BAD_PARAMETER      There is bad AT parameter found
  */
 //--------------------------------------------------------------------------------------------------
 static le_result_t CreateParameterList
@@ -395,6 +396,12 @@ static le_result_t CreateParameterList
             case AT_TOKEN_CR:
                 if (startIndex != AT_PROXY_PARAMETER_NONE)
                 {
+                    // Bad AT format if missing a closing quote
+                    if (openQuote)
+                    {
+                        return LE_BAD_PARAMETER;
+                    }
+
                     // Marks the end of the new parameter (list)
                     // Pack the Parameters in the Parameter List
                     result = PackParameterList(
@@ -435,6 +442,7 @@ static le_result_t CreateParameterList
                 }
             break;
 
+            // Digits are always allowed in parameter
             case AT_TOKEN_ZERO:
             case AT_TOKEN_ONE:
             case AT_TOKEN_TWO:
@@ -445,6 +453,21 @@ static le_result_t CreateParameterList
             case AT_TOKEN_SEVEN:
             case AT_TOKEN_EIGHT:
             case AT_TOKEN_NINE:
+
+            // Characters 'A' to 'F' and 'a' to 'f' are possible parts of a HEX number, thus are
+            // allowed without quotes, clients take the responsibility of parsing them.
+            case 'A':
+            case 'a':
+            case 'B':
+            case 'b':
+            case 'C':
+            case 'c':
+            case 'D':
+            case 'd':
+            case 'E':
+            case 'e':
+            case 'F':
+            case 'f':
                 if (startIndex == AT_PROXY_PARAMETER_NONE)
                 {
                     startIndex = i;  // Mark the start of a new parameter
