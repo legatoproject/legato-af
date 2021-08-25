@@ -53,6 +53,11 @@ possible, will result in a smaller message buffer.  In a similar vein, consider 
 which requires multiple string or array parameters can be split into different APIs with a smaller
 number of parameters.
 
+In cases where the string sizes can only be decreased on certain platforms, one option is to
+use scaling APIs, as described in @ref howToBuildScalingApis.  Note that this increases the
+complexity of these APIs and every client or server that references them, so should be used
+sparingly.
+
 Similarly, the Legato framework will estimate the number of message buffers which will be needed.
 This can be fine-tuned by overriding the API's @c Messages pool size.  See the description of
 the cdef @ref defFilesCdef_pools section for details.

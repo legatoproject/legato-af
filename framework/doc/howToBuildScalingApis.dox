@@ -1,0 +1,198 @@
+/** @page howToBuildScalingApis Building APIs Which Scale With System RAM
+
+@section howToBuildScalingApis_intro Introduction
+
+In general APIs should be constant across all platforms, and platforms
+memory usage should be scaled by:
+
+-# removing support for some services and features, and
+-# changing how many objects, simultaneous connections, the product
+supports.
+
+Overall this simplifies porting effort by either making the platform
+differences impossible to ignore (in  case 1) or aligning the platform
+differences with existing error handling code, and in a way which does
+not require any API changes (case 2).
+
+However there are some cases where different size platforms require a
+different API. The most common is a large platform (e.g. Linux) needs
+to support large strings, long binary data, etc. but there isn't
+enough space for these buffers on a more memory-constrained system. In
+this case the solution is to create two (or more) APIs: one for the
+memory-constrained system, one for the less memory-constrained system,
+and select between them depending on the system.
+
+However scaling APIs should be use sparingly -- as the client and
+server now support multiple possible "contracts" there are additional
+development and testing complexities.  Stack sizes which work with the
+small API may not work with large ones, strings may get truncated,
+etc.
+
+@section howToBuildScalingApis_overview Overview
+
+The overall approach to building a scaling API is to separate it into
+a common part which includes the types, structure definitions,
+functions and events, and a platform-specific part which contains the
+size of the strings, buffers, etc.  These platform-specific portions
+are placed in files with the the same name as each other, but
+different directories. A system selects the correct platform-specific
+definitions through the interface search path.
+
+To illustrate this process, this will follow the example of the dataHub's
+@c io.api.
+
+@section  howToBuildScalingApis_layout File Layout
+
+The first step is to create directories for each platform or platform
+family, which will contain the platform-specific definition files.  In
+the dataHub case this looks like:
+
+@code
+interfaces/
+    io.api
+    linux/
+        ioDefs.api
+    rtos/
+        ioDefs.api
+    ... other APIs ...
+@endcode
+
+If other APIs need platform-specific definitions, these would also go
+in the same platform directories.  But in the dataHub only io.api is
+scaling.
+
+Then a @c USETYPES statement including the platform-specific definition file
+is placed in the common API file.  In @c io.api this looks like
+
+@code
+USETYPES ioDefs.api;
+@endcode
+
+Note this does not contain a path -- the system @c .sdef file needs to
+be able to select which platform-specific definition file to include
+using the search path (done at a later step).
+
+@section howToOptimizeIpcRam_creatingCommonApi
+
+Now the common API needs to be written.  First consider which
+parameters need to be adjustible for a platform.  In io.api, we have
+one, the maximum length of a string value.  For this we define a
+constant which references the platform-specific definition:
+
+@code
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes (excluding terminator) in the value of a string type data sample.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_STRING_VALUE_LEN = ioDefs.MAX_STRING_VALUE_LEN;
+@endcode
+
+It's best practice to use @c DEFINE statements to define the maximum
+size of all strings and buffers, even if they aren't adjustible, so
+the maximum length can easily be referenced in code.  If the maximum
+size will not be tuned per-platform, the value should be defined
+directly in the common API file, as with @c MAX_RESOURCE_PATH_LEN
+
+@code
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes (excluding null terminator) in an I/O resource's path within its
+ * namespace in the Data Hub's resource tree.
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_RESOURCE_PATH_LEN = 79;
+@endcode
+
+Then the rest of the API is written the same way as for any other API;
+however the size of tunable APIs must refer to this @c
+MAX_STRING_VALUE_LEN.  For example
+
+@code
+FUNCTION le_result_t PushString
+(
+    string path[MAX_RESOURCE_PATH_LEN] IN,///< Resource path within the client app's namespace.
+    double timestamp IN,///< Timestamp in seconds since the Epoch 1970-01-01 00:00:00 +0000 (UTC).
+                        ///< IO_NOW = now (i.e., generate a timestamp for me).
+    string value[MAX_STRING_VALUE_LEN] IN
+);
+@endcode
+
+Note here the path also references a @c DEFINE for the reasons explained above.
+
+Although all buffer and string lengths could be made
+platform-specific, this isn't a good idea.  Changing a buffer or
+string size between platforms introduces extra development and testing
+load as the clients of the API need to design and test for different
+buffer sizes.  It can also create confusion for the end-users of the
+product, as it will lead to different products having different
+capabilities and buffer sizes.
+
+For dataHub we decided small strings like resource paths and unit
+names should be the same size across all platforms.  Only JSON and
+text string lengths would vary across different products, so only
+@c MAX_STRING_VALUE_LEN is platform-specific.
+
+@section howToOptimizeIpcRam_creatingPlatformApi
+
+Next a series of @c DEFINE statements should be added to the
+platfom-specific definition file for each string or buffer size which
+is scaled for different platforms.  Each platform-specific definition
+file should define the same set of names, but with different values
+depending on the platform.  In dataHub we only parameter which can be
+scaled: @c MAX_STRING_VALUE_LEN.  In @c linux/ioDefs.api this definition
+looks like:
+
+@code
+/**
+ * Maximum number of bytes (excluding terminator) in the value of a string type data sample.
+ */
+DEFINE MAX_STRING_VALUE_LEN = 50000;
+@endcode
+
+and in @c rtos/ioDefs.api:
+
+@code
+/**
+ * Maximum number of bytes (excluding terminator) in the value of a string type data sample.
+ */
+DEFINE MAX_STRING_VALUE_LEN = 1023;
+@endcode
+
+This tells us we support up to 50KB strings on Linux, but only 1 KiB strings on RTOS platforms.
+
+@section howToBuildScalingApis_using Using Scaling APIs
+
+To use a scaling API, both the path to the common API and the path to
+the platform-specific definitions you want to use need to be included
+in your interface search path.  For example, to build dataHub for
+Linux, interfaceSearch in your system should contain:
+
+@code
+interfaceSearch:
+{
+    path/to/legato/apps/sample/dataHub/interfaces
+    path/to/legato/apps/sample/dataHub/interfaces/linux
+}
+@endcode
+
+To switch to using the RTOS version of the API, switch the second
+search path to @c /rtos instead of @c /linux.
+
+@section howToBuildScalingApis_notes Final Notes
+
+As indicated in the introduction, scaling APIs should be used
+sparingly.  Each scaling API introduces additional complexity as any
+code which references this API needs to be written in such a way that
+it can handle different possible parameter sizes.  This is not just
+things like intermediate buffers, but also stack sizes, interaction
+with other services, etc.
+
+Although this document refers to scaling APIs for different platforms,
+the largest contribution is typically from the size of buffers in the
+client and server which are interacting over the API.  These should be
+scaled according to the definitions used in the API to realize the
+full savings.  See @ref howToOptimizeIpcRam for more information on
+RAM usage by IPC itself and how to optimize that.
+
+Copyright (C) Sierra Wireless Inc.

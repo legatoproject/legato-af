@@ -30,6 +30,7 @@ the following tutorials:
 
 | Section                            | Description                                                 |
 | ---------------------------------- | ------------------------------------------------------------|
+| @subpage howToBuildScalingApis     | Building APIs which scale with target hardware              |
 | @subpage howToDebug                | Debug - General tips and tricks                             |
 | @subpage howToDebugGDB             | Debug Apps using GDB                                        |
 | @subpage howToSandboxHelper        | Troubleshoot sandbox issues                                 |
