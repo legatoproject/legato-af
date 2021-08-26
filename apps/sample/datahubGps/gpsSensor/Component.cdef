@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-        $LEGATO_ROOT/apps/sample/dataHub/io.api
+        io.api
         positioning/le_pos.api
     }
 }

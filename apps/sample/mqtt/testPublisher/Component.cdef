@@ -8,10 +8,10 @@ requires:
 {
     api:
     {
-        ${LEGATO_ROOT}/apps/platformServices/mqttClient/mqtt.api
+        mqtt.api
         modemServices/le_info.api
-        ${LEGATO_ROOT}/apps/sample/dataHub/io.api
-        ${LEGATO_ROOT}/apps/sample/dataHub/admin.api
-        ${LEGATO_ROOT}/apps/sample/dataHub/query.api
+        io.api
+        admin.api
+        query.api
     }
 }

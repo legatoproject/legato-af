@@ -16,5 +16,6 @@ apps:
 
 interfaceSearch:
 {
-    $LEGATO_ROOT/apps/sample/dataHub
+    $LEGATO_ROOT/apps/sample/dataHub/interfaces
+    $LEGATO_ROOT/apps/sample/dataHub/interfaces/linux
 }
