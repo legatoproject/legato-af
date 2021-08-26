@@ -72,7 +72,7 @@ Note this does not contain a path -- the system @c .sdef file needs to
 be able to select which platform-specific definition file to include
 using the search path (done at a later step).
 
-@section howToOptimizeIpcRam_creatingCommonApi
+@section howToOptimizeIpcRam_creatingCommonApi Creating the Common API
 
 Now the common API needs to be written.  First consider which
 parameters need to be adjustible for a platform.  In io.api, we have
@@ -133,7 +133,7 @@ names should be the same size across all platforms.  Only JSON and
 text string lengths would vary across different products, so only
 @c MAX_STRING_VALUE_LEN is platform-specific.
 
-@section howToOptimizeIpcRam_creatingPlatformApi
+@section howToOptimizeIpcRam_creatingPlatformApi Creating the Platform Definitions
 
 Next a series of @c DEFINE statements should be added to the
 platfom-specific definition file for each string or buffer size which
@@ -196,3 +196,5 @@ full savings.  See @ref howToOptimizeIpcRam for more information on
 RAM usage by IPC itself and how to optimize that.
 
 Copyright (C) Sierra Wireless Inc.
+
+**/
