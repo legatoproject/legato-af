@@ -1615,8 +1615,9 @@ static bool IsMounted
 //--------------------------------------------------------------------------------------------------
 static void BindMount
 (
-    char* path,     ///< Directory to be mounted
-    char* mountedAt ///< Where is should be mounted
+    char* path,           ///< Directory to be mounted
+    char* mountedAt,      ///< Where is should be mounted
+    unsigned long options ///< Additional mount options
 )
 {
     if (!IsMounted(mountedAt))
@@ -1628,9 +1629,16 @@ static void BindMount
             LE_ERROR("Failed to create directory '%s'", path);
         }
 
-        if (mount(path, mountedAt, NULL, MS_BIND, NULL))
+        if (mount(path, mountedAt, NULL, MS_BIND | options, NULL))
         {
             LE_FATAL("Failed (%m) to bind mount '%s' at '%s'", path, mountedAt);
+        }
+    }
+    else if (options & MS_REMOUNT)
+    {
+        if (mount(path, mountedAt, NULL, MS_BIND | options, NULL))
+        {
+            LE_FATAL("Failed (%m) to bind-remount '%s'", mountedAt);
         }
     }
     else
@@ -2158,8 +2166,10 @@ int main
     if (!isReadOnly)
     {
         // Bind mount if they are not already mounted.
-        BindMount("/mnt/flash/legato", "/legato");
-        BindMount("/mnt/flash/home", "/home");
+        BindMount("/mnt/flash/legato", "/legato", 0);
+        BindMount("/mnt/flash/home", "/home", 0);
+        // According to mount() man page we have to bind-remount to set flags
+        BindMount("/mnt/flash/home", "/home", MS_REMOUNT|MS_NODEV);
     }
     if (0 == access("/home", W_OK))
     {
