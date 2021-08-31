@@ -1104,6 +1104,7 @@ ssize_t cgrp_GetMemUsed
                  buffer,
                  sizeof(buffer)) == LE_OK)
     {
+        errno = 0;
         result = strtol(buffer, NULL, 10);
         if ((errno == ERANGE) || (errno == EINVAL))
         {
@@ -1137,6 +1138,7 @@ ssize_t cgrp_GetMaxMemUsed
                  buffer,
                  sizeof(buffer)) == LE_OK)
     {
+        errno = 0;
         result = strtol(buffer, NULL, 10);
         if ((errno == ERANGE) || (errno == EINVAL))
         {
