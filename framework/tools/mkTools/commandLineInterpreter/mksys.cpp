@@ -281,8 +281,8 @@ static void GetCommandLineArgs
 
     args::Scan(argc, argv);
 
-    // Tell build params configuration is finished.
-    BuildParams.FinishConfig();
+    // Do not finish the build configuration yet -- the .sdef will add to the build
+    // configuration so it needs to be finalized within GetSystem()
 
     // Were we given an system definition?
     if (SdefFilePath == "")

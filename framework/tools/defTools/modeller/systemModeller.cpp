@@ -1507,6 +1507,10 @@ model::System_t* GetSystem
         }
     }
 
+    // For systems, only finish the config after parsing the search paths in the .sdef as
+    // these will modify the build parameters.
+    buildParams.FinishConfig();
+
     // Process all the "apps:" sections.  This must be done after all interface search directories
     // have been parsed.
     ModelApps(systemPtr, appsSections, buildParams);

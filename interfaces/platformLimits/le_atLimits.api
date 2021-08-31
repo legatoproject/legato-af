@@ -1,0 +1,49 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @file le_atLimits.api
+ *
+ * Maximum limits for multiple AT commands related services.
+ *
+ * Copyright (C) Sierra Wireless Inc.
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Command string maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE COMMAND_MAX_LEN = 511;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parameter string maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE PARAMETER_MAX_LEN = 128;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * AT command response maximum length.
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE  RESPONSE_MAX_LEN = 520;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum number of bytes in an unsolicited response (not including the null-terminator).
+ *
+ * @warning Special characters cost more than one byte
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE UNSOLICITED_MAX_LEN = 256;

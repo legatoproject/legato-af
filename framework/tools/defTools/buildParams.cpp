@@ -66,6 +66,10 @@ void BuildParams_t::FinishConfig
     interfaceDirs.push_front(path::Combine(frameworkRootPath, "framework/include"));
 
     interfaceDirs.push_front(path::Combine(frameworkRootPath, "interfaces"));
+
+    // Add platformLimits to the back so it can be overridden by files in an .sdef's
+    // interfaceSearch
+    interfaceDirs.push_back(path::Combine(frameworkRootPath, "interfaces/platformLimits"));
 }
 
 

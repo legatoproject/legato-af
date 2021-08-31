@@ -241,6 +241,7 @@ function(generate_header API_FILE)
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/atServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/platformLimits
                         ${ARGN}
                         COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
                         DEPENDS ${API_FILE}
@@ -275,6 +276,7 @@ function(generate_client API_FILE)
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/atServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/platformLimits
                         ${ARGN}
                         COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
                         DEPENDS ${API_FILE}
@@ -297,6 +299,7 @@ function(generate_header_extern API_FILE)
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/modemServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/atServices
                         --import-dir ${CMAKE_CURRENT_SOURCE_DIR}
+                        --import-dir ${CMAKE_CURRENT_SOURCE_DIR}/platformLimits
                         ${ARGN}
                         COMMENT "ifgen '${API_FILE}': ${HEADER_PATH}"
                         DEPENDS ${API_FILE}
