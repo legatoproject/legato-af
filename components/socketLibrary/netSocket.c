@@ -141,6 +141,7 @@ le_result_t netSocket_Connect
     int*            fdPtr       ///< [OUT] Socket file descriptor
 )
 {
+    int retcode;
     char portStr[PORT_STR_LEN] = {0};
     struct addrinfo hints, *addrList, *cur;
     struct sockaddr_storage srcSocket = {0};
@@ -170,41 +171,78 @@ le_result_t netSocket_Connect
     }
 
     // Resolve name
-    if (getaddrinfo(hostPtr, portStr, &hints, &addrList) != 0)
+    if ((retcode = getaddrinfo(hostPtr, portStr, &hints, &addrList)) != 0)
     {
-        LE_ERROR("Error on function: getaddrinfo");
+        LE_ERROR("Failed to resolve hostname and service - %s", gai_strerror(retcode));
         return LE_UNAVAILABLE;
     }
 
-    // Try the sockaddrs until a connection succeeds
+    // Iterate through the list of returned addresses until a connection succeeds
     for (cur = addrList; cur != NULL; cur = cur->ai_next)
     {
-        LE_INFO(" netSocket_Connect: family %d, socktype %d", cur->ai_family,
-                                                              cur->ai_socktype);
+        char servAddrStr[INET6_ADDRSTRLEN] = {0};
 
-        fd = socket(cur->ai_family, cur->ai_socktype, 0);
-        if( fd < 0 )
+        // Some debug logging...
+        if (AF_INET == cur->ai_family)
         {
-            LE_ERROR("Cannot create socket");
+            struct sockaddr_in* ipv4Addr = (struct sockaddr_in*)cur->ai_addr;
+
+            if (NULL != inet_ntop(AF_INET,
+                                  (const void*)&ipv4Addr->sin_addr,
+                                  servAddrStr,
+                                  sizeof(servAddrStr)))
+            {
+                LE_INFO("Trying connection to %s:%hu", servAddrStr, ntohs(ipv4Addr->sin_port));
+            }
+        }
+        else if (AF_INET6 == cur->ai_family)
+        {
+            struct sockaddr_in6* ipv6Addr = (struct sockaddr_in6*)cur->ai_addr;
+
+            if (NULL != inet_ntop(AF_INET6,
+                                  (const void*)&ipv6Addr->sin6_addr,
+                                  servAddrStr,
+                                  sizeof(servAddrStr)))
+            {
+                LE_INFO("Trying connection to %s:%hu", servAddrStr, ntohs(ipv6Addr->sin6_port));
+            }
+        }
+
+        // Create socket
+        fd = socket(cur->ai_family, cur->ai_socktype, 0);
+        if (fd < 0)
+        {
+            LE_ERROR("Failed to create socket - %s", strerror(errno));
             continue;
         }
 
-        // Bind socket to source address
-        if (bind(fd, (struct sockaddr *)&srcSocket, sizeof(srcSocket)) != 0)
+        // Bind socket. Note that we MUST bind the socket to the address of the
+        // PDP interface in order for data to be routed correctly.
+        if (bind(fd, (struct sockaddr*)&srcSocket, sizeof(srcSocket)) == -1)
         {
-            LE_ERROR("Cannot bind socket");
+            LE_ERROR("Failed to bind socket - %s", strerror(errno));
             close(fd);
             continue;
         }
-        if (connect(fd, cur->ai_addr, cur->ai_addrlen) == 0)
+
+        // Connect to server
+        if (connect(fd, cur->ai_addr, cur->ai_addrlen) == -1)
         {
-            *fdPtr = fd;
-            result = LE_OK;
-            break;
+            LE_ERROR("Failed to connect socket - %s", strerror(errno));
+            close(fd);
+            continue;
         }
-        LE_ERROR("Cannot connect socket");
+        // If we are here, it implies that a connection was successful.. Write
+        // out the file descriptor
+        *fdPtr = fd;
+        result = LE_OK;
+        break;
+    }
+    // If we are past the end of the list, all connection attempts failed
+    if (NULL == cur)
+    {
+        LE_ERROR("All connection attempts failed!");
         result = LE_COMM_ERROR;
-        close(fd);
     }
 
     freeaddrinfo(addrList);

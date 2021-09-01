@@ -1274,31 +1274,39 @@ static void FtpClientStateMachine
 
                 if (LE_OK == status)
                 {
-                    status = SendRequestMessage(contextPtr, msgBuf, msgLen);
-                    if (LE_OK == status)
+                    status = FtpClientConnectDataServer(contextPtr);
+                    if (LE_OK != status)
                     {
-                        status = FtpClientConnectDataServer(contextPtr);
-
-                        if (LE_OK == status)
-                        {
-                            contextPtr->result = LE_OK;
-                            contextPtr->controlState = contextPtr->targetState;
-
-                            // Call user defined callback function.
-                            if (contextPtr->eventHandlerFunc != NULL)
-                            {
-                                contextPtr->eventHandlerFunc(contextPtr,
-                                                             LE_FTP_CLIENT_EVENT_DATASTART,
-                                                             contextPtr->result,
-                                                             contextPtr->eventHandlerDataPtr);
-                            }
-
-                            break;
-                        }
+                        LE_ERROR("FTP client failed to connect to data port (%d)", status);
                     }
                 }
 
-                // Fail case.
+                if (LE_OK == status)
+                {
+                    status = SendRequestMessage(contextPtr, msgBuf, msgLen);
+                    if (LE_OK != status)
+                    {
+                        LE_ERROR("FTP client failed to send requst (%d)", status);
+                    }
+                }
+
+                if (LE_OK == status)
+                {
+                    contextPtr->result = LE_OK;
+                    contextPtr->controlState = contextPtr->targetState;
+
+                    // Call user defined callback function.
+                    if (NULL != contextPtr->eventHandlerFunc)
+                    {
+                        contextPtr->eventHandlerFunc(contextPtr,
+                                                     LE_FTP_CLIENT_EVENT_DATASTART,
+                                                     contextPtr->result,
+                                                     contextPtr->eventHandlerDataPtr);
+                    }
+                    break;
+                }
+
+                // Fail case
                 contextPtr->result = status;
                 contextPtr->controlState = FTP_CLOSING;
                 restartLoop = true;
