@@ -38,7 +38,7 @@ requires:
 
     lib:
     {
-        libmqttpatcketclient.a
+        mqttpacketclient
     }
 }
 
