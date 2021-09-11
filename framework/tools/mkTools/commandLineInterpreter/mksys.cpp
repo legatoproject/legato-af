@@ -281,8 +281,8 @@ static void GetCommandLineArgs
 
     args::Scan(argc, argv);
 
-    // Do not finish the build configuration yet -- the .sdef will add to the build
-    // configuration so it needs to be finalized within GetSystem()
+    // Load the Legato framework configuration
+    BuildParams.LoadFrameworkConfig();
 
     // Were we given an system definition?
     if (SdefFilePath == "")

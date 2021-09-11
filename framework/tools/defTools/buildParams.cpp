@@ -35,17 +35,22 @@ BuildParams_t::BuildParams_t
     isDryRun(false),
     argc(0),
     argv(NULL),
-    readOnly(false)
+    readOnly(false),
+    haveFrameworkConfig(false)
 //--------------------------------------------------------------------------------------------------
 {
 }
 
-
 //--------------------------------------------------------------------------------------------------
 /**
- * Finish setting build params; add anything which may be dependent on other build parameters.
+ * Load Legato KConfig
+ *
+ * Do this after processing command-line parameters but before processing any .def files
+ * to get the environment for .def file processing.
+ *
+ * This will be done automatically by FinishConfig if not called before then.
  */
-void BuildParams_t::FinishConfig
+void BuildParams_t::LoadFrameworkConfig
 (
     void
 )
@@ -60,6 +65,26 @@ void BuildParams_t::FinishConfig
             envFilePath));
     }
     envVars::Load(envFilePath, *this);
+
+    haveFrameworkConfig = true;
+ }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Finish setting build params; add anything which may be dependent on other build parameters.
+ */
+void BuildParams_t::FinishConfig
+(
+    void
+)
+{
+    std::string frameworkRootPath = envVars::Get("LEGATO_ROOT");
+
+    if (!haveFrameworkConfig)
+    {
+        LoadFrameworkConfig();
+    }
 
     interfaceDirs.push_front(path::Combine(frameworkRootPath,
                                           "build/" + target + "/framework/include"));

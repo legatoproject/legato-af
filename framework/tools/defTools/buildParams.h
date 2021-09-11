@@ -80,8 +80,15 @@ struct BuildParams_t
     /// Constructor
     BuildParams_t();
 
+    /// Load framework configuration.
+    void LoadFrameworkConfig(void);
+
     /// Indicate finished parsing command-line arguments, set dependent items.
     void FinishConfig(void);
+
+private:
+    /// Has the Legato framework configuration been loaded yet.
+    bool haveFrameworkConfig;
 };
 
 
