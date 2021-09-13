@@ -3798,6 +3798,8 @@ le_result_t le_atServer_SendStoredUnsolicitedResponses
     le_atServer_CmdRef_t commandRef        ///< [IN] AT command reference
 )
 {
+    LE_ASSERT(commandRef != NULL);
+
     ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
 
     if (cmdPtr == NULL)
@@ -3836,6 +3838,9 @@ le_result_t le_atServer_SendIntermediateResponse
         ///< [IN] Intermediate response to be sent
 )
 {
+    LE_ASSERT(commandRef != NULL);
+    LE_ASSERT(intermediateRspPtr != NULL);
+
     ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
 
     if (cmdPtr == NULL)
@@ -3888,6 +3893,9 @@ le_result_t le_atServer_SendFinalResultCode
         ///< [IN] Numeric error code
 )
 {
+    LE_ASSERT(commandRef != NULL);
+    LE_ASSERT(patternPtr != NULL);
+
     ATCmdSubscribed_t* cmdPtr = le_ref_Lookup(SubscribedCmdRefMap, commandRef);
 
     if (NULL == cmdPtr)
@@ -3966,6 +3974,8 @@ le_result_t le_atServer_SendUnsolicitedResponse
         ///<      response has to be sent
 )
 {
+    LE_ASSERT(unsolRspPtr != NULL);
+
     if (availableDevice == LE_ATSERVER_SPECIFIC_DEVICE)
     {
         DeviceContext_t* devPtr = le_ref_Lookup(DevicesRefMap, device);
