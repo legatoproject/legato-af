@@ -1787,13 +1787,8 @@ le_result_t le_port_SetDataMode
         }
 
         result = SuspendAtServer(instanceConfigPtr->linkInfo[linkIndex],
-            openedInstanceCtxPtr->sessionRef);
-        if (result == LE_FAULT)
-        {
-            LE_ERROR("Device is already into data mode!");
-            return LE_DUPLICATE;
-        }
-        else if (result != LE_OK)
+                                 openedInstanceCtxPtr->sessionRef);
+        if (result != LE_OK)
         {
             return result;
         }
@@ -1814,6 +1809,11 @@ le_result_t le_port_SetDataMode
                 {
                     instanceConfigPtr->linkInfo[i]->dataModeFd =
                                        OpenSerialDevice(instanceConfigPtr->linkInfo[i]->path);
+                }
+                else
+                {
+                    LE_ERROR("Device is already in data mode!");
+                    return LE_DUPLICATE;
                 }
 
                 if (-1 != instanceConfigPtr->linkInfo[i]->dataModeFd)
@@ -1848,6 +1848,11 @@ le_result_t le_port_SetDataMode
                     {
                         return LE_FAULT;
                     }
+                }
+                else
+                {
+                    LE_ERROR("Device is already in data mode!");
+                    return LE_DUPLICATE;
                 }
 
                 if (-1 != instanceConfigPtr->linkInfo[i]->dataModeFd)
