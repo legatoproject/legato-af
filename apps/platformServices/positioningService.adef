@@ -43,5 +43,8 @@ extern:
 #if ${LE_CONFIG_LINUX} = y
 #else
     posDaemon.watchdogChain.le_wdog
+#if ${LE_CONFIG_ENABLE_CONFIG_TREE} = y
+    posDaemon.posDaemon.le_cfg
+#endif
 #endif
 }

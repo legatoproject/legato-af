@@ -1011,7 +1011,7 @@ static le_data_TimeProtocol_t GetTimeProtocol
     le_cfg_IteratorRef_t cfg = le_cfg_CreateReadTxn(configPath);
     if (le_cfg_NodeExists(cfg, CFG_NODE_PROTOCOL))
     {
-        protocol = le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
+        protocol = (le_data_TimeProtocol_t)le_cfg_GetInt(cfg, CFG_NODE_PROTOCOL, LE_DATA_TP);
     }
     le_cfg_CancelTxn(cfg);
 #endif                              // for #if LE_CONFIG_ENABLE_CONFIG_TREE
