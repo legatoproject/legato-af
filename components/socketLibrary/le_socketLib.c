@@ -380,13 +380,22 @@ le_result_t le_socket_Delete
     if (contextPtr->isSecure)
     {
         secSocket_Disconnect(contextPtr->secureCtxPtr);
-        secSocket_Delete(contextPtr->secureCtxPtr);
     }
     else
     {
         netSocket_Disconnect(contextPtr->fd);
     }
 
+    // Check if the secure context needs to be deleted.
+    // A secure context will be allocated prior to establishing a secure connection
+    // whenever a user configures the Cipher Suite, Certificate, Private Key,
+    // and/or Auth Type.  Must call secure socket delete to free the context
+    // even if a secure socket connection has not yet been established (indicated by
+    // contextPtr->isSecure).
+    if (contextPtr->secureCtxPtr)
+    {
+        secSocket_Delete(contextPtr->secureCtxPtr);
+    }
     FreeSocketContext(contextPtr);
 
     return LE_OK;

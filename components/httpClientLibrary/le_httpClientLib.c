@@ -1170,6 +1170,7 @@ LE_SHARED le_httpClient_Ref_t le_httpClient_CreateOnSrcAddr
     if (NULL == contextPtr->timerRef)
     {
         LE_ERROR("Failed to create timer");
+        le_socket_Delete(contextPtr->socketRef);
         FreeHttpSessionContext(contextPtr);
         return NULL;
     }
