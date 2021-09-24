@@ -1,0 +1,46 @@
+/** @page aboutSupport LTS Releases and Support Policy
+
+
+Legato is moving to a Long Term Support (LTS) Release model where each LTS release is supported
+for 2 years (24 months) from the initial stable release date. LTS releases will get security and
+bug fix updates minimum twice a year.
+
+During the support period new features may be added at our discretion depending on whether
+
+1. They are needed to meet specific regulatory or MNO requirements or cellular standards for new
+products.
+2. If they carry a low risk of introducing regressions.
+
+Pre-release versions (beta release, release candidates or development versions) are not covered by
+any support period. Sometimes a particular feature may be marked as "experimental" or "preview" in
+a release. These are also not covered by the support period.
+
+It is recommended that customers move to the latest LTS release and regularly update to newer
+releases before the support period ends. Our policy is to not continue fixing bugs in releases that
+are beyond the support period.
+
+Example:
+
+Legato 19.11.0 was released in January 2020 and will be supported through January 2022.
+
+Legato 21.05.x is estimated to be released by end of Nov. 2021 and is estimated to be supported
+through Nov. 2023.
+
+Legato Releases support status
+
+| Release Version           | Release Date            | Release Support Status     |
+| ------------------------- | ----------------------- | -------------------------- |
+| Legato 21.05.x            | Estimated Nov. 2021     | Estimated Nov. 2023        |
+| Legato 19.11.x            | January 2020            | January 2022               |
+| Legato 19.10.x            | November 2019           | End of Support             |
+
+Available Releases
+
+|                   | WP76xx	  | WP77xx      | WP75xx       | WP85xx       |
+| ----------------- | ----------- | ----------- | ------------ | ------------ |
+| Legato Release    | 19.11.x	  | 19.11.x	    | 18.04.x	   | 18.04.x      |
+| Firmware Release	| Release 16  | Release 11	| Release 16.1 | Release 16.1 |
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
