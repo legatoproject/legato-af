@@ -31,14 +31,22 @@
 
 #define MAX_CFG_TREE_SIZE           8192
 #define WRITE_TEST_BENCHMARK_MS     2000
-#define WRITE_TEST_ITERATIONS       100
-#define TEST_COUNT                  ((2*WRITE_TEST_ITERATIONS) + 74)
+
+#if LE_CONFIG_RTOS
+#  define WRITE_TEST_ITERATIONS        24
+#else
+#  define WRITE_TEST_ITERATIONS       100
+#endif
+#define TEST_COUNT                  ((2*WRITE_TEST_ITERATIONS) + 73)
 
 #if LE_CONFIG_RTOS
 # if LE_CONFIG_TARGET_GILL
 #   define REMOVE_TREE()    LE_TEST_INFO("Remove config: %d", le_dir_RemoveRecursive("/config/"))
 # elif LE_CONFIG_TARGET_HL78
-#   define REMOVE_TREE()    LE_TEST_INFO("Remove config: %d", remove("d:/config/test_ConfigTree"))
+#   define REMOVE_TREE()    do {                \
+        RemoveAllNodes();                       \
+        remove("d:/userd/generic/binary_data"); \
+    } while(0)
 # else
 #   error "Unknown RTOS Configuration"
 # endif
@@ -47,6 +55,125 @@
 #endif // LE_CONFIG_RTOS
 
 static uint8_t buf[MAX_CFG_TREE_SIZE] = {0};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cleanup function for implementations which don't allow iterating through the tree.
+ */
+//--------------------------------------------------------------------------------------------------
+static void RemoveAllNodes
+(
+    void
+)
+{
+    le_cfg_IteratorRef_t iterRef = NULL;
+    int keyId;
+    char *lastKey = NULL;
+
+    static const struct keyItem
+    {
+        char *tree;
+        char *key;
+    } keyList[] = {
+        { "/testConfigTree", "bool" },
+        { "/testConfigTree", "float" },
+        { "/testConfigTree", "int" },
+        { "/testConfigTree", "string" },
+        { "/testConfigTree", "stem/bool" },
+        { "/testConfigTree", "binary" },
+        { "/binary", "Binary-0" },
+        { "/binary", "Binary-1" },
+        { "/binary", "Binary-2" },
+        { "/binary", "Binary-3" },
+        { "/binary", "Binary-4" },
+        { "/binary", "Binary-5" },
+        { "/binary", "Binary-6" },
+        { "/binary", "Binary-7" },
+        { "/binary", "Binary-8" },
+        { "/binary", "Binary-9" },
+        { "/binary", "Binary-10" },
+        { "/binary", "Binary-11" },
+        { "/binary", "Binary-12" },
+        { "/binary", "Binary-13" },
+        { "/binary", "Binary-14" },
+        { "/binary", "Binary-15" },
+        { "/binary", "Binary-16" },
+        { "/binary", "Binary-17" },
+        { "/binary", "Binary-18" },
+        { "/binary", "Binary-19" },
+        { "/binary", "Binary-20" },
+        { "/binary", "Binary-21" },
+        { "/binary", "Binary-22" },
+        { "/binary", "Binary-23" },
+        { "/binary", "Binary-24" },
+        { "/binary", "Binary-25" },
+        { "/binary", "Binary-26" },
+        { "/binary", "Binary-27" },
+        { "/binary", "Binary-28" },
+        { "/binary", "Binary-29" },
+        { "/binary", "Binary-30" },
+        { "/binary", "Binary-31" },
+        { "/binary", "Binary-32" },
+        { "/binary", "Binary-33" },
+        { "/binary", "Binary-34" },
+        { "/binary", "Binary-35" },
+        { "/binary", "Binary-36" },
+        { "/binary", "Binary-37" },
+        { "/binary", "Binary-38" },
+        { "/binary", "Binary-39" },
+        { "/binary", "Binary-40" },
+        { "/binary", "Binary-41" },
+        { "/binary", "Binary-42" },
+        { "/binary", "Binary-43" },
+        { "/binary", "Binary-44" },
+        { "/binary", "Binary-45" },
+        { "/binary", "Binary-46" },
+        { "/binary", "Binary-47" },
+        { "/binary", "Binary-48" },
+        { "/binary", "Binary-49" },
+        { "/binary", "Binary-50" },
+        { "/binary", "Binary-51" },
+        { "/binary", "Binary-52" },
+        { "/binary", "Binary-53" },
+        { "/binary", "Binary-54" },
+        { "/binary", "Binary-55" },
+        { "/binary", "Binary-56" },
+        { "/binary", "Binary-57" },
+        { "/binary", "Binary-58" },
+        { "/binary", "Binary-59" },
+        { "/binary", "Binary-60" },
+        { "/binary", "Binary-61" },
+        { "/binary", "Binary-62" },
+        { "/binary", "Binary-63" },
+        { "/binary", "Binary-64" },
+        { "/binary", "Binary-65" },
+        { "/binary", "Binary-66" },
+        { "/binary", "Binary-67" },
+        { "/binary", "Binary-68" },
+        { "CreateTest1:/dir1", "dir2/EmptyNode" },
+        { "CreateTest1:/dir1", "EmptyNode" },
+        { "/", "EmptyNode" },
+        { NULL, NULL }
+    };
+
+    for (keyId = 0; keyList[keyId].key; ++keyId)
+    {
+        if (!lastKey || strcmp(lastKey, keyList[keyId].tree))
+        {
+            if (iterRef) { le_cfg_CommitTxn(iterRef); }
+
+            iterRef = le_cfg_CreateWriteTxn(keyList[keyId].tree);
+            lastKey = keyList[keyId].tree;
+        }
+
+        le_cfg_DeleteNode(iterRef, keyList[keyId].key);
+    }
+
+    if (iterRef)
+    {
+        le_cfg_CommitTxn(iterRef);
+    }
+}
 
 // -------------------------------------------------------------------------------------------------
 /**
@@ -75,12 +202,11 @@ static void WriteBinaryTest(int num, char* basePath, uint8_t *data, size_t len)
     }
 
     le_cfg_CommitTxn(iterRef);
-
     gettimeofday(&tv, NULL);
     utcMilliSecAfterTest = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 
     timeElapsed = utcMilliSecAfterTest - utcMilliSecBeforeTest;
-    LE_TEST_INFO("+++ Time (ms) to write %d entries of %d bytes = %" PRIu64,
+    LE_TEST_INFO("+++ Time (ms) to write %d entries of %"PRIuS" bytes = %" PRIu64,
             num, len, timeElapsed);
     LE_TEST_OK(timeElapsed < WRITE_TEST_BENCHMARK_MS, "Write performance test");
 }
@@ -112,10 +238,10 @@ static void ReadBinaryTest(int num, char* basePath, uint8_t *data, size_t len)
         sprintf(path, "Binary-%d", i);
         result = le_cfg_GetBinary(iterRef, path, buf, &len, (uint8_t *) "no_good", 7);
 
-        LE_TEST_OK(result == LE_OK, "Getting %d binary from %s, result : %s",
+        LE_TEST_OK(result == LE_OK, "Getting %"PRIuS" binary from %s, result : %s",
                     len, path, LE_RESULT_TXT(result));
 
-        LE_TEST_OK(len == originalLen, "Requested %d bytes and read %d bytes for %s",
+        LE_TEST_OK(len == originalLen, "Requested %"PRIuS" bytes and read %"PRIuS" bytes for %s",
                     originalLen, len, path);
     }
 
@@ -123,7 +249,7 @@ static void ReadBinaryTest(int num, char* basePath, uint8_t *data, size_t len)
     utcMilliSecAfterTest = (uint64_t)(tv.tv_sec) * 1000 + (uint64_t)(tv.tv_usec) / 1000;
 
     timeElapsed = utcMilliSecAfterTest - utcMilliSecBeforeTest;
-    LE_TEST_INFO("+++ Time (ms) to read %d entries of %d bytes = %" PRIu64,
+    LE_TEST_INFO("+++ Time (ms) to read %d entries of %"PRIuS" bytes = %" PRIu64,
             num, len, timeElapsed);
     LE_TEST_OK(0 == memcmp(buf, data, len), "Compare binary test");
 
@@ -326,7 +452,9 @@ void CreateDeleteNodeTest()
     le_cfg_SetEmpty(iterRef, emptyNode);
     LE_TEST_OK(le_cfg_NodeExists(iterRef, emptyNode), "%s/%s exists test", fullPath2, emptyNode);
     LE_TEST_OK(le_cfg_IsEmpty(iterRef, emptyNode), "%s/%s is empty test", fullPath2, emptyNode);
-    LE_TEST_OK(le_cfg_NodeExists(iterRef, "dir2"), "Check stem exists");
+    // Test removed as this is not true on all platforms -- some platforms will not create stems
+    // when leaves are created
+    // LE_TEST_OK(le_cfg_NodeExists(iterRef, "dir2"), "Check stem exists");
     LE_TEST_OK(le_cfg_IsEmpty(iterRef, "dir2"), "Check stem is empty");
     le_cfg_SetInt(iterRef, "dir2", 1);
     LE_TEST_OK(!le_cfg_IsEmpty(iterRef, "dir2"), "Check stem is no longer empty");
@@ -406,15 +534,10 @@ COMPONENT_INIT
 
     // Read and write binary data to config tree and output how long it takes
     le_rand_GetBuffer(randBuf, sizeof(randBuf));
-    LE_TEST_BEGIN_SKIP(LE_CONFIG_IS_ENABLED(LE_CONFIG_TARGET_HL78), 2*WRITE_TEST_ITERATIONS + 2);
     WriteBinaryTest(WRITE_TEST_ITERATIONS, "/binary", (uint8_t *) randBuf, 1024);
     ReadBinaryTest(WRITE_TEST_ITERATIONS, "/binary", (uint8_t *) randBuf, 1024);
-    LE_TEST_END_SKIP();
 
-    // Test creating and deleting nodes (HL78 does not currently support deleting nodes)
-    LE_TEST_BEGIN_SKIP(LE_CONFIG_IS_ENABLED(LE_CONFIG_TARGET_HL78), 15);
     CreateDeleteNodeTest();
-    LE_TEST_END_SKIP();
 
     // Finally delete the data used in the test
     REMOVE_TREE();
