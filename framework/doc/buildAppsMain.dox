@@ -60,6 +60,7 @@ the Legato Runtime Environment and the underlying platform.
 | @subpage tools                   | Target, Host, and Build tools' Help information                               |
 | @subpage howToMain               | How To articles for some of the most commonly used features of the Framework  |
 | @subpage experimentalMain        | Check out our new experimental features                                       |
+| @subpage migrationGuide          | Migration guide for new release                                               |
 
 Copyright (C) Sierra Wireless Inc.
 

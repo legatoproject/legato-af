@@ -116,19 +116,12 @@ To install devMode on your target follow these @ref howToDevMode_installDev "ins
 @note With the Visual Studio Code IDE, devMode gets automatically installed on your target
 when you use the debugging features.
 
-<h1> Tutorials </h1>
+<h1> Migration Guide for New Release </h1>
 
-Now you are ready to start developing apps and installing them on your target. We first recommend
-starting with our <b> @subpage getStartedApps</b>; they walk you through
-some of the basic concepts and <b> how to create, install and test </b> your first component and
-application.
+WP76 firmware Release 17 and WP77 firmware Release 15 include a major upgrade of the firmware
+running on the module.  Refer to @ref migrationGuide for more details.
 
-| Tutorial                 | Description                                                                                               |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| @ref getStartedHW        | Create a "helloWorld" app and deploying it on a target                                                    |
-| @ref getStartedIPC       | Create two apps and use IPC to communicate between the apps                                               |
-
-<h1> Build  and Update Target </h1>
+<h1> Build and Update Target </h1>
 
 When you are ready to update your target with the new software that you have created you need to
 combine it all into a system and then update your target with that system. While you can update
@@ -146,22 +139,24 @@ Build tools:
 - [swiflash](https://source.sierrawireless.com/resources/airprime/software/swiflash/) - recovery
 tool that flashes images to the target via USB.
 
-<h2> Tutorials </h2>
+<h1> Tutorials </h1>
 
-The following tutorials walk you through:
-- creating a system containing your sample apps
-- adding in optional kernel modules to your existing system (driver to enable hardware)
-- updating your target to a new system that includes your apps and an example kernel module
+Now you are ready to start developing apps and installing them on your target. We first recommend
+starting with our <b> @subpage getStartedApps</b>; they walk you through
+some of the basic concepts and <b> how to create, install and test </b> your first component and
+application.
 
 | Tutorial                 | Description                                                                                               |
 | ------------------------ | --------------------------------------------------------------------------------------------------------- |
 | @ref getStartedSystems   | Create a system using a the default set of Platform Services and the helloWorld and helloIPC  apps        |
 | @ref getStartedKO        | Add an example driver to your system                                                                      |
 | @ref getStartedUpdate    | Update your target with your new system files                                                             |
+| @ref getStartedHW        | Create a "helloWorld" app and deploying it on a target                                                    |
+| @ref getStartedIPC       | Create two apps and use IPC to communicate between the apps                                               |
 
 <h1> Concepts and Conventions </h1>
 
-Now that you are familiar with the basic flow of the Legato Application Framework explore our
+Once you are familiar with the basic flow of the Legato Application Framework, explore our
 documentation on our concepts and the programing conventions to create apps and systems with
 the Legato Application Framework.
 

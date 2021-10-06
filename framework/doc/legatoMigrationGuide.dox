@@ -1,0 +1,321 @@
+/** @page migrationGuide Linux 4.14 Migration Guide
+
+WP76 firmware Release 17 and WP77 firmware Release 15 include a major upgrade of the firmware
+running on the module. The new release will replace the Linux distro and modem
+firmware with upgraded:
+
+- Yocto-3.1 packages and libraries
+- Linux kernel version 4.14.217
+
+Kernel version 4.14.217 provides a new communication channel between modem firmware and application
+software that is now part of the mainline Linux kernel. In order to use this new communication
+channel, an upgraded version of Qualcomm Modem Interface (QMI) libraries is required to be loaded
+on the modem.
+
+The upgraded Yocto release also includes OpenSSL library version 1.1.
+
+@warning Openssl does not guarantee backwards compatibility of its libraries to older versions.
+
+Given the considerable leap in kernel and library versions, and keeping in mind known compatibility
+issues, extreme caution should be exercised when upgrading to WP76 firmware Release 17 or WP77
+firmware Release 15. This guide will provide information for users, both internal and external, on
+how to migrate from the older Linux-3.18-based WP76 releases to the new Linux-4.14-based WP76
+Release 17 and from the older Linux-3.18-based WP77 releases to the new Linux-4.14-based WP77
+Release 15.
+
+<h1> Requirements</h1>
+
+There are some requirements that need to be addressed prior to being installed with this release.
+There are also some actions that need to be taken after installation.
+
+- <a href="#uart_tty">UART tty console
+</a>
+
+- <a href="#overlay_limits">Legato Overlay System Update Limits
+</a>
+
+- <a href="#device_key">Updating Device Key
+</a>
+
+<h1> Use Cases</h1>
+
+Users need to use leaf to upgrade from a 3.18 Linux Kernel Release to a 4.14 Linux kernel Release
+17 using a WP76xx (or Release 15 using a WP77xx). Users need to use the latest "stable" external
+leaf package for WP76xx.
+
+Please follow the steps outlined in @ref confLeaf to install leaf workspace manager and
+install the latest external WP76xx SDK that bundles Release 17, latest LXSWI and Legato 21.05.
+
+@c leaf @c search @c -t @c latest will give you the latest stable release.
+The leaf package number final release version is TBD. Currently work on Release 17 and Legato 21.05
+is in progress. Once the final release is tagged, the leaf package will be generated to bundle the
+release.
+
+The following use cases are addressed:
+
+- <a href="#sdef_ro">Customer includes their app in the system definition file (SDEF) file and installs to RO partition
+</a>
+
+- <a href="#separate_rw">Customer builds their Legato app separately and installs to RW partition
+</a>
+
+- <a href="#preloaded_rw">Customer builds their Legato app separately with "preloaded" flag, and installs to RW partition
+</a>
+
+- <a href="#legacy">Customer builds Legato app containing "legacy" (non-legato) binaries
+</a>
+
+<h2><a id="sdef_ro">Customer includes their app in the system definition file (SDEF) file and installs to RO partition.
+</a></h2>
+
+Recommended way to upgrade:
+
+- Upgrade the device using the complete release package (Refer to [Modem FW, LXSWI, Legato](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release-components/#sthash.aR5q6VAN.dpbs) ) included
+in the leaf SDK.
+
+The necessary binaries such as modem image, Linux image, Legato image and toolchain are downloaded
+in the workspace with the leaf SDK.
+
+Example:
+@code
+~/wp76_workspace/leaf-data/current$ ls
+int-wp76  swi-legato  swi-vscode-support  wp76-image  wp76-legato  wp76-legato-image  wp76-linux-image  wp76-modem-image  wp76-toolchain
+@endcode
+
+Use the swicwe tool provided in the toolchain
+
+i.e. /wp76_leaf/leaf-data/current/wp76-toolchain/sysroots/x86_64-pokysdk-linux/usr/bin/swicwe
+
+to combine the binaries together into one .spk file to flash to the device.
+
+Example:
+
+@code
+swicwe -c <wp76-modem-image.spk> <wp76-linux-image.cwe> <wp76-legato-image.cwe> -o <output.spk>
+@endcode
+
+| Binary Type                       | Path                                                           |
+| --------------------------------- | -------------------------------------------------------------- |
+| Modem Image                       | ~/wp76_workspace/leaf-data/current/wp76-modem-image            |
+| Linux Image                       | ~/wp76_workspace/leaf-data/current/wp76-linux-image/linux.cwe  |
+| Legato Image                      | ~/wp76_workspace/leaf-data/current/wp76-legato-image/legato.cwe|
+| Toolchain                         | ~/wp76_workspace/leaf-data/current/wp76-toolchain              |
+
+The legato source code can also be pulled from master using @ref toolsLeafGetsrc .
+
+- Modify SDEF to include app.
+- If necessary, in the customer app, make modifications to kernel modules / system calls (libC is backward compatible, openssl is not).
+- Rebuild Legato + customer app using @c make @c wp76xx.
+- Install Legato + app package using @ref toolsHost_fwupdate tool.
+
+
+<h2><a id="separate_rw">Customer builds their Legato app separately and installs to RW partition.
+</a></h2>
+
+Recommended way to upgrade:
+
+- Upgrade the device using the complete firmware package (Refer to [Modem FW, LXSWI, Legato](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release-components/#sthash.aR5q6VAN.dpbs) ). This
+causes the app to be automatically removed.
+- Required toolchain will be included in the leaf SDK.
+- If necessary, in the customer app, make modifications to kernel modules / system calls
+- Build the app
+@code
+mkapp -t <target type> <.adef file>
+@endcode
+
+- Install the app to RW partition
+@code
+app install
+update
+@endcode
+
+Now go to AirVantage and perform a software over the air upgrade.
+
+<h2><a id="preloaded_rw">Customer builds their Legato app separately with "preloaded" flag, and installs to RW partition.
+</a></h2>
+
+Recommended way to upgrade:
+
+- Uninstall the app
+@code
+app remove <appName>
+@endcode
+- Upgrade the device using the complete firmware package [Modem FW, LXSWI, Legato](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release-components/#sthash.aR5q6VAN.dpbs) following the
+same instructions as listed in use case A.
+- Required toolchain will be included in the leaf SDK.
+- If necessary, in the customer app, make modifications to kernel modules / system calls.
+- Build the app
+@code
+mkapp -t wp76xx my/app.adef
+@endcode
+- Install the app to RW partition
+@code
+app install
+update
+@endcode
+
+<h2><a id="legacy">Customer builds Legato app containing "legacy" (non-legato) binaries.
+</a></h2>
+
+- Uninstall the app
+@code
+app remove <appName>
+@endcode
+
+- Upgrade the device using the complete firmware package ( [Modem FW, LXSWI, Legato](https://source.sierrawireless.com/resources/airprime/software/wp76xx/wp76xx-firmware-latest-release-components/#sthash.aR5q6VAN.dpbs) ).
+- Required toolchain will be included in the leaf SDK.
+- If necessary, in the customer app, make modifications to kernel modules / system calls.
+- Fully rebuild the app (as per @ref howToPortLegacyC ), including non-Legato binaries.
+- Install the app to RW partition
+
+@code
+app install
+update
+@endcode
+
+
+<h2><a id="uart_tty">UART tty console.
+</a></h2>
+
+- /dev/ttyHSLn in Kernel3.18 is renamed to /dev/ttyMSMn in Kernel4.14.
+
+- /dev/ttyHSLn hardcoding in the code, if any, needs to be replaced with /dev/ttyMSMn.
+
+Example:
+
+@c components/portService/portDaemon/ConfigurationFile.json
+
+- /dev/ttyMSM0 corresponds to UART1 and /dev/ttyMSM1 corresponds to UART2.
+
+<h2><a id="overlay_limits">Legato Overlay System Update Limits.
+</a></h2>
+
+ Legato Overlay System cannot be used to update from Legato 20.08.0 or lower (kernel3.18-based) to
+ 21.05.0 + (kernel4.14-based), or vice versa.
+
+i.e. update system.<target>.update <ip>
+
+The target Legato Overlay System kernel version will be different from and incompatible with the
+LXSWI running on the device.
+
+List of supported Legato version on kernel 3.18 and 4.14:
+
+| Kernel    | Yocto   | LXSWI          | Legato  |
+| --------- | ------- | -------------- | ------- |
+| 3.18      | 2.5     | LXSWI2.5-13.1  | 20.04.0 |
+| 3.18      | 3.0     | LXSWI3.0-3.0   | 20.08.0 |
+| 4.14      | 3.1     | LXSWI3.1-2.0   | 21.05.0 |
+
+
+Compatibility is between the kernel, Yocto, LXSWI and specified Legato zone. It is not compatible
+when elements cross another zone.
+
+Recommended way to update system:
+
+- fwupdate the whole composite bundle (Legato + LXSWI + FW) whenever crossing kernel compatibility
+boundary.
+
+Please note that other tools such as swiflash and fdt2 (on Windows) can also be used to update the
+system.
+
+<h2><a id="device_key">Updating Device Key.
+</a></h2>
+
+After the upgrade and appsboot_ima.cwe has been flashed, the device fingerprint will change. If
+using SSH to connect to the device, the RSA fingerprint needs an update before being able to
+connect to the device.
+
+Example:
+
+@code
+...
+...
+Starting netmgrd: done
+udhcpc: sending discover
+Starting fs-scrub-daemon: done
+net.ipv4.conf.default.rp_filter = 1
+net.ipv4.conf.all.rp_filter = 1
+rm: can't remove '/var/log/wtmp': No such file or directory
+/etc/rcS.d/S55reset_reboot_cookie: line 5: can't create /etc/reboot-cookie: Read-only file system
+Starting eMBMs_TunnelingModule: done
+Starting qmi_ip: done
+starting DNS forwarder and DHCP server: dnsmasq... /usr/bin/dnsmasq is already running
+812
+Starting Dropbear SSH server: Starting port_bridge: Generating key, this may take a while...
+done
+run_getty.sh: ttyHSL1 reserved for CONSOLE
+Poky (Yocto Project Reference Distro) 2.5.3 swi-mdm9x28 /dev/ttyHSL1
+swi-mdm9x28 login: Public key portion is:
+ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCVBqKaOUpmk3Qgz/wStN8/SIlSS1Fje2Xim11Ev9UNkk2vnABf6nKMe9kOTuYhd+LfZ6r++xGqRBZscGJX5IiqrAUHouFTVBnODXUCoO62pQSJOUcVDqE8
+Fingerprint: md5 0e:6e:56:e5:a7:14:69:80:a9:6c:aa:7a:2b:7d:bb:02
+dropbear.
+udhcpc: no lease, forking to background
+[   23.877090] adm_callback: cmd = 0x10322 returned error = 0x16
+[   23.881809] adm_callback: ADM map error, resuming
+[   23.888425] adm_memory_map_regions: DSP returned error[ADSP_ERR_MAX]
+[   23.900492] adm_map_cal_data: map did not work! cal_type 0 ret -68
+[   23.905641] map_memory: map_cal failed, cal type 10, ret = -19!
+[   23.914721] adm_alloc_cal: cal_utils_alloc_block failed, ret = -19, cal type = 10!
+[   23.921458] call_allocs: alloc failed!
+Poky (Yocto Project Reference Distro) 2.5.3 swi-mdm9x28 /dev/ttyHSL1
+swi-mdm9x28 login: root
+-sh: Warning: Login nagger could not run.
+root@swi-mdm9x28:~# flash_eraseall /dev/mtd16
+flash_eraseall has been replaced by `flash_erase <mtddev> 0 0`; please use it
+Erasing 256 Kibyte @ 82c0000 -- 100 % complete
+root@swi-mdm9x28:~# reboot
+...
+...
+Any subsequent SSL communications (SSH or SCP) will get this:
+user@legato:~$ ssh root@192.168.2.2
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+The fingerprint for the RSA key sent by the remote host is
+SHA256:r1Db8rmwg1MW5OA3Wv3PJVBOfdkkrDmrhLelCsFCiX0.
+Please contact your system administrator.
+Add correct host key in /home/user/.ssh/known_hosts to get rid of this message.
+Offending RSA key in /home/user/.ssh/known_hosts:29
+  remove with:
+  ssh-keygen -f "/home/user/.ssh/known_hosts" -R "192.168.2.2"
+RSA host key for 192.168.2.2 has changed and you have requested strict checking.
+Host key verification failed.
+Follow the prompt, do to remove host's know_hosts entry for the associated IP entity (ECM IP in this case)
+user@legato:~$ ssh-keygen -f "/home/user/.ssh/known_hosts" -R "192.168.2.2"
+# Host 192.168.2.2 found: line 29
+/home/user/.ssh/known_hosts updated.
+Original contents retained as /home/user/.ssh/known_hosts.old
+Subsequent SSH call goes as usual after updating the RSA key in host's .ssh/known_hosts file:
+user@legato:~$ ssh root@192.168.2.2
+The authenticity of host '192.168.2.2 (192.168.2.2)' can't be established.
+RSA key fingerprint is SHA256:LsYXQv/O8EsXmSLbun+jABqIrUodk3d0h1AEKd8mINE.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '192.168.2.2' (RSA) to the list of known hosts.
+root@swi-mdm9x28:~#
+root@swi-mdm9x28:~# exit
+Connection to 192.168.2.2 closed.
+user@legato:~$ ssh root@192.168.2.2
+root@swi-mdm9x28:~#
+@endcode
+
+
+<h1> Unaffected Features
+</h1>
+
+- Steps to compile Legato framework remain the same as in earlier releases with kernel 3.18.
+- Nothing is explicitly required by the users to migrate the use of SMACK and IMA/DM-Verity
+features. It will be taken care of automatically during the upgrade.
+- No additional user steps are required to migrate data from existing secure storage to the one
+with Trust Zone (TZ4.0) and IoTKeyStore. IoTKeyStore has been made available in WP build R17 BP8.
+IoTKeyStore is disabled by default in Legato 21.05.
+- No change in Legato APIs. They remain the same as in earlier releases using kernel 3.18.
+- Audio support in kernel 4.14 will be the same as kernel 3.18.
+- Every previous releases can be upgraded to the newer Release 17 using kernel 4.14. Each upgrade
+will essentially be a clean installation.
+
+Copyright (C) Sierra Wireless Inc.
+
+**/
