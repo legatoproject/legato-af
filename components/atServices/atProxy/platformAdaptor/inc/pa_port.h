@@ -91,5 +91,16 @@ void pa_port_Enable
     le_atProxy_PortRef_t port   ///< [IN] Port to enable events
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set V24 RI signal for MUX ports
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+void pa_port_SetV24RIMux
+(
+    int signal                  ///< [IN] Signal to set
+);
 
 #endif // _AT_PROXY_PA_PORT_H_INCLUDE_GUARD_

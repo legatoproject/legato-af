@@ -98,4 +98,16 @@ LE_SHARED void pa_riPin_Set
     uint8_t     set ///< [IN] 1 to Pull up GPIO RI or 0 to lower it down
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set V24 RI signal for MUX ports
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_riPin_SetV24RIMux
+(
+    int signal          ///< [IN] Signal to set
+);
+
 #endif // LEGATO_PARIPIN_INCLUDE_GUARD

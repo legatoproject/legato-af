@@ -120,3 +120,20 @@ LE_SHARED void pa_port_Enable
 
     return;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set V24 RI signal for MUX ports
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_port_SetV24RIMux
+(
+    int signal                  ///< [IN] Signal to set
+)
+{
+    LE_UNUSED(signal);
+
+    return;
+}
