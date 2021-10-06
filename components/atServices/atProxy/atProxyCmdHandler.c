@@ -613,7 +613,7 @@ static void SearchAtCmdRegistry
 
         if (strncmp(atCmdRegistryPtr->commandStr,
                    commandStr,
-                   strlen(atCmdRegistryPtr->commandStr)) == 0)
+                   atCmdPtr->operatorIndex + 1) == 0)
         {
             LE_DEBUG("AT Command match found [%s]", atCmdRegistryPtr->commandStr);
 
@@ -1051,7 +1051,7 @@ LE_SHARED le_atProxy_AtCommandSession_t* atProxyCmdHandler_OpenSession
         return NULL;
     }
 
-    // Initialize the AT Command Sesison record
+    // Initialize the AT Command Session record
     memset(atSessionPtr, 0, sizeof(le_atProxy_AtCommandSession_t));
 
     // Create a Reference to the At Command Session

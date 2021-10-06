@@ -644,7 +644,7 @@ void le_atServer_GetCommandName
 )
 {
     le_result_t result = LE_OK;
-    const char* name = NULL;
+    const char* name = "";
 
     struct le_atProxy_AtCommandSession* atCmdSessionPtr =
         le_ref_Lookup(atCmdSessionRefMap, commandRef);
