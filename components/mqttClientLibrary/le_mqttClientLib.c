@@ -560,8 +560,15 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
     /* Allocate the MQTT Network resources */
     NetworkInit(&sessionRef->network,
                 configPtr->secure,
+                configPtr->auth,
+                configPtr->cipherIndex,
                 configPtr->certPtr,
-                configPtr->certLen);
+                configPtr->certLen,
+                configPtr->ownCertPtr,
+                configPtr->ownCertLen,
+                configPtr->ownPrivateKeyPtr,
+                configPtr->ownPrivateKeyLen,
+                configPtr->alpnList);
 
     /* Initialize the MQTT Client */
     MQTTClientInit(&sessionRef->client,

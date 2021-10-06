@@ -293,6 +293,22 @@ LE_SHARED le_result_t le_socket_SetAuthType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set ALPN protocol list in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetAlpnProtocolList
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char**      alpnList         ///< [IN] ALPN protocol list pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initiate a connection with the server using the defined configuration.
  *
  * @return

@@ -57,18 +57,6 @@
 #define SSL_MIN_PROFILE_ID          (0)
 #define SSL_MAX_PROFILE_ID          (7)
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Authentication types, which is the 7th parameter in the ksslcrypto write command.
- */
-//--------------------------------------------------------------------------------------------------
-typedef enum AuthType
-{
-    AUTH_SERVER  = 1,
-    AUTH_MUTUAL  = 3,
-    AUTH_UNKNOWN = 0xFF
-}
-AuthType_t;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -77,14 +65,15 @@ AuthType_t;
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    mbedtls_net_context sock;                                   ///< MbedTLS wrapper for socket.
-    mbedtls_ssl_context sslCtx;                                 ///< SSL/TLS context.
-    mbedtls_ssl_config  sslConf;                                ///< SSL/TLS configuration.
-    mbedtls_x509_crt    caCert;                                 ///< Root CA X.509 certificate.
-    mbedtls_x509_crt    ownCert;                                ///< Module's X.509 certificate.
-    mbedtls_pk_context  ownPkey;                                ///< Module's private key container.
-    uint8_t             auth;                                   ///< Authentication type.
-    int                 ciphersuite[2];                         ///< Cipher suite(s) to use.
+    mbedtls_net_context   sock;                             ///< MbedTLS wrapper for socket.
+    mbedtls_ssl_context   sslCtx;                           ///< SSL/TLS context.
+    mbedtls_ssl_config    sslConf;                          ///< SSL/TLS configuration.
+    mbedtls_x509_crt      caCert;                           ///< Root CA X.509 certificate.
+    mbedtls_x509_crt      ownCert;                          ///< Module's X.509 certificate.
+    mbedtls_pk_context    ownPkey;                          ///< Module's private key container.
+    uint8_t               auth;                             ///< Authentication type.
+    const char          **alpn_list;                        ///< ALPN Protocol Name list
+    int                   ciphersuite[2];                   ///< Cipher suite(s) to use.
 }
 MbedtlsCtx_t;
 
@@ -479,6 +468,24 @@ void secSocket_SetAuthType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ALPN protocol list in the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAlpnProtocolList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char**      alpnList          ///< [IN] ALPN protocol list pointer
+)
+{
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+    LE_ASSERT(contextPtr != NULL);
+
+    contextPtr->alpn_list = alpnList;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Performs TLS Handshake
  *
  * @return
@@ -536,6 +543,7 @@ le_result_t secSocket_PerformHandshake
     // Apply local certificate and key bindings if the authentication type is mutual
     if (contextPtr->auth == AUTH_MUTUAL)
     {
+        LE_INFO("Configuring Mutual Authentication");
         if ((ret = mbedtls_ssl_conf_own_cert(&(contextPtr->sslConf),
                                              &(contextPtr->ownCert),
                                              &(contextPtr->ownPkey))) != 0)
@@ -543,6 +551,13 @@ le_result_t secSocket_PerformHandshake
             LE_ERROR("Failed! mbedtls_ssl_conf_own_cert returned %d", ret);
             return LE_FAULT;
         }
+    }
+
+    // Apply ALPN protocol list if configured
+    if (contextPtr->alpn_list)
+    {
+        LE_INFO("Configuring ALPN list %s", *contextPtr->alpn_list);
+        mbedtls_ssl_conf_alpn_protocols(&(contextPtr->sslConf), contextPtr->alpn_list);
     }
 
     mbedtls_port_SSLSetRNG(&contextPtr->sslConf);

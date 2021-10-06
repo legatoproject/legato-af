@@ -172,18 +172,33 @@ int ThreadStart
 //--------------------------------------------------------------------------------------------------
 void NetworkInit
 (
-    struct Network* net,        /// [IN] Network structure
-    bool secure,                /// [IN] Secure connection flag
-    const uint8_t* certPtr,     /// [IN] Certificate pointer
-    size_t certLen              /// [IN] Length in byte of certificate certPtr
+    struct Network* net,               /// [IN] Network structure
+    int secure,                        /// [IN] Secure connection flag
+    uint8_t auth,                      /// [IN] Authentication mode
+    uint32_t cipherIndex,              /// [IN] Cipher Suite profile index
+    const uint8_t* certPtr,            /// [IN] Certificate pointer
+    size_t certLen,                    /// [IN] Length in byte of certificate certPtr
+    const uint8_t* ownCertPtr,         /// [IN] Own certificate pointer
+    size_t ownCertLen,                 /// [IN] Length in byte of own certificate certPtr
+    const uint8_t* ownPrivateKeyPtr,   /// [IN] Own private key pointer
+    size_t ownPrivateKeyLen,           /// [IN] Length in byte of own private key
+    const char *alpnList               /// [IN] ALPN Protocol name
 )
 {
     net->socketRef = NULL;
     net->handlerFunc = NULL;
     net->contextPtr = NULL;
     net->secure = secure;
+    net->auth = auth;
+    net->cipherIdx = cipherIndex;
     net->certificatePtr = certPtr;
     net->certificateLen = certLen;
+    net->ownCertificatePtr = ownCertPtr;
+    net->ownCertificateLen = ownCertLen;
+    net->ownPrivateKeyPtr = ownPrivateKeyPtr;
+    net->ownPrivateKeyLen = ownPrivateKeyLen;
+    net->alpnList[0] = alpnList;       // Only a single ALPN name supported currently
+    net->alpnList[1] = NULL;           // Needed to terminate the ALPN with NULL
     net->mqttread = MqttRead;
     net->mqttwrite = MqttWrite;
 }
@@ -252,12 +267,54 @@ le_result_t NetworkConnect
     if (net->secure)
     {
         LE_INFO("Adding security certificate...");
-        if (LE_OK != le_socket_AddCertificate(net->socketRef, net->certificatePtr, net->certificateLen))
+        if (LE_OK != le_socket_AddCertificate(net->socketRef,
+                                              net->certificatePtr,
+                                              net->certificateLen))
         {
             LE_ERROR("Failed to add certificate");
             goto freeSocket;
         }
-    }
+
+        if (net->auth == AUTH_MUTUAL) // Mutual Authentication
+        {
+            if (LE_OK != le_socket_AddOwnCertificate(net->socketRef,
+                                                     net->ownCertificatePtr,
+                                                     net->ownCertificateLen))
+            {
+                LE_ERROR("Failed to add client certificate");
+                goto freeSocket;
+            }
+
+            if (LE_OK != le_socket_AddOwnPrivateKey(net->socketRef,
+                                                    net->ownPrivateKeyPtr,
+                                                    net->ownPrivateKeyLen))
+            {
+                LE_ERROR("Failed to add client private key");
+                goto freeSocket;
+            }
+        } // End of mutual authentication
+
+        if (LE_OK != le_socket_SetAuthType(net->socketRef, net->auth))
+        {
+            LE_ERROR("Failed to set mutual authentication type");
+            goto freeSocket;
+        }
+
+        if (LE_OK != le_socket_SetCipherSuites(net->socketRef, net->cipherIdx))
+        {
+            LE_ERROR("Failed to set cipher suite");
+            goto freeSocket;
+        }
+
+        if (net->alpnList)
+        {
+            if (LE_OK != le_socket_SetAlpnProtocolList(net->socketRef, net->alpnList))
+            {
+                LE_ERROR("Failed to set ALPN protocol list");
+                goto freeSocket;
+            }
+        }
+    } // End of secure
 
     // Set response timeout.
     if (LE_OK != le_socket_SetTimeout(net->socketRef, timeoutMs))

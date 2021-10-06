@@ -76,8 +76,15 @@ struct le_mqttClient_Configuration
                                             ///  to the server.
     unsigned int     readTimeoutMs;         ///< Read timeout in milliseconds.
     bool             secure;                ///< Secure session
+    uint32_t         cipherIndex;           ///< Cipher Suite profile index
+    uint8_t          auth;                  ///< Authentication mode
     const uint8_t   *certPtr;               ///< Security certificate pointer
     size_t           certLen;               ///< Length in byte of certificate certPtr
+    const uint8_t   *ownCertPtr;            ///< Security own certificate pointer
+    size_t           ownCertLen;            ///< Length in byte of own certificate
+    const uint8_t   *ownPrivateKeyPtr;      ///< Security own private key pointer
+    size_t           ownPrivateKeyLen;      ///< Length in byte of own private key
+    const char      *alpnList;              ///< ALPN Protocol name
 };
 
 

@@ -30,14 +30,21 @@ typedef void (*networkStatusHandler)(short events, void* contextPtr);
 // Network structure
 typedef struct Network
 {
-    le_socket_Ref_t socketRef;          ///< socket reference
-    bool secure;                        ///< secure connection flag
-    const uint8_t* certificatePtr;      ///< pointer of certificate
-    size_t certificateLen;              ///< length of certificate
-    MqttReadFunc mqttread;              ///< read function pointer
-    MqttWriteFunc mqttwrite;            ///< write function pointer
-    networkStatusHandler handlerFunc;   ///< Network status callback function
-    void* contextPtr;                   ///< Network status callback function context pointer
+    le_socket_Ref_t socketRef;                ///< socket reference
+    bool secure;                              ///< secure connection flag
+    uint8_t auth;                             ///< Authentication mode
+    uint32_t cipherIdx;                       ///< Cipher Suite profile index
+    const uint8_t* certificatePtr;            ///< pointer of certificate
+    size_t certificateLen;                    ///< length of certificate
+    const uint8_t* ownCertificatePtr;         ///< pointer of own certificate
+    size_t ownCertificateLen;                 ///< length of own certificate
+    const uint8_t* ownPrivateKeyPtr;          ///< pointer of own private key
+    size_t ownPrivateKeyLen;                  ///< length of own private key
+    const char *alpnList[ALPN_LIST_SIZE + 1]; ///< ALPN Protocol name list
+    MqttReadFunc mqttread;                    ///< read function pointer
+    MqttWriteFunc mqttwrite;                  ///< write function pointer
+    networkStatusHandler handlerFunc;         ///< Network status callback function
+    void* contextPtr;                         ///< Network status callback function context pointer
 } Network;
 
 
@@ -100,10 +107,17 @@ int ThreadStart
 //--------------------------------------------------------------------------------------------------
 void NetworkInit
 (
-    struct Network* net,        /// [IN] Network structure
-    bool secure,                /// [IN] Secure connection flag
-    const uint8_t* certPtr,     /// [IN] Certificate pointer
-    size_t certLen              /// [IN] Length in byte of certificate certPtr
+    struct Network* net,               /// [IN] Network structure
+    int secure,                        /// [IN] Secure connection flag
+    uint8_t auth,                      /// [IN] Authentication mode
+    uint32_t cipherIdx,                /// [IN] Cipher Suite profile index
+    const uint8_t* certPtr,            /// [IN] Certificate pointer
+    size_t certLen,                    /// [IN] Length in byte of certificate certPtr
+    const uint8_t* ownCertPtr,         /// [IN] Own certificate pointer
+    size_t ownCertLen,                 /// [IN] Length in byte of own certificate certPtr
+    const uint8_t* ownPrivateKeyPtr,   /// [IN] Own private key pointer
+    size_t ownPrivateKeyLen,           /// [IN] Length in byte of own private key
+    const char* alpnList               /// [IN] ALPN Protocol name
 );
 
 //--------------------------------------------------------------------------------------------------

@@ -653,6 +653,46 @@ le_result_t le_socket_SetAuthType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set ALPN protocol list in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetAlpnProtocolList
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    const char**      alpnList         ///< [IN] ALPN protocol list pointer
+)
+{
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetAlpnProtocolList(contextPtr->secureCtxPtr, alpnList);
+    return LE_OK;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Initiate a connection with the server using the defined configuration.
  *
  * @return

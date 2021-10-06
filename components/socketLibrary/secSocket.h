@@ -119,6 +119,17 @@ void secSocket_SetAuthType
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set the ALPN protocol list in the secure socket context.
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetAlpnProtocolList
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    const char**      alpnList          ///< [IN] ALPN protocol list pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Performs TLS Handshake
  *
  * @return

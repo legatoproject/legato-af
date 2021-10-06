@@ -35,4 +35,24 @@ typedef enum
 }
 SocketAfType_t;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Authentication types, which is the 7th parameter in the ksslcrypto write command.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef enum AuthType
+{
+    AUTH_SERVER  = 1,
+    AUTH_MUTUAL  = 3,
+    AUTH_UNKNOWN = 0xFF
+}
+AuthType_t;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Max MbedTLS ALPN Protocol List size
+ */
+//--------------------------------------------------------------------------------------------------
+#define ALPN_LIST_SIZE       1
+
 #endif /* LE_SOCKET_COMMON_H */
