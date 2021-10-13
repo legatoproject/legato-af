@@ -859,7 +859,7 @@ static void GetAppWriteableFilesFromOptLegato
 {
     char oldAppPath[PATH_MAX];
 
-    LE_ASSERT(snprintf(oldAppPath, sizeof(oldAppPath), "%s/appName", OldFwDir) < sizeof(oldAppPath));
+    LE_ASSERT(snprintf(oldAppPath, sizeof(oldAppPath), "%s/%s", OldFwDir, appName) < sizeof(oldAppPath));
 
     if (DirExists(oldAppPath))
     {
@@ -982,9 +982,17 @@ static void SetUpApp
     // a legacy system installed in /opt/legato.
     if (previousSystemIndex == -1)
     {
-        char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
-        smack_GetAppLabel(appName, smackLabel, sizeof(smackLabel));
-        GetAppWriteableFilesFromOptLegato(hashBuff, appName, smackLabel);
+        if (DirExists(OldFwDir))
+        {
+            char smackLabel[LIMIT_MAX_SMACK_LABEL_BYTES];
+            smack_GetAppLabel(appName, smackLabel, sizeof(smackLabel));
+            GetAppWriteableFilesFromOptLegato(hashBuff, appName, smackLabel);
+        }
+        else
+        {
+            installer_InstallAppWriteableFiles(hashBuff, appName, "unpack");
+        }
+
     }
     else
     {
