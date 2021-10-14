@@ -2011,6 +2011,7 @@ le_result_t le_ftpClient_SetCipherSuites
     uint8_t                      cipherIdx      ///< Cipher suites index
 )
 {
+#if !defined(MK_CONFIG_FTPS_DISABLE)
     if (sessionRef == NULL)
     {
         return LE_BAD_PARAMETER;
@@ -2018,6 +2019,10 @@ le_result_t le_ftpClient_SetCipherSuites
 
     sessionRef->cipherIdx = cipherIdx;
     return LE_OK;
+#else
+    LE_ERROR("Secure FTPS not supported on device");
+    return LE_NOT_IMPLEMENTED;
+#endif // !defined(MK_CONFIG_FTPS_DISABLE)
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2075,6 +2080,7 @@ LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
     size_t                    certificateLen    ///< [IN] Certificate Length
 )
 {
+#if !defined(MK_CONFIG_FTPS_DISABLE)
     le_result_t  result;
 
     if ((sessionRef == NULL) || (certificatePtr == NULL) || (srcAddr == NULL))
@@ -2104,6 +2110,10 @@ LE_SHARED le_result_t le_ftpClient_SecureConnectOnSrcAddr
     // End sync operation.
 
     return result;
+#else
+    LE_ERROR("Secure FTP not supported on device");
+    return LE_NOT_IMPLEMENTED;
+#endif // !defined(MK_CONFIG_FTPS_DISABLE)
 }
 
 //--------------------------------------------------------------------------------------------------
