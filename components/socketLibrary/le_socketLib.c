@@ -890,7 +890,7 @@ le_result_t le_socket_Send
         return LE_FAULT;
     }
 
-    if (contextPtr->isMonitoring)
+    if (contextPtr->isMonitoring && contextPtr->monitorRef)
     {
         // Enable POLLOUT event just before sending data. Thus, when writing is possible again,
         // an event is raised.

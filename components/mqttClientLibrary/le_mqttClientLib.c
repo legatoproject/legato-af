@@ -236,7 +236,7 @@ static void NetworkAsyncRecvHandler
         return;
     }
 
-    if (events & POLLIN)
+    if (events == POLLIN)
     {
         //
         // Data waiting to be read or written
@@ -255,8 +255,15 @@ static void NetworkAsyncRecvHandler
             }
         }
     }
+    // If events = (POLLIN + POLLRDHUP ) means remote/peer socket closed TCP connection
+    else if(((POLLIN | POLLRDHUP) == events) || (POLLRDHUP == events))
+    {
+        LE_INFO("MQTT broker closed the connection");
+        goto discon;
+    }
 
-    if (events & (POLLRDHUP | POLLHUP | POLLERR | POLLNVAL))
+
+    if (events & (POLLHUP | POLLERR | POLLNVAL))
     {
         goto discon;
     }
@@ -628,7 +635,6 @@ LE_SHARED le_result_t le_mqttClient_DeleteSession
  *  @return
  *      - LE_OK         On success
  *      - LE_OVERFLOW   On buffer overflow
- *      - LE_NO_MEMORY  On memory allocation failed
  *      - LE_FAULT      Otherwise
  */
 //--------------------------------------------------------------------------------------------------
@@ -652,16 +658,23 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     if (result != LE_OK)
     {
         LE_ERROR("NetworkConnect() failed, result %d", result);
-        return LE_NO_MEMORY;
+
+        // Disconnect to MDC
+        le_mdc_DisconnectService();
+
+        return LE_FAULT;
     }
 
-    /* Send MQTT connect packet and wait for a Connack */
+    /* Send MQTT connect packet and wait for a CONNACK */
     int rc = MQTTConnect(&sessionRef->client, &sessionRef->data);
 
     LE_INFO("Connected client session, sessionRef [%p], result [%d]", sessionRef, rc);
 
     if (rc != SUCCESS)
     {
+        // Stop the session to close and delete socket connection, and disconnect to MDC
+        le_mqttClient_StopSession(sessionRef);
+
         return ConvertResultCode(rc);
     }
 
@@ -700,11 +713,15 @@ LE_SHARED le_result_t le_mqttClient_StopSession
     le_mqttClient_SessionRef_t sessionRef    ///< [IN] Session reference.
 )
 {
+    int rc = SUCCESS;
     // Stop the keep-alive service
     StopNetworkKeepAliveService(sessionRef);
 
-    /* Send MQTT disconnect packet and close the connection */
-    int rc = MQTTDisconnect(&sessionRef->client);
+    /* Send MQTT disconnect packet and close the connection if connected*/
+    if (sessionRef->client.isconnected)
+    {
+        rc = MQTTDisconnect(&sessionRef->client);
+    }
 
     /* Disconnect from the MQTT Client Session's broker server */
     NetworkDisconnect(&sessionRef->network);
