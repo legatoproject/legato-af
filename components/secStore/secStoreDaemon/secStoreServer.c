@@ -561,6 +561,7 @@ static le_result_t InitSystems
  * attempt to kill the client.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
 static EntryIter_t* GetEntryIterPtr
 (
     secStoreAdmin_IterRef_t iterRef  ///< [IN] The ref to translate to a pointer.
@@ -582,6 +583,7 @@ static EntryIter_t* GetEntryIterPtr
 
     return iterPtr;
 }
+#endif
 
 #endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
 
@@ -1403,6 +1405,7 @@ le_result_t secStoreGlobal_EndBatchWrite
  *      false otherwise.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
 static bool IsInEntryList
 (
     const char* entry,                  ///< [IN] Entry.
@@ -1425,7 +1428,7 @@ static bool IsInEntryList
 
     return false;
 }
-
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1546,6 +1549,7 @@ static void CleanupClientIterators
  *      NULL if there is an error.
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
 static void StoreEntry
 (
     const char* entryPathPtr,       ///< [IN] Entry path.
@@ -1574,6 +1578,7 @@ static void StoreEntry
         le_sls_Queue(&(iterPtr->entryList), &(entryPtr->link));
     }
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1591,6 +1596,7 @@ secStoreAdmin_IterRef_t secStoreAdmin_CreateIter
         ///< Path to iterate over.
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, false))
     {
@@ -1615,6 +1621,9 @@ secStoreAdmin_IterRef_t secStoreAdmin_CreateIter
 
     // Create the saference for this iterator.
     return le_ref_CreateRef(EntryIterMap, iterPtr);
+#else
+    return NULL;
+#endif
 }
 
 
@@ -1630,6 +1639,7 @@ void secStoreAdmin_DeleteIter
         ///< Iterator reference.
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Get the iterator from the safe reference.
     EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
 
@@ -1643,6 +1653,7 @@ void secStoreAdmin_DeleteIter
     le_ref_DeleteRef(EntryIterMap, iterRef);
 
     DeleteIter(iterPtr);
+#endif
 }
 
 
@@ -1664,6 +1675,7 @@ le_result_t secStoreAdmin_Next
         ///< Iterator reference.
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Get the iterator from the safe reference.
     EntryIter_t* iterPtr = GetEntryIterPtr(iterRef);
 
@@ -1689,6 +1701,9 @@ le_result_t secStoreAdmin_Next
     }
 
     return LE_OK;
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -1720,6 +1735,7 @@ le_result_t secStoreAdmin_GetEntry
         ///< True if the entry is a directory, false otherwise.
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     if (name == NULL)
     {
         LE_KILL_CLIENT("name buffer is NULL.");
@@ -1753,6 +1769,9 @@ le_result_t secStoreAdmin_GetEntry
 
     *isDir = entryPtr->isDir;
     return le_utf8_Copy(name, entryPtr->path, nameNumElements, NULL);
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -1787,6 +1806,7 @@ le_result_t secStoreAdmin_Write
         ///< [IN]
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, true))
     {
@@ -1802,6 +1822,9 @@ le_result_t secStoreAdmin_Write
 
     // Write the item to the secure storage.
     return pa_secStore_Write(path, bufPtr, bufNumElements);
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -1835,6 +1858,7 @@ le_result_t secStoreAdmin_Read
         ///< [INOUT]
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, true))
     {
@@ -1850,6 +1874,9 @@ le_result_t secStoreAdmin_Read
 
     // Read the item from the secure storage.
     return pa_secStore_Read(path, bufPtr, bufNumElementsPtr);
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -1871,7 +1898,11 @@ le_result_t secStoreAdmin_CopyMetaTo
         ///< Destination path of meta file copy.
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     return pa_secStore_CopyMetaTo(path);
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
@@ -1897,6 +1928,7 @@ le_result_t secStoreAdmin_Delete
         ///< Path of the secure storage item.
 )
 {
+#if LE_CONFIG_ENABLE_SECSTORE_ADMIN
     // Check parameters.
     if (!IsValidPath(path, false))
     {
@@ -1906,6 +1938,9 @@ le_result_t secStoreAdmin_Delete
 
     // Delete the item from the secure storage.
     return pa_secStore_Delete(path);
+#else
+    return LE_UNSUPPORTED;
+#endif
 }
 
 
