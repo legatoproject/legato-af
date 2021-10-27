@@ -1204,14 +1204,6 @@ static void GetBindingServerSide
         bindingPtr->serverType = model::Binding_t::INTERNAL;
         bindingPtr->serverAgentName = appPtr->name;
         bindingPtr->serverIfName = serverIfPtr->name;
-
-        if ((appPtr->externServerInterfaces.find(serverIfPtr->name)
-                != appPtr->externServerInterfaces.end()))
-        {
-            bindingPtr->serverIfName = tokens[startIndex]->text + "."
-                                       + tokens[startIndex + 1]->text + "."
-                                       + tokens[startIndex + 2]->text;
-        }
     }
 }
 
