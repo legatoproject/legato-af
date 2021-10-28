@@ -112,16 +112,25 @@ static le_mem_PoolRef_t MqttClientSessionPoolRef = NULL;
 //--------------------------------------------------------------------------------------------------
 static inline le_result_t ConvertResultCode(int rc)
 {
-    if (rc == FAILURE)
+    le_result_t res = LE_FAULT;
+
+    switch (rc)
     {
-        return LE_FAULT;
-    }
-    else if (rc == BUFFER_OVERFLOW)
-    {
-        return LE_OVERFLOW;
+        case SUCCESS:
+            res = LE_OK;
+            break;
+
+        case BUFFER_OVERFLOW:
+            res = LE_OVERFLOW;
+            break;
+
+        case FAILURE:
+        default:
+            res = LE_FAULT;
+            break;
     }
 
-    return LE_OK;
+    return res;
 }
 
 
