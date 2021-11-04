@@ -33,7 +33,7 @@ requires:
     {
         le_appInfo.api
 
-#if ${LE_CONFIG_SOTA} = y
+#if ${LE_CONFIG_LINUX} = y
         le_update.api
         le_instStat.api
 #endif

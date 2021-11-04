@@ -68,9 +68,7 @@ bindings:
     secStore.watchdogChain.le_wdog      -> <root>.le_wdog
     #endif
 
-    #if ${LE_CONFIG_SOTA} = y
     secStore.secStoreDaemon.le_instStat -> <root>.le_instStat
     secStore.secStoreDaemon.le_update   -> <root>.le_update
-    #endif
 }
 #endif

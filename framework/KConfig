@@ -74,7 +74,6 @@ config SOTA
 
 config PROBATION_PERIOD
   int "Update probation period"
-  depends on SOTA
   range 10 4294967
   default 1800
   ---help---

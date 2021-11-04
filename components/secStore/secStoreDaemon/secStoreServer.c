@@ -78,7 +78,7 @@
 //--------------------------------------------------------------------------------------------------
 #define MS_WDOG_INTERVAL 8
 
-#if LE_CONFIG_SOTA
+#if LE_CONFIG_LINUX
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -130,12 +130,12 @@ typedef struct
 }
 SystemsIndex_t;
 
-#else /* not LE_CONFIG_SOTA */
+#else /* not LE_CONFIG_LINUX */
 
 // No concept of system versions without SOTA, so use an empty current system path.
 #define CURR_SYS_PATH ""
 
-#endif /* end LE_CONFIG_SOTA */
+#endif /* end LE_CONFIG_LINUX */
 
 #if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
 
@@ -193,7 +193,7 @@ static le_mem_PoolRef_t EntryPool = NULL;
 
 #endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
 
-#if LE_CONFIG_SOTA
+#if LE_CONFIG_LINUX
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -551,7 +551,7 @@ static le_result_t InitSystems
     return LE_OK;
 }
 
-#endif /* end LE_CONFIG_SOTA */
+#endif /* end LE_CONFIG_LINUX */
 
 #if !MK_CONFIG_SECSTORE_DISABLE_ADMIN
 
@@ -739,13 +739,13 @@ static le_result_t CheckClientLimit
     // Get the current amount of space used by the client.
     le_result_t result;
     size_t usedSpace = 0;
-    
+
     // Add map to decrease the pa_secStore_GetSize() calling times
     MapContext_t* map = (MapContext_t *)le_hashmap_Get(clientLimitMap, clientPathPtr);
     if(NULL == map)
     {
         result = pa_secStore_GetSize(clientPathPtr, &usedSpace);
-        
+
         if ( (result != LE_OK) && (result != LE_NOT_FOUND) )
         {
             return result;
@@ -887,7 +887,7 @@ static le_result_t PrepareOp
             return LE_FAULT;
         }
     }
-#if LE_CONFIG_SOTA
+#if LE_CONFIG_LINUX
     // Make sure systems are initialized.
     if (!IsCurrSysPathValid)
     {
@@ -898,7 +898,7 @@ static le_result_t PrepareOp
             return result;
         }
     }
-#endif /* end LE_CONFIG_SOTA */
+#endif /* end LE_CONFIG_LINUX */
 
 #if MK_CONFIG_SECSTORE_DISABLE_GLOBAL_ACCESS
     LE_UNUSED(isGlobal);
@@ -2036,7 +2036,7 @@ le_result_t secStoreAdmin_GetTotalSpace
 
 #endif /* end !MK_CONFIG_SECSTORE_DISABLE_ADMIN */
 
-#if LE_CONFIG_SOTA
+#if LE_CONFIG_LINUX
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2120,7 +2120,7 @@ static void AppUninstallHandler
     SecStoreUpdate();
 }
 
-#endif /* end LE_CONFIG_SOTA */
+#endif /* end LE_CONFIG_LINUX */
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -2150,7 +2150,7 @@ COMPONENT_INIT
                     le_hashmap_HashString, le_hashmap_EqualsString);
 #endif
 
-#if LE_CONFIG_SOTA
+#if LE_CONFIG_LINUX
     SystemIndexPool = le_mem_CreatePool("SystemIndexPool", sizeof(SystemsIndex_t));
 
     // Register a handler function for secure storage restore indication.
@@ -2159,7 +2159,7 @@ COMPONENT_INIT
     // Register handlers for app installation/un-installiation events to update secure storage PATH.
     le_instStat_AddAppInstallEventHandler(AppInstallHandler, NULL);
     le_instStat_AddAppUninstallEventHandler(AppUninstallHandler, NULL);
-#endif /* end LE_CONFIG_SOTA */
+#endif /* end LE_CONFIG_LINUX */
 
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
