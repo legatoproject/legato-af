@@ -8,6 +8,7 @@ if [ x"$LE_CONFIG_LINUX" = "xy" ]; then
     export OECORE_NATIVE_SYSROOT="${TOOLCHAIN_DIR}/../../.."
 elif [ x"$LE_CONFIG_CUSTOM_OS" = "xy" ]; then
     PLATFORM_CFLAGS="-I${LEGATO_ROOT}/3rdParty/Lwm2mCore/include/platform-specific/rtos -D__RTOS__"
+    PLATFORM_CFLAGS="${PLATFORM_CFLAGS} -I${IKS_PATH}"
 fi
 
 cp -rf ${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/tinydtls/* .
