@@ -692,21 +692,12 @@ static void GenerateBinding
         {
             defStream << "<" << bindingPtr->serverAgentName << ">";
         }
-        else if (bindingPtr->serverType == model::Binding_t::INTERNAL)
-        {
-            // Do nothing - No need to print server agent name
-        }
         else
         {
             defStream << bindingPtr->serverAgentName;
         }
 
-        if (bindingPtr->serverType != model::Binding_t::INTERNAL)
-        {
-            defStream << ".";
-        }
-
-        defStream << bindingPtr->serverIfName << std::endl;
+        defStream << "." << bindingPtr->serverIfName << std::endl;
     }
 }
 
