@@ -380,7 +380,7 @@ LE_SHARED le_result_t le_socket_Disconnect
 LE_SHARED le_result_t le_socket_Send
 (
     le_socket_Ref_t  ref,        ///< [IN] Socket context reference
-    char*            dataPtr,    ///< [IN] Data pointer
+    const char*      dataPtr,    ///< [IN] Data pointer
     size_t           dataLen     ///< [IN] Data length
 );
 

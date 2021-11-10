@@ -463,6 +463,18 @@ LE_SHARED le_result_t le_ftpClient_Send
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Cancel file transfer with remote server.
+ *
+ * @return LE_OK on success or an appropriate error code on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_ftpClient_Abort
+(
+    le_ftpClient_SessionRef_t    sessionRef    ///< [IN]     Session reference.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  Delete a file from the remote server.
  *
  *  @return LE_OK on success or an appropriate error code on failure.

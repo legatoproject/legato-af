@@ -43,6 +43,7 @@
 #define RESP_QUIT_OK             221
 #define RESP_SIZE_OK             213
 #define RESP_DELE_OK             250
+#define RESP_TRANS_ABORTED       426
 
 
 #define RESP_INVALID             -1
@@ -124,7 +125,8 @@ typedef enum
     FTP_SIZE_SENT,  ///< SIZE command is sent.
     FTP_REST_SENT,  ///< REST command is sent.
     FTP_APPE_SENT,  ///< APPE command is sent.
-    FTP_XFEREND     ///< Response of data transfering completion is received.
+    FTP_XFEREND,    ///< Response of data transfering completion is received.
+    FTP_ABORT_SENT, ///< ABORT message sent to the server
 }
 FtpSessionState_t;
 
@@ -298,7 +300,7 @@ static void TimeoutHandler
 static le_result_t SendRequestMessage
 (
    le_ftpClient_SessionRef_t sessionRef,  ///< [IN] ftp client session ref
-   char* msgPtr,                          ///< [IN] message buffer
+   const char* msgPtr,                    ///< [IN] message buffer
    size_t len                             ///< [IN] message length
 )
 {
@@ -982,10 +984,10 @@ static void FtpClientStateMachine
         le_timer_Stop(contextPtr->timerRef);
     }
 
-    LE_DEBUG("FTP event received %x state %d", events, contextPtr->controlState);
-
     do
     {
+        LE_DEBUG("FTP event received %x state %d", events, contextPtr->controlState);
+
         restartLoop = false;
         switch (contextPtr->controlState)
         {
@@ -1571,6 +1573,60 @@ static void FtpClientStateMachine
                     LE_ERROR("QUIT failed");
                 }
 
+                contextPtr->result = status;
+                contextPtr->controlState = FTP_CLOSING;
+                restartLoop = true;
+                break;
+
+            case FTP_ABORT_SENT:
+
+                if (!(events & POLLIN))
+                {
+                    break;
+                }
+
+                // It's possible that both 426 and 226 are received in one le_socket_Read() call,
+                // thus we need to try to read response code of second response message
+                status = FtpClientGetMultiResponseCode(contextPtr, &response, &response1);
+                contextPtr->response = response;
+                if (status == LE_OK)
+                {
+                    if (response == RESP_TRANS_ABORTED)
+                    {
+                        LE_INFO("ABORT notification received.");
+                        if (response1 == RESP_INVALID)
+                        {
+                            // No second response code, data transfer is still ongoing.
+                            // Go back to transfering state to wait for end of transfer.
+                            contextPtr->controlState = FTP_XFERING;
+                            break;
+                        }
+                        else
+                        {
+                            response = response1;
+                            contextPtr->response = response;
+                        }
+                    }
+
+                    if (response == RESP_TRANS_OK)
+                    {
+                        LE_INFO("XFEREND notification received.");
+                        if (contextPtr->recvDone)
+                        {
+                            // Data transfer is done, we can safely close the data session.
+                            FtpClientDisconnectDataServer(contextPtr);
+                            contextPtr->controlState = FTP_DATAEND;
+                            restartLoop = true;
+                        }
+                        else
+                        {
+                            contextPtr->controlState = FTP_XFEREND;
+                        }
+                        break;
+                    }
+                }
+
+                //Fail case.
                 contextPtr->result = status;
                 contextPtr->controlState = FTP_CLOSING;
                 restartLoop = true;
@@ -2384,6 +2440,41 @@ le_result_t le_ftpClient_Send
 
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cancel file transfer with remote server.
+ *
+ * @return LE_OK on success or an appropriate error code on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_ftpClient_Abort
+(
+    le_ftpClient_SessionRef_t    sessionRef    ///< [IN]     Session reference.
+)
+{
+    static const char abortBuf[] = "ABOR\r\n";
+    le_result_t status;
+
+    if (!sessionRef)
+    {
+        return LE_BAD_PARAMETER;
+    }
+
+    if (sessionRef->operation != OP_RETRIEVE)
+    {
+        return LE_NOT_PERMITTED;
+    }
+
+    status = SendRequestMessage(sessionRef, abortBuf, sizeof(abortBuf) - 1);
+    if (LE_OK == status)
+    {
+        sessionRef->controlState = FTP_ABORT_SENT;
+    }
+
+    return status;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

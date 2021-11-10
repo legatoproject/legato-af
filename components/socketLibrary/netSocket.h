@@ -106,9 +106,9 @@ le_result_t netSocket_Disconnect
 //--------------------------------------------------------------------------------------------------
 le_result_t netSocket_Write
 (
-    int     fd,        ///< [IN] Socket file descriptor
-    char*   bufPtr,    ///< [IN] Data pointer to be sent
-    size_t  bufLen     ///< [IN] Size of data to be sent
+    int     fd,         ///< [IN] Socket file descriptor
+    const char* bufPtr, ///< [IN] Data pointer to be sent
+    size_t  bufLen      ///< [IN] Size of data to be sent
 );
 
 //--------------------------------------------------------------------------------------------------
