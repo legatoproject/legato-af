@@ -110,4 +110,16 @@ LE_SHARED void pa_riPin_SetV24RIMux
     int signal          ///< [IN] Signal to set
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable/disable RI on PPP traffic
+ *
+ * @return none
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void pa_riPin_SetRiPpp
+(
+    int value           ///< [IN] Value to enable when none zero, otherwise disable RI on PPP
+);
+
 #endif // LEGATO_PARIPIN_INCLUDE_GUARD
