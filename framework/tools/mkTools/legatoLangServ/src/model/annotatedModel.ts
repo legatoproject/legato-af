@@ -104,7 +104,6 @@ export enum SectionType
     ldFlags = 'ldFlags',
     libSection = 'lib',
     moduleSearch = 'moduleSearch',
-    pythonPackageSection = 'pythonPackage',
     requiresSection = 'requiresSection',
     runSection = 'runSection',
     sourcesSection = 'sources'

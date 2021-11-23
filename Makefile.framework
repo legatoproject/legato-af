@@ -90,24 +90,6 @@ ifeq ($(LE_CONFIG_JAVA),y)
   JAVA_FRAMEWORK_DIR := $(LEGATO_ROOT)/framework/java
 endif # end LE_CONFIG_JAVA
 
-# Determine if Python is enabled
-ifeq ($(LE_CONFIG_PYTHON),y)
-  # Version of Python used on target and on host for cffi.
-  PYTHON := $(LE_CONFIG_PYTHON_EXECUTABLE)
-
-  # Check at least that Python and the CFFI package are installed to build Python liblegato
-  # bindings.
-  ifeq ($(shell $(PYTHON) -c "import cffi" > /dev/null 2>&1 || echo 0),0)
-    $(error LE_CONFIG_PYTHON is set, but $(PYTHON) or cffi not available)
-  endif
-
-  PYVERSION := python$(shell $(PYTHON) -c 'import sys; print("{0}.{1}".format(*sys.version_info))')
-  LEGATO_PY := $(LIB_DIR)/$(PYVERSION)/site-packages/liblegato.py
-  LEGATO_PY_SO := $(LIB_DIR)/$(PYVERSION)/site-packages/_liblegato_py.so
-  LEGATO_PY_CEXT := $(BUILD_DIR)/_liblegato_py.c
-  PYTHON_FRAMEWORK_DIR := $(LEGATO_ROOT)/framework/python
-endif
-
 # Add appropriate rules for feature/OS selections
 ALL_PARTS_y := liblegato daemons
 DAEMONS_y   :=
@@ -132,7 +114,6 @@ DAEMONS_$(DAEMON_WATCHDOG)      += $(BIN_DIR)/watchdog
 DAEMONS_$(DAEMON_UPDATE)        += $(BIN_DIR)/updateDaemon
 
 ALL_PARTS_$(LE_CONFIG_JAVA)               += $(LEGATO_JAVA)
-ALL_PARTS_$(LE_CONFIG_PYTHON)             += $(LEGATO_PY)
 # Only build Linux target tools as part of the framework.  RTOS
 # target tools need to be included in the .sdef directly.
 ALL_PARTS_$(LE_CONFIG_LINUX_TARGET_TOOLS) += targetTools
@@ -323,34 +304,6 @@ $(LEGATO_JAVA): $(LIB_DIR) $(BUILD_DIR)/legatoJni.o
 		-lpthread \
 		-lrt
 endif # end LE_CONFIG_JAVA
-
-# Python recipes
-ifeq ($(LE_CONFIG_PYTHON),y)
-$(LEGATO_PY_CEXT): $(PYTHON_FRAMEWORK_DIR)/generate_cdefs.sh $(PYTHON_FRAMEWORK_DIR)/generate_c.py
-	$(L) GEN $@
-	$(Q)rm -rf $(BUILD_DIR)/_py_cdefs/
-	$(Q)mkdir $(BUILD_DIR)/_py_cdefs/
-	$(Q)bash $(PYTHON_FRAMEWORK_DIR)/generate_cdefs.sh "$(BUILD_DIR)/_py_cdefs/"
-	$(Q)$(PYTHON) $(PYTHON_FRAMEWORK_DIR)/generate_c.py "$(BUILD_DIR)/_py_cdefs" $(BUILD_DIR) \
-		> /dev/null
-
-$(LEGATO_PY_SO): liblegato $(LEGATO_PY_CEXT)
-	$(Q)mkdir -p $(dir $@)
-	$(L) CCLD $@
-	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $(LEGATO_PY_CEXT) \
-		-D_FTS_H                                                            \
-		-fPIC                                                               \
-		-shared                                                             \
-		-pthread                                                            \
-		-I$(LEGATO_SYSROOT)/usr/include/$(PYVERSION)                        \
-		-IC                                                                 \
-		$(CFLAGS)                                                           \
-		-Wl,--enable-new-dtags,-rpath="\$$ORIGIN/../lib"                    \
-		-L$(LIB_DIR) -llegato -l$(PYVERSION)
-
-$(LEGATO_PY): $(LEGATO_ROOT)/framework/python/liblegato.py $(LEGATO_PY_SO)
-	$(Q)cp $< $@
-endif # end LE_CONFIG_PYTHON
 
 # ========== DAEMON RECIPES ============
 

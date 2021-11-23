@@ -441,7 +441,6 @@ void AddExecutable
     // would just sit there doing nothing, so throw an exception.
     if (   (exePtr->hasCOrCppCode == false)
         && (exePtr->hasJavaCode == false)
-        && (exePtr->hasPythonCode == false)
         && (buildParams.isRelaxedStrictness == false))
     {
         exePtr->exeDefPtr->ThrowException(LE_I18N("Executable doesn't contain any components"

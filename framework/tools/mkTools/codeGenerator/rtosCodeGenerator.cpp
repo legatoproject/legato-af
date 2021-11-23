@@ -309,11 +309,6 @@ void GenerateRtosExeMain
         exePtr->exeDefPtr->ThrowException("Java is not supported on RTOS targets");
     }
 
-    if (exePtr->hasPythonCode)
-    {
-        exePtr->exeDefPtr->ThrowException("Python is not supported on RTOS targets");
-    }
-
     if (!exePtr->hasCOrCppCode)
     {
         // Nothing to do

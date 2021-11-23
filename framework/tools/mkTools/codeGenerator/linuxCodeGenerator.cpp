@@ -41,12 +41,6 @@ void GenerateJavaExeMain
     const mk::BuildParams_t& buildParams
 );
 
-void GeneratePythonExeMain
-(
-    const model::Exe_t* exePtr,
-    const mk::BuildParams_t& buildParams
-);
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -160,10 +154,6 @@ void GenerateLinuxExeMain
     else if (exePtr->hasJavaCode)
     {
         GenerateJavaExeMain(exePtr, buildParams);
-    }
-    else if (exePtr->hasPythonCode)
-    {
-        GeneratePythonExeMain(exePtr, buildParams);
     }
 }
 

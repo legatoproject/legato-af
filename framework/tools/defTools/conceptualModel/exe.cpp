@@ -34,7 +34,6 @@ Exe_t::Exe_t
     hasCppCode(false),
     hasCOrCppCode(false),
     hasJavaCode(false),
-    hasPythonCode(false),
     hasIncompatibleLanguageCode(false)
 //--------------------------------------------------------------------------------------------------
 {
@@ -71,9 +70,7 @@ void Exe_t::AddComponentInstance
 
     hasJavaCode |= componentInstancePtr->componentPtr->HasJavaCode();
 
-    hasPythonCode |= componentInstancePtr->componentPtr->HasPythonCode();
-
-    hasIncompatibleLanguageCode |= (hasCOrCppCode + hasJavaCode + hasPythonCode) > 1;
+    hasIncompatibleLanguageCode |= (hasCOrCppCode + hasJavaCode) > 1;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -113,11 +110,6 @@ const
     {
         objectName = "src/" + name + "/io/legato/generated/exe/" + name + "/Main.class";
         sourceName = "src/" + name + "/io/legato/generated/exe/" + name + "/Main.java";
-    }
-    else if (hasPythonCode)
-    {
-        objectName = "src/" + name + "_main.py";
-        sourceName = "src/" + name + "_main.py";
     }
     else
     {

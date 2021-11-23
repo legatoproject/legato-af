@@ -289,7 +289,7 @@ ifneq ($(TARGET),nothing)
 endif # end not "nothing" target
 
 # Python executable
-PYTHON_EXECUTABLE ?= python2.7
+PYTHON_EXECUTABLE ?= python3
 
 # KConfig executables
 MENUCONFIG_TOOL   ?= python3 $(LEGATO_ROOT)/3rdParty/Kconfiglib/menuconfig.py

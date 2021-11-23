@@ -19,8 +19,7 @@ enum ProgramLang_t
     LANG_C,     ///< C
     LANG_CXX,   ///< C++
     LANG_BIN,   ///< Binary, language unknown/irrelevant
-    LANG_JAVA,  ///< Java
-    LANG_PYTHON ///< Python
+    LANG_JAVA   ///< Java
 };
 
 #endif // LEGATO_DEFTOOLS_PROGRAMMING_LANGUAGE_H_INCLUDE_GUARD

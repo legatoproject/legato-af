@@ -81,23 +81,6 @@ config PROBATION_PERIOD
   of time has elapsed with no failures, it is marked as good.  This value can
   be overridden at runtime by the LE_PROBATION_MS environment variable.
 
-config PYTHON
-  bool "Enable Python support (EXPERIMENTAL)"
-  depends on POSIX
-  depends on EXPERIMENTAL
-  default n
-  ---help---
-  Enable support for Python.  Python is not supported on non-POSIX
-  systems.
-
-config PYTHON_EXECUTABLE
-  string "Python executable"
-  depends on PYTHON
-  default "$(def,$(PYTHON_EXECUTABLE),python2.7)"
-  ---help---
-  Python executable to use for building Python support.  This may be set to an
-  absolute path.
-
 config JAVA
   bool "Enable Java support (EXPERIMENTAL)"
   depends on POSIX

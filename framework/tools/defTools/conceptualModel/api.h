@@ -39,21 +39,6 @@ struct InterfaceCFiles_t
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Structure to hold paths to the Python code for a generated interface.
- */
-//--------------------------------------------------------------------------------------------------
-struct InterfacePythonFiles_t
-{
-    std::string cExtensionBinaryFile;
-    std::string cExtensionObjectFile;
-    std::string cdefSourceFile;
-    std::string cExtensionSourceFile;
-    std::string wrapperSourceFile;
-};
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Structure to hold paths to the Java code for a generated interface.
  */
 //--------------------------------------------------------------------------------------------------
@@ -157,7 +142,6 @@ public:
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const = 0;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const = 0;
-    virtual void GetInterfaceFiles(InterfacePythonFiles_t& pythonFiles) const = 0;
 
     virtual std::string GetRpcReferenceFile(void) const;
 };
@@ -175,7 +159,6 @@ struct ApiTypesOnlyInterface_t : public ApiRef_t
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
-    virtual void GetInterfaceFiles(InterfacePythonFiles_t& pythonFiles) const;
 };
 
 
@@ -194,7 +177,6 @@ struct ApiClientInterface_t : public ApiRef_t
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
-    virtual void GetInterfaceFiles(InterfacePythonFiles_t& pythonFiles) const;
 };
 
 
@@ -215,7 +197,6 @@ struct ApiServerInterface_t : public ApiRef_t
 
     virtual void GetInterfaceFiles(InterfaceCFiles_t& cFiles) const;
     virtual void GetInterfaceFiles(InterfaceJavaFiles_t& javaFiles) const;
-    virtual void GetInterfaceFiles(InterfacePythonFiles_t& pythonFiles) const;
 };
 
 
