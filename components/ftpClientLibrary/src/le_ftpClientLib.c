@@ -49,7 +49,7 @@
 #define RESP_INVALID             -1
 
 /// FTP response timeout
-#define FTP_TIMEOUT_MS           5000
+#define FTP_TIMEOUT_MS           10000
 /// FTP response buffer size
 #define FTP_RESP_MAX_SIZE        513
 /// FTP data buffer size
