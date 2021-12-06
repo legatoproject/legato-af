@@ -189,7 +189,7 @@ config ENABLE_SIM_WAKEUP_FALLBACK
 
 config ENABLE_DEFAULT_APN_SWITCHING
   bool "Enable default apn switching"
-  default y
+  default n
   ---help---
     In the event that sim is roaming, the module will automatically
     switch to the default APN of the sim.

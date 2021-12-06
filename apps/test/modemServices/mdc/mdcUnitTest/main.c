@@ -176,6 +176,7 @@ static void InitSimRefresh
  *
  */
 //--------------------------------------------------------------------------------------------------
+#if LE_CONFIG_ENABLE_DEFAULT_APN_SWITCHING
 static void TriggerSimRefresh
 (
     void
@@ -186,6 +187,7 @@ static void TriggerSimRefresh
     pa_simSimu_ReportSTKEvent(LE_SIM_REFRESH);
     le_sem_Wait(SimRefreshSemaphore);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
