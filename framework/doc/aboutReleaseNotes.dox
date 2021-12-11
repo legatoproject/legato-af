@@ -1,7 +1,7 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 19.11.5</b><br>
-Date: <b>February 10th, 2021</b><br>
+Version: <b>Legato 19.11.6</b><br>
+Date: <b>Dec 10th, 2021</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
@@ -26,6 +26,16 @@ $ leaf update
 @note The 19.11 release branch is the long term supported version for Sierra Wireless modules.
 Future Sierra Wireless module releases will be using the 19.11 release.  The 19.11 branch is
 the last version that will support the Linux 3.18/3.14 kernel. 
+
+@section rn1911_Patch6 19.11.6 Patch
+
+The 19.11.6 patch introduces:
+- a bug fix for a watchdog error during a FOTA operation
+- a bug fix for generating binary app packages
+- a bug fix for file recovery when R/W partition is corrupted
+- support for new image types
+- improve connection service in poor network conditions
+- disable APN switch
 
 @section rn1911_Patch5 19.11.5 Patch
 
