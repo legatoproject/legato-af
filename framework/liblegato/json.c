@@ -1175,6 +1175,35 @@ le_json_ParsingSessionRef_t le_json_ParseString
     return parserPtr;
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Parse a JSON document received via C string.
+ * This API Works Synchronously. This function returns when either parse is finished or there has
+ * been an error.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_json_SyncParseString
+(
+    const char *jsonString, ///< JSON string to parse.
+    le_json_EventHandler_t  eventHandler,   ///< Function to call when normal parsing events happen.
+    le_json_ErrorHandler_t  errorHandler,   ///< Function to call when errors happen.
+    void* opaquePtr   ///< Opaque pointer to be fetched by handlers using le_json_GetOpaquePtr().
+)
+{
+    // Create a Parser.
+    Parser_t* parserPtr = NewParser(eventHandler, errorHandler, opaquePtr);
+
+    parserPtr->fd = -1;
+    parserPtr->jsonString = jsonString;
+
+    // Create the top-level context and push it onto the context stack.
+    PushContext(parserPtr, LE_JSON_CONTEXT_DOC, eventHandler);
+
+    StringEventHandler(parserPtr, NULL);
+}
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Stops parsing and cleans up memory allocated by the parser.

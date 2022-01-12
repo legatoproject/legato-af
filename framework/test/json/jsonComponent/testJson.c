@@ -51,6 +51,7 @@ static struct JsonExpectation Expected[] =
 };
 
 static size_t TestIndex;
+static bool testDone = false;
 
 static void OnEvent
 (
@@ -72,7 +73,10 @@ static void OnEvent
 
         le_json_Cleanup(session);
         LE_TEST_INFO("======== END SUCCESSFUL JSON TEST ========");
-        LE_TEST_EXIT;
+        if (testDone)
+        {
+            LE_TEST_EXIT;
+        }
         return;
     }
 
@@ -133,8 +137,13 @@ COMPONENT_INIT
     int testCount = NUM_ARRAY_MEMBERS(Expected) * 4 + 3;
 
     LE_TEST_INFO("======== BEGIN JSON TEST ========");
-    TestIndex = 0;
-    LE_TEST_PLAN(testCount);
+    LE_TEST_PLAN(testCount * 2);
 
+    TestIndex = 0;
+    le_json_SyncParseString(StaticJson, &OnEvent, &OnError, NULL);
+
+    TestIndex = 0;
     LE_TEST_OK(le_json_ParseString(StaticJson, &OnEvent, &OnError, NULL) != NULL, "Created parser");
+
+    testDone = true;
 }
