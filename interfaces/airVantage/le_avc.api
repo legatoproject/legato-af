@@ -680,13 +680,6 @@ DEFINE CONFIG_SIM_APDU_RESP_PATH = "SIM_APDU_RESP";
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Maximum size of a LwM2M credential
- */
-//--------------------------------------------------------------------------------------------------
-DEFINE MAX_CREDENTIAL_SIZE = 4096;
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Status of session or update
  *
  * If an update is pending, it must first be downloaded and then installed.
@@ -830,20 +823,6 @@ ENUM CredentialStatus
 ENUM ConfigType
 {
     CONFIG_TYPE_SIM_APDU_RESPONSE = 1   ///< SIM APDU response
-};
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Type of the credential to set
- */
-//--------------------------------------------------------------------------------------------------
-ENUM CredentialType
-{
-    SW_PUBLIC_KEY,        ///< Software public key
-    FW_PUBLIC_KEY,        ///< Firmware public key
-    BS_SERVER_ADDRESS,    ///< Bootstrap server address
-    BS_PSK_ID,            ///< Bootstrap pre-shared key identity
-    BS_PSK                ///< Bootstrap pre-shared key
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1452,20 +1431,4 @@ FUNCTION SetNatTimeout
 FUNCTION bool IsSessionStarted
 (
     uint16 serverId IN                  ///< Short Server ID
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Provision a credential used for connecting to AirVantage.
- *
- * @return
- *      - LE_OK on success.
- *      - LE_FAULT if failed.
- */
-//--------------------------------------------------------------------------------------------------
-FUNCTION le_result_t SetCredential
-(
-    CredentialType credType                  IN,  ///< Credential type
-    uint16         serverId                  IN,  ///< LwM2M server identity
-    uint8          cred[MAX_CREDENTIAL_SIZE] IN   ///< Credential
 );
