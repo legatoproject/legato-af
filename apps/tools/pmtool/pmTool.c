@@ -971,6 +971,8 @@ static void PrintBootOnStatus
         fprintf(stderr, "Error printing bootOn status");
         exit(EXIT_FAILURE);
     }
+
+    exit(EXIT_SUCCESS);
 }
 
 //--------------------------------------------------------------------------------------------------
