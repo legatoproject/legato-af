@@ -1406,6 +1406,10 @@ void le_mem_Release
             // still needs to access it, but after it goes back on the free list, it could get
             // reallocated by another thread (or even the destructor itself) and have its
             // contents clobbered.
+
+            // Zero contents to reduce risk of leaking data to next user and improve compression
+            // performance when hibernating unused blocks
+            memset(blockPtr->data, 0, poolPtr->blockSize - offsetof(MemBlock_t, data));
             blockPtr->data[0].link = LE_SLS_LINK_INIT;
             le_sls_Stack(&(poolPtr->freeList), &(blockPtr->data[0].link));
 #else

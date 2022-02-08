@@ -595,22 +595,29 @@ void rq_HandleCommitTxnRequest
 )
 //--------------------------------------------------------------------------------------------------
 {
+
     if (ni_IsWriteable(iteratorRef) == false)
     {
+        // Get request queue
+        le_sls_List_t* requestQueue = tdb_GetRequestQueue(ni_GetTree(iteratorRef));
+
         // Kill the iterator but do not try to comit it.
         ni_Release(iteratorRef);
 
         le_cfg_CommitTxnRespond(commandRef);
-        ProcessRequestQueue(tdb_GetRequestQueue(ni_GetTree(iteratorRef)), NULL);
+        ProcessRequestQueue(requestQueue, NULL);
     }
     else if (tdb_HasActiveReaders(ni_GetTree(iteratorRef)) == false)
     {
+        // Get request queue
+        le_sls_List_t* requestQueue = tdb_GetRequestQueue(ni_GetTree(iteratorRef));
+
         ni_Close(iteratorRef);
         ni_Commit(iteratorRef);
         ni_Release(iteratorRef);
 
         le_cfg_CommitTxnRespond(commandRef);
-        ProcessRequestQueue(tdb_GetRequestQueue(ni_GetTree(iteratorRef)), NULL);
+        ProcessRequestQueue(requestQueue, NULL);
     }
     else
     {
