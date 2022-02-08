@@ -9,6 +9,9 @@
 #include "interfaces.h"
 #include "handlers.h"
 
+// Ignore truncation warning on GCC -- not a real issue in this file.
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of parameters

@@ -8,6 +8,9 @@
 #include "interfaces.h"
 #include "defs.h"
 
+// Ignore truncation warning on GCC -- not a real issue in this file.
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum supported commands

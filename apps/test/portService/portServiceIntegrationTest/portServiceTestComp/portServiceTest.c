@@ -30,6 +30,9 @@
 #include "legato.h"
 #include "interfaces.h"
 
+// Ignore truncation warning on GCC -- not a real issue in this file.
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Byte length to read from fd.

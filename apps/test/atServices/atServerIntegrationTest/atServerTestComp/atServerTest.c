@@ -58,6 +58,9 @@
 #define STRING_ADD "ADD"
 #define STRING_REMOVE "REMOVE"
 
+// Ignore truncation warning on GCC -- not a real issue in this file.
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Extern function
@@ -388,7 +391,9 @@ void PrepareHandler
                                            LE_ATDEFS_PARAMETER_MAX_BYTES) == LE_OK);
 
         memset(rsp, 0, LE_ATDEFS_RESPONSE_MAX_BYTES);
-        snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES, "%s PARAM %d: %s", atCommandName+2, i, param);
+        snprintf(rsp, LE_ATDEFS_RESPONSE_MAX_BYTES,
+                 "%s PARAM %d: %s",
+                 atCommandName+2, i, param);
 
         LE_ASSERT(le_atServer_SendIntermediateResponse(commandRef, rsp) == LE_OK);
     }
