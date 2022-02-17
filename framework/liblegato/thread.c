@@ -278,19 +278,24 @@ static le_thread_DestructorRef_t AddDestructor
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Delete a thread object.
+ * Destructor for thread object.
  **/
 //--------------------------------------------------------------------------------------------------
-static void DeleteThread
+static void DestroyThread
 (
-    thread_Obj_t* threadPtr
+    void* threadObjPtr
 )
 {
+    thread_Obj_t* threadPtr = threadObjPtr;
+
+    Lock();
+    le_ref_DeleteRef(ThreadRefMap, threadPtr->safeRef);
+    ThreadObjListChangeCount++;
+    le_dls_Remove(&ThreadObjList, &(threadPtr->link));
+    Unlock();
+
     // Destruct the thread attributes structure.
     pthread_attr_destroy(&(threadPtr->attr));
-
-    // Release the Thread object back to the pool it was allocated from.
-    le_mem_Release(threadPtr);
 }
 
 
@@ -337,19 +342,11 @@ static void CleanupThread
     // Release any argument info associated with the thread.
     arg_DestructThread();
 
-    // If this thread is NOT joinable, then immediately invalidate its safe reference, remove it
-    // from the thread object list, and free the thread object.  Otherwise, wait until someone
-    // joins with it.
-    if (! threadObjPtr->isJoinable)
-    {
-        Lock();
-        le_ref_DeleteRef(ThreadRefMap, threadObjPtr->safeRef);
-        ThreadObjListChangeCount++;
-        le_dls_Remove(&ThreadObjList, &(threadObjPtr->link));
-        Unlock();
-
-        DeleteThread(threadObjPtr);
-    }
+    // Free the thread object.  If this is NOT joinable, this will immediately free the thread
+    // object.  If it IS joinable, this still leaves one reference outstanding until Join
+    // is called.
+    LE_INFO("Thread exit %p, releasing ref", threadObjPtr);
+    le_mem_Release(threadObjPtr);
 
     // Clear the Legato thread info to prevent double-free errors and further Legato thread calls.
     LE_ASSERT(pthread_setspecific(ThreadLocalDataKey, NULL) == 0);
@@ -798,6 +795,8 @@ void thread_Init
     ThreadPool = le_mem_InitStaticPool(ThreadPool, LE_CONFIG_MAX_THREAD_POOL_SIZE,
         sizeof(thread_Obj_t));
 
+    le_mem_SetDestructor(ThreadPool, DestroyThread);
+
     // Create the Safe Reference Map for Thread References.
     Lock();
     ThreadRefMap = le_ref_InitStaticMap(ThreadRef, LE_CONFIG_MAX_THREAD_POOL_SIZE);
@@ -817,6 +816,7 @@ void thread_Init
 #else
     thread_Obj_t* threadPtr = CreateThread(NULL, NULL);
 #endif
+
     // It is obviously running
     threadPtr->state = THREAD_STATE_RUNNING;
 
@@ -1320,6 +1320,13 @@ void le_thread_Start
                 "Attempt to start an already started thread (%s).",
                 THREAD_NAME(threadPtr->name));
 
+    // If joinable, maintain a reference for join
+    if (threadPtr->isJoinable)
+    {
+        LE_INFO("Add ref to thread pointer for joinable thread %p", threadPtr);
+        le_mem_AddRef(threadPtr);
+    }
+
     // Start the thread with the default function PThreadStartRoutine, passing the
     // PThreadStartRoutine the thread object.  PThreadStartRoutine will then start the user's main
     // function.
@@ -1341,6 +1348,12 @@ void le_thread_Start
         else
         {
             LE_FATAL("Failed to create thread '%s'.", THREAD_NAME(threadPtr->name));
+        }
+
+        if (threadPtr->isJoinable)
+        {
+            LE_INFO("Release extra ref for joinable thread %p", threadPtr);
+            le_mem_Release(threadPtr);
         }
     }
 }
@@ -1410,14 +1423,8 @@ le_result_t le_thread_Join
             switch (error)
             {
                 case 0:
-                    // If the join was successful, it's time to delete the safe reference, remove
-                    // it from the list of thread objects, and release the Thread Object.
-                    Lock();
-                    le_ref_DeleteRef(ThreadRefMap, threadPtr->safeRef);
-                    ThreadObjListChangeCount++;
-                    le_dls_Remove(&ThreadObjList, &(threadPtr->link));
-                    Unlock();
-                    DeleteThread(threadPtr);
+                    LE_INFO("Join thread %p, releasing ref", threadPtr);
+                    le_mem_Release(threadPtr);
 
                     return LE_OK;
 
