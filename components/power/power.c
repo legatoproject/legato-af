@@ -142,8 +142,10 @@ le_result_t le_power_SetPowerInfo
             if (powerSourceEmpty)
             {
                 // Power source with empty contents is designed to delete from the list.
-                le_mem_Release(powerInfoNodePtr);
                 le_dls_Remove(&PowerInfoList, linkPtr);
+
+                le_mem_Release(powerInfoNodePtr);
+
                 linkPtr = NULL;
             }
             else
