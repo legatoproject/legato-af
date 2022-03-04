@@ -18,6 +18,7 @@
  * - duplicate a file descriptor with @c le_fd_Dup(),
  * - create a FIFO with @c le_fd_MkFifo(),
  * - manipulate a file descriptor with @c le_fd_Fcntl().
+ * - change the current file offset with @c le_fd_Lseek().
  *
  * <HR>
  *
@@ -39,6 +40,7 @@
     !defined(le_fd_Fcntl)       && \
     !defined(le_fd_Ioctl)       && \
     !defined(le_fd_Fstat)       && \
+    !defined(le_fd_Lseek)       && \
     !defined(le_fd_MkFifo)      && \
     !defined(le_fd_MkPipe)      && \
     !defined(le_fd_Open)        && \
@@ -137,6 +139,23 @@ int le_fd_Fstat
     int fd,                           ///< [IN]    File descriptor
     struct stat *bufPtr              ///< [OUT]   Stat structure
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Repositions the current file offset of the file descriptor fd
+ *
+ * @return
+ *  New offset, measured as bytes from the beginnning of the file, or
+ *  (off_t)-1 if an error occurred.
+ */
+//--------------------------------------------------------------------------------------------------
+off_t le_fd_Lseek
+(
+    int fd,                   ///< [IN]    File descriptor
+    off_t offset,             ///< [IN] Offset
+    int whence                ///< [IN] Indicates how the new offset is computed
+);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
