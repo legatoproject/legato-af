@@ -53,7 +53,26 @@ std::string Unquote
     if ((pathLen >= 2) && (   ((path.front() == '\'') && (path.back() == '\''))
                            || ((path.front() == '"') && (path.back() == '"'))  )   )
     {
-        return path.substr(1, pathLen - 2);
+        std::string unquotedPath = "";
+
+        for (size_t n = 1; n < pathLen - 1; ++n)
+        {
+            if (path[n] == '\\')
+            {
+                // Lookahead if this is an escaped character
+                if ((n < pathLen - 2) &&
+                    ((path[n+1] == '\\') ||
+                     (path[n+1] == '\'') ||
+                     (path[n+1] == '"')))
+                {
+                    // Skip escape character
+                    n++;
+                }
+            }
+            unquotedPath += path[n];
+        }
+
+        return unquotedPath;
     }
     else
     {
@@ -71,43 +90,38 @@ std::string Unquote
 //--------------------------------------------------------------------------------------------------
 std::string EscapeQuotes
 (
-    const std::string& str
+    const std::string& str,
+    const char *quoteChars /* = "\"" */
 )
 //--------------------------------------------------------------------------------------------------
 {
-    size_t pos = str.find('"');
+    size_t prevPos = 0;
+    size_t pos = str.find_first_of(quoteChars);
 
-    // If there are no quotes, just return the string as-is.
     if (pos == str.npos)
     {
         return str;
     }
 
-    // Create a new string and copy in everything before the first ".
-    std::string result = str.substr(0, pos);
+    std::string result = "";
 
-    // Append a backslash.
-    result += '\\';
-
-    // Find the position of the next " in str or the end of the string.
-    size_t nextPos = str.find('"', pos + 1);
-
-    // Append everything from the first " to the next one (or end of string).
-    result += str.substr(pos, nextPos);
-
-    // While we keep finding more quotes,
-    while (nextPos != str.npos)
+    do
     {
-        // Append another backslash to the end of the result string.
+        // Create a new string and copy in everything before the first ".
+        result += str.substr(prevPos, pos - prevPos);
+
+        // Append a backslash.
         result += '\\';
 
-        // Find the next " in str or the end of str.
-        pos = nextPos;
-        nextPos = str.find('"', pos + 1);
+        prevPos = pos;
 
-        // Append that to the result.
-        result += str.substr(pos, nextPos);
+        // Find the position of the next " in str or the end of the string.
+        pos = str.find_first_of(quoteChars, prevPos + 1);
     }
+    while (pos != str.npos);
+
+    // And finish up with final part of the string
+    result += str.substr(prevPos, str.npos);
 
     return result;
 }

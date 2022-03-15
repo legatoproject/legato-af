@@ -19,7 +19,7 @@ autoheader
 ac_cv_func_malloc_0_nonnull=yes  ./configure \
     --prefix="${LEGATO_BUILD}/3rdParty/tinydtls" \
     --host="$($CC -dumpmachine)" \
-    CFLAGS="-w -std=gnu99 -DSIERRA -DWITH_SHA256 ${PLATFORM_CFLAGS} ${CFLAGS}" \
-    LDFLAGS="${LDFLAGS}"
+    CFLAGS="-w -std=gnu99 -DSIERRA -DWITH_SHA256 ${PLATFORM_CFLAGS} $(echo $CFLAGS |sed 's/\"/\\\"/g')"
+    LDFLAGS="$LDFLAGS"
 make -k
 make -k install

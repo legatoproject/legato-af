@@ -52,7 +52,8 @@ std::string Unquote
 //--------------------------------------------------------------------------------------------------
 std::string EscapeQuotes
 (
-    const std::string& str
+    const std::string& str,
+    const char *quoteChars = "\""
 );
 
 

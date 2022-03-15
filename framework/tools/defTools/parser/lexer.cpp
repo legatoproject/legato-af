@@ -2115,6 +2115,16 @@ void Lexer_t::PullQuoted
         {
             ThrowException(LE_I18N("Unexpected end-of-line before end of quoted string."));
         }
+        // If it's a backslash, look ahead one character.  If it's a backslash or a quote,
+        // treat this as an escaped character and skip forward an extra character.
+        if ((context.top().nextChars[0] == '\\') &&
+            (context.top().nextChars.size() > 1) &&
+            ((context.top().nextChars[1] == '\\') ||
+             (context.top().nextChars[1] == '"')  ||
+             (context.top().nextChars[1] == '\'')))
+        {
+            AdvanceOneCharacter(tokenPtr);
+        }
 
         AdvanceOneCharacter(tokenPtr);
     }
