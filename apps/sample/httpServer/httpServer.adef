@@ -7,19 +7,22 @@ bundles:
         [rw] pages /pages
         cfg /cfg
     }
+
+    file:
+    {
+        ${LEGATO_SYSROOT}/usr/lib/libutil.so /lib/libutil.so
+        ${LEGATO_SYSROOT}/usr/lib/libnss_compat.so /lib/libnss_compat.so
+        ${LEGATO_SYSROOT}/usr/lib/libnsl.so /lib/libnsl.so
+        ${LEGATO_SYSROOT}/usr/lib/libresolv.so /lib/libresolv.so // Needs this to run shell.
+        ${LEGATO_SYSROOT}/usr/lib/libprocps.so /lib/libprocps.so // Need this for ps.
+    }
 }
 
 requires:
 {
     file:
     {
-        /lib/libutil.so.1 /lib/libutil.so.1
         /etc/nsswitch.conf /etc/nsswitch.conf
-        /lib/libnss_compat.so.2 /lib/libnss_compat.so.2
-        /lib/libnsl.so.1 /lib/libnsl.so.1
-        /lib/libresolv.so.2 /lib/libresolv.so.2 // Needs this to run shell.
-        /usr/lib/libprocps.so.7.1.0 /lib/libprocps.so.7.1.0
-        /usr/lib/libprocps.so.7 /lib/libprocps.so.7 // Need this for ps.
         /etc/passwd /etc/passwd    // needed by python to lookup user
         /legato/systems/current/version /legato/systems/current/version
         /legato/systems/current/status /legato/systems/current/status
