@@ -143,12 +143,8 @@ static void StopParsing
         parserPtr->next = EXPECT_NOTHING;
         if (parserPtr->fdMonitor != NULL)
         {
-#if LE_CONFIG_LINUX
             le_fdMonitor_Delete(parserPtr->fdMonitor);
             parserPtr->fdMonitor = NULL;
-#else
-            LE_WARN("Memory leak: fdMonitor should not exist on this platform.");
-#endif
         }
     }
 }
@@ -897,7 +893,7 @@ static void ReadData
         ssize_t bytesRead;
         do
         {
-            bytesRead = read(fd, &c, 1);
+            bytesRead = le_fd_Read(fd, &c, 1);
         }
         while ((bytesRead == -1) && (errno == EINTR));
 
@@ -953,7 +949,6 @@ static void ReadData
 }
 
 
-#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Event handler that gets called when an event occurs on a monitored file descriptor.
@@ -1000,7 +995,6 @@ static void FdEventHandler
     // We are finished with the parser object now.
     le_mem_Release(parserPtr);
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1081,7 +1075,6 @@ static le_json_ParsingSessionRef_t NewParser
     return parserPtr;
 }
 
-#if LE_CONFIG_LINUX
 //--------------------------------------------------------------------------------------------------
 /**
  * Parse a JSON document received via a file descriptor.
@@ -1110,7 +1103,6 @@ le_json_ParsingSessionRef_t le_json_Parse
 
     return parserPtr;
 }
-#endif
 
 
 //--------------------------------------------------------------------------------------------------

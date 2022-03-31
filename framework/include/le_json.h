@@ -213,7 +213,7 @@ typedef struct le_json_ParsingSession* le_json_ParsingSessionRef_t;
  * @return Reference to the JSON parsing session started by this function call.
  */
 //--------------------------------------------------------------------------------------------------
-LE_FULL_API le_json_ParsingSessionRef_t le_json_Parse
+LE_API_JSON le_json_ParsingSessionRef_t le_json_Parse
 (
     int fd, ///< File descriptor to read the JSON document from.
     le_json_EventHandler_t  eventHandler,   ///< Function to call when normal parsing events happen.
