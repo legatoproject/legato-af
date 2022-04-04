@@ -19,6 +19,191 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse Hex string to uint16_t value
+ *
+ * @return
+ *      - Parsed Hex number in uint16_t type
+ */
+//--------------------------------------------------------------------------------------------------
+static uint16_t ParseHex4
+(
+    const char* input               ///< [IN] String from which to parse hexadecimal value
+)
+{
+    uint16_t hexVal = 0;
+    uint8_t i = 0;
+
+    for (i = 0; i < 4; i++)
+    {
+        if ((input[i] >= '0') && (input[i] <= '9'))
+        {
+            hexVal += (uint16_t) input[i] - '0';
+        }
+        else if ((input[i] >= 'A') && (input[i] <= 'F'))
+        {
+            hexVal += (uint16_t) 10 + input[i] - 'A';
+        }
+        else if ((input[i] >= 'a') && (input[i] <= 'f'))
+        {
+            hexVal += (uint16_t) 10 + input[i] - 'a';
+        }
+        else
+        {
+            return 0;
+        }
+
+        if (i < 3)
+        {
+            // shift left to make place for the next nibble
+            hexVal = hexVal << 4;
+        }
+    }
+
+    return hexVal;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+* Converts a UTF-16 literal to UTF-8
+* A literal can be one or two sequences of the form \uXXXX
+*
+* @return
+*      - 0 on failure
+*      - Converted literal length in bytes on success
+*/
+//--------------------------------------------------------------------------------------------------
+static uint8_t Utf16LiteralToUtf8
+(
+    const char* inputPtr,           ///< [IN] Pointer to the UTF16 literal
+    const char* inputEnd,           ///< [IN] Pointer to the end of the string to parse
+    char** outputPtr,               ///< [IN/OUT] Buffer to which converted literal will
+                                    ///<          be written to
+    size_t* outputLen               ///< [IN/OUT] Output buffer size
+)
+{
+    uint64_t codepoint = 0;
+    uint16_t firstCode = 0;
+    const char *firstSequence = inputPtr;
+    uint8_t utf8Len = 0;
+    uint8_t utf8Pos = 0;
+    uint8_t sequenceLen = 0;
+    uint8_t firstByteMark = 0;
+
+    if ((inputEnd - firstSequence) < 6)
+    {
+        LE_ERROR("UTF16 input not long enough");
+        goto fail;
+    }
+
+    firstCode = ParseHex4(firstSequence + 2);
+    if (((firstCode >= 0xDC00) && (firstCode <= 0xDFFF)))
+    {
+        LE_ERROR("UTF16 input: invalid code");
+        goto fail;
+    }
+
+    // UTF16 surrogate pair
+    if ((firstCode >= 0xD800) && (firstCode <= 0xDBFF))
+    {
+        const char *second_sequence = firstSequence + 6;
+        uint16_t secondCode = 0;
+        sequenceLen = 12; // \uXXXX\uXXXX
+
+        if ((inputEnd - second_sequence) < 6)
+        {
+            LE_ERROR("UTF16 input surrogate pair not long enough");
+            goto fail;
+        }
+
+        if ((second_sequence[0] != '\\') || (second_sequence[1] != 'u'))
+        {
+            LE_ERROR("UTF16 input missing surrogate pair");
+            goto fail;
+        }
+
+        secondCode = ParseHex4(second_sequence + 2);
+        if ((secondCode < 0xDC00) || (secondCode > 0xDFFF))
+        {
+            LE_ERROR("UTF16 input: invalid code for surrogate pair");
+            goto fail;
+        }
+
+        codepoint = 0x10000 + (((firstCode & 0x3FF) << 10) | (secondCode & 0x3FF));
+    }
+    else
+    {
+        sequenceLen = 6; // \uXXXX
+        codepoint = firstCode;
+    }
+
+    /* encode as UTF-8
+     * takes at most 4 bytes to encode:
+     * 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx */
+    if (codepoint < 0x80)
+    {
+        // normal ascii, encoding 0xxxxxxx
+        utf8Len = 1;
+    }
+    else if (codepoint < 0x800)
+    {
+        // two bytes, encoding 110xxxxx 10xxxxxx
+        utf8Len = 2;
+        firstByteMark = 0xC0; // 11000000
+    }
+    else if (codepoint < 0x10000)
+    {
+        // three bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx
+        utf8Len = 3;
+        firstByteMark = 0xE0; // 11100000
+    }
+    else if (codepoint <= 0x10FFFF)
+    {
+        // four bytes, encoding 1110xxxx 10xxxxxx 10xxxxxx 10xxxxxx
+        utf8Len = 4;
+        firstByteMark = 0xF0; // 11110000
+    }
+    else
+    {
+        LE_ERROR("UTF16 invalid codepoint");
+        goto fail;
+    }
+
+    // ensure output buffer size is enough
+    if (*outputLen < utf8Len)
+    {
+        goto fail;
+    }
+
+    // encode as utf8
+    for (utf8Pos = (utf8Len - 1); utf8Pos > 0; utf8Pos--)
+    {
+        // 10xxxxxx
+        (*outputPtr)[utf8Pos] = ((codepoint | 0x80) & 0xBF);
+        codepoint >>= 6;
+    }
+    // encode first byte
+    if (utf8Len > 1)
+    {
+        (*outputPtr)[0] = ((codepoint | firstByteMark) & 0xFF);
+    }
+    else
+    {
+        (*outputPtr)[0] = (codepoint & 0x7F);
+    }
+
+    *outputPtr += utf8Len;
+    *outputLen -= utf8Len;
+
+    return sequenceLen;
+
+fail:
+    return 0;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function returns the number of characters in string.
  *
  * UTF-8 encoded characters may be larger than 1 byte so the number of characters is not necessarily
@@ -700,5 +885,140 @@ le_result_t le_utf8_DecodeUnicodeCodePoint
         return LE_FORMAT_ERROR;
     }
 
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an unescaped version of a string into a provided buffer
+ * Buffer receiving the unescaped version must be large enough to contain the unescaped
+ * output.
+ * The same buffer may be used for input and output.
+ *
+ * @return
+ *      - LE_OK                 on success
+ *      - LE_BAD_PARAMETER      if input or output is a NULL pointer
+ *      - LE_NOT_IMPLEMENTED    if utility does not support required unescaping type
+ *      - LE_NO_MEMORY          if not enough memory available in output buffer
+ *      - LE_FAULT              if input string is malformed escaping wise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_StringUnescape
+(
+    const char* input,              ///< [IN]  Null terminated string to unescape
+    char* output,                   ///< [OUT] Buffer receiving the unescaped string.
+                                    ///<       Must be at least the same size as input
+    size_t outputLen                ///< [IN]  Length of input and output strings, in bytes
+)
+{
+    if (NULL == input || NULL == output)
+    {
+        LE_ERROR("Expect valid pointers for input/output (got NULL pointer)");
+        return LE_BAD_PARAMETER;
+    }
+
+    const size_t inputLen = strlen(input);
+    const char * inputPtr = input;
+    const char * inputEnd = inputPtr + inputLen;
+    char * outputPtr = output;
+
+    while (*inputPtr)
+    {
+        // Make sure still have space in output buffer
+        if (outputLen < 1)
+        {
+            return LE_NO_MEMORY;
+        }
+
+        // No escape to perform: basic copy of the character
+        if (*inputPtr != '\\')
+        {
+            *outputPtr++ = *inputPtr++;
+            outputLen--;
+        }
+        // Escaped sequence: perform adequate escaping
+        else
+        {
+            uint8_t sequenceLen = 2;
+            // If input string ends with a '\': it is malformed
+            if ((inputEnd - inputPtr) <= 1)
+            {
+                return LE_FAULT;
+            }
+
+            switch (inputPtr[1])
+            {
+                case 'b':
+                    *outputPtr++ = '\b';
+                    outputLen--;
+                    break;
+                case 'f':
+                    *outputPtr++ = '\f';
+                    outputLen--;
+                    break;
+                case 'n':
+                    *outputPtr++ = '\n';
+                    outputLen--;
+                    break;
+                case 'r':
+                    *outputPtr++ = '\r';
+                    outputLen--;
+                    break;
+                case 't':
+                    *outputPtr++ = '\t';
+                    outputLen--;
+                    break;
+                case '\"':
+                case '\\':
+                case '/':
+                    *outputPtr++ = inputPtr[1];
+                    outputLen--;
+                    break;
+
+                case 'u':
+                    sequenceLen = Utf16LiteralToUtf8(inputPtr,
+                                                     inputEnd,
+                                                     &outputPtr,
+                                                     &outputLen
+                                                     );
+                    if (sequenceLen == 0)
+                    {
+                        // UTF16 to UTF8 conversion failed: malformed input
+                        return LE_FAULT;
+                    }
+                    break;
+
+                case 'x':
+                {
+                    // Hex escape format is fixed length of 4: "\xXX"
+                    if ((inputEnd - inputPtr) < 4)
+                    {
+                        return LE_FAULT;
+                    }
+                    // Input must be two hex characters and result must be one binary byte
+                    if (1 != le_hex_StringToBinary(inputPtr + 2,
+                                                   2,
+                                                   (uint8_t *)outputPtr, 1))
+                    {
+                        LE_ERROR("Failed to convert %s", inputPtr);
+                        sequenceLen = 0;
+                        return LE_FAULT;
+                    }
+                    sequenceLen = 4;
+                    outputPtr++;
+                    outputLen--;
+                    break;
+                }
+
+                default:
+                    // No implemented escpaing matches input: not a malformed error
+                    LE_ERROR("Escape \\%c not implemented", inputPtr[1]);
+                    return LE_NOT_IMPLEMENTED;
+            }
+            inputPtr += sequenceLen;
+        }
+    }
+
+    *outputPtr = '\0';
     return LE_OK;
 }

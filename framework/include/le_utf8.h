@@ -390,4 +390,28 @@ le_result_t le_utf8_DecodeUnicodeCodePoint
                          ///  when the function returns LE_OK.
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Creates an unescaped version of a string into a provided buffer
+ * Buffer receiving the unescaped version must be large enough to contain the unescaped
+ * output.
+ * The same buffer may be used for input and output.
+ *
+ * @return
+ *      - LE_OK                 on success
+ *      - LE_BAD_PARAMETER      if input or output is a NULL pointer
+ *      - LE_NOT_IMPLEMENTED    if utility does not support required unescaping type
+ *      - LE_NO_MEMORY          if not enough memory available in output buffer
+ *      - LE_FAULT              if input string is malformed escaping wise
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_utf8_StringUnescape
+(
+    const char* input,              ///< [IN]  Null terminated string to unescape
+    char* output,                   ///< [OUT] Buffer receiving the unescaped string.
+                                    ///<       Must be at least the same size as input
+    size_t outputLen                ///< [IN]  Length of input and output strings, in bytes
+);
+
 #endif  // LEGATO_UTF8_INCLUDE_GUARD
