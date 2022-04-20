@@ -1069,7 +1069,9 @@ static le_result_t ProcessClientRequest
     else if (recvRes != LE_OK)
     {
         LE_ERROR("Error when receiving a client request stream");
+#ifdef RPC_PROXY_LOCAL_SERVICE
         DestroyLocalBuffers(&streamStatePtr->localBuffers);
+#endif
         return LE_FAULT;
     }
 
@@ -1107,10 +1109,10 @@ static le_result_t ProcessClientRequest
                 "Dropping request and returning error",
                 clientRequestMsgPtr->commonHeader.serviceId,
                 clientRequestMsgPtr->commonHeader.id);
-
+#ifdef RPC_PROXY_LOCAL_SERVICE
         // Clean up local buffers
         DestroyLocalBuffers(&streamStatePtr->localBuffers);
-
+#endif
         //
         // Generate a LE_NO_MEMORY event
         //
@@ -1138,9 +1140,10 @@ static le_result_t ProcessClientRequest
     requestResponsePtr->commonHeader.id = clientRequestMsgPtr->commonHeader.id;
     requestResponsePtr->commonHeader.serviceId = clientRequestMsgPtr->commonHeader.serviceId;
     requestResponsePtr->commonHeader.type = RPC_PROXY_SERVER_RESPONSE;
+#ifdef RPC_PROXY_LOCAL_SERVICE
     requestResponsePtr->localBuffers = streamStatePtr->localBuffers;
     streamStatePtr->localBuffers = LE_DLS_LIST_INIT;
-
+#endif
     // Copy the Source of the request (system-name) so we know who to send the response back to
     le_utf8_Copy(requestResponsePtr->systemName,
                  systemName,

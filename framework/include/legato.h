@@ -192,6 +192,7 @@ extern "C" {
 #include "le_atomic.h"
 #include "le_backtrace.h"
 #include "le_base64.h"
+#include "le_cbor.h"
 #include "le_cdata.h"
 #include "le_clock.h"
 #include "le_crc.h"

@@ -56,7 +56,7 @@ requires:
 {
     component:
     {
-        3rdParty/libcbor
+        ${LEGATO_ROOT}/components/3rdParty/libcbor
     }
     lib:
     {

@@ -1114,13 +1114,16 @@ static void SemanticTagCallback
     sendContextPtr->lastTag = tagId;
     if (IsTagLocalServiceOpt(tagId))
     {
+#ifdef RPC_PROXY_LOCAL_SERVICE
         sendContextPtr->state = SEND_EXPECTING_OPT_STR_HDR;
+#endif
         sendContextPtr->squelchThisItem = true;
     }
     else if (IsTagLocalStrResponse(tagId))
     {
-
+#ifdef RPC_PROXY_LOCAL_SERVICE
         WriteStringResponse(sendContextPtr);
+#endif
         sendContextPtr->squelchThisItem = true;
 
         // clear the tag now:
@@ -1129,7 +1132,9 @@ static void SemanticTagCallback
     }
     else if (IsTagLocalByteStrResponse(tagId))
     {
+#ifdef RPC_PROXY_LOCAL_SERVICE
         sendContextPtr->state = SEND_EXPECTING_OPT_BSTR_RESPONSE_SIZE;
+#endif
     }
     else if (IsTagEventHandler(tagId))
     {
@@ -1703,52 +1708,56 @@ static inline unsigned int TagIdToDispatchIdx
  * Dispatch table for handling cbor items in receiving streams:
  */
 //--------------------------------------------------------------------------------------------------
-static const dispatchFunc_fpt DispatchTable[LE_RPC_NUM_DISPATCH_IDXS][LE_PACK_TYPE_INVALID_TYPE+1] =
+static const dispatchFunc_fpt DispatchTable[LE_RPC_NUM_DISPATCH_IDXS][LE_CBOR_TYPE_INVALID_TYPE+1] =
 {
     [LE_RPC_NO_TAG_DISPATCH_IDX] =          {
-                                             [LE_PACK_TYPE_POS_INTEGER]  = HandleWithDirectCopy,
-                                             [LE_PACK_TYPE_NEG_INTEGER]  = HandleWithDirectCopy,
-                                             [LE_PACK_TYPE_BYTE_STRING]  = HandleStringHeader,
-                                             [LE_PACK_TYPE_TEXT_STRING]  = HandleStringHeader,
-                                             [LE_PACK_TYPE_ITEM_ARRAY]   = HandleArrayHeader,
-                                             [LE_PACK_TYPE_SEMANTIC_TAG] = HandleSemanticTag,
-                                             [LE_PACK_TYPE_BOOLEAN]      = HandleWithDirectCopy,
-                                             [LE_PACK_TYPE_DOUBLE]       = HandleWithDirectCopy,
-                                             [LE_PACK_TYPE_INDEF_END]    = HandleIndefEnd,
-                                             [LE_PACK_TYPE_INVALID_TYPE] = HandleAsError},
+                                             [LE_CBOR_TYPE_POS_INTEGER]  = HandleWithDirectCopy,
+                                             [LE_CBOR_TYPE_NEG_INTEGER]  = HandleWithDirectCopy,
+                                             [LE_CBOR_TYPE_BYTE_STRING]  = HandleStringHeader,
+                                             [LE_CBOR_TYPE_TEXT_STRING]  = HandleStringHeader,
+                                             [LE_CBOR_TYPE_ITEM_ARRAY]   = HandleArrayHeader,
+                                             [LE_CBOR_TYPE_SEMANTIC_TAG] = HandleSemanticTag,
+                                             [LE_CBOR_TYPE_BOOLEAN]      = HandleWithDirectCopy,
+                                             [LE_CBOR_TYPE_DOUBLE]       = HandleWithDirectCopy,
+                                             [LE_CBOR_TYPE_INDEF_END]    = HandleIndefEnd,
+                                             [LE_CBOR_TYPE_NULL]         = HandleAsError,
+                                             [LE_CBOR_TYPE_INVALID_TYPE] = HandleAsError},
     [LE_RPC_OUTPUT_SIZE_TAG_DISPATCH_IDX] = {
-                                             [LE_PACK_TYPE_POS_INTEGER]  = HandleOutputSize,
-                                             [LE_PACK_TYPE_NEG_INTEGER]  = HandleAsError,
-                                             [LE_PACK_TYPE_BYTE_STRING]  = HandleAsError,
-                                             [LE_PACK_TYPE_TEXT_STRING]  = HandleAsError,
-                                             [LE_PACK_TYPE_ITEM_ARRAY]   = HandleAsError,
-                                             [LE_PACK_TYPE_SEMANTIC_TAG] = HandleAsError,
-                                             [LE_PACK_TYPE_BOOLEAN]      = HandleAsError,
-                                             [LE_PACK_TYPE_DOUBLE]       = HandleAsError,
-                                             [LE_PACK_TYPE_INDEF_END]    = HandleAsError,
-                                             [LE_PACK_TYPE_INVALID_TYPE] = HandleAsError},
+                                             [LE_CBOR_TYPE_POS_INTEGER]  = HandleOutputSize,
+                                             [LE_CBOR_TYPE_NEG_INTEGER]  = HandleAsError,
+                                             [LE_CBOR_TYPE_BYTE_STRING]  = HandleAsError,
+                                             [LE_CBOR_TYPE_TEXT_STRING]  = HandleAsError,
+                                             [LE_CBOR_TYPE_ITEM_ARRAY]   = HandleAsError,
+                                             [LE_CBOR_TYPE_SEMANTIC_TAG] = HandleAsError,
+                                             [LE_CBOR_TYPE_BOOLEAN]      = HandleAsError,
+                                             [LE_CBOR_TYPE_DOUBLE]       = HandleAsError,
+                                             [LE_CBOR_TYPE_INDEF_END]    = HandleAsError,
+                                             [LE_CBOR_TYPE_NULL]         = HandleAsError,
+                                             [LE_CBOR_TYPE_INVALID_TYPE] = HandleAsError},
     [LE_RPC_FILESTREAM_TAG_DISPATCH_IDX] =  {
-                                             [LE_PACK_TYPE_POS_INTEGER]  = HandleFileStreamMetadata,
-                                             [LE_PACK_TYPE_NEG_INTEGER]  = HandleAsError,
-                                             [LE_PACK_TYPE_BYTE_STRING]  = HandleAsError,
-                                             [LE_PACK_TYPE_TEXT_STRING]  = HandleAsError,
-                                             [LE_PACK_TYPE_ITEM_ARRAY]   = HandleAsError,
-                                             [LE_PACK_TYPE_SEMANTIC_TAG] = HandleAsError,
-                                             [LE_PACK_TYPE_BOOLEAN]      = HandleAsError,
-                                             [LE_PACK_TYPE_DOUBLE]       = HandleAsError,
-                                             [LE_PACK_TYPE_INDEF_END]    = HandleAsError,
-                                             [LE_PACK_TYPE_INVALID_TYPE] = HandleAsError},
+                                             [LE_CBOR_TYPE_POS_INTEGER]  = HandleFileStreamMetadata,
+                                             [LE_CBOR_TYPE_NEG_INTEGER]  = HandleAsError,
+                                             [LE_CBOR_TYPE_BYTE_STRING]  = HandleAsError,
+                                             [LE_CBOR_TYPE_TEXT_STRING]  = HandleAsError,
+                                             [LE_CBOR_TYPE_ITEM_ARRAY]   = HandleAsError,
+                                             [LE_CBOR_TYPE_SEMANTIC_TAG] = HandleAsError,
+                                             [LE_CBOR_TYPE_BOOLEAN]      = HandleAsError,
+                                             [LE_CBOR_TYPE_DOUBLE]       = HandleAsError,
+                                             [LE_CBOR_TYPE_INDEF_END]    = HandleAsError,
+                                             [LE_CBOR_TYPE_NULL]         = HandleAsError,
+                                             [LE_CBOR_TYPE_INVALID_TYPE] = HandleAsError},
     [LE_RPC_REFERENCE_TAG_DISPATCH_IDX] =   {
-                                             [LE_PACK_TYPE_POS_INTEGER]  = HandleReference,
-                                             [LE_PACK_TYPE_NEG_INTEGER]  = HandleAsError,
-                                             [LE_PACK_TYPE_BYTE_STRING]  = HandleAsError,
-                                             [LE_PACK_TYPE_TEXT_STRING]  = HandleAsError,
-                                             [LE_PACK_TYPE_ITEM_ARRAY]   = HandleAsError,
-                                             [LE_PACK_TYPE_SEMANTIC_TAG] = HandleAsError,
-                                             [LE_PACK_TYPE_BOOLEAN]      = HandleAsError,
-                                             [LE_PACK_TYPE_DOUBLE]       = HandleAsError,
-                                             [LE_PACK_TYPE_INDEF_END]    = HandleAsError,
-                                             [LE_PACK_TYPE_INVALID_TYPE] = HandleAsError}
+                                             [LE_CBOR_TYPE_POS_INTEGER]  = HandleReference,
+                                             [LE_CBOR_TYPE_NEG_INTEGER]  = HandleAsError,
+                                             [LE_CBOR_TYPE_BYTE_STRING]  = HandleAsError,
+                                             [LE_CBOR_TYPE_TEXT_STRING]  = HandleAsError,
+                                             [LE_CBOR_TYPE_ITEM_ARRAY]   = HandleAsError,
+                                             [LE_CBOR_TYPE_SEMANTIC_TAG] = HandleAsError,
+                                             [LE_CBOR_TYPE_BOOLEAN]      = HandleAsError,
+                                             [LE_CBOR_TYPE_DOUBLE]       = HandleAsError,
+                                             [LE_CBOR_TYPE_INDEF_END]    = HandleAsError,
+                                             [LE_CBOR_TYPE_NULL]         = HandleAsError,
+                                             [LE_CBOR_TYPE_INVALID_TYPE] = HandleAsError}
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1982,14 +1991,14 @@ static le_result_t RepackUnOptimizedData
     rpcProxy_Message_t *proxyMessagePtr, ///< [IN] Pointer to the original Proxy Message
     void** bufferPtr,                    ///< pointer to ipc message buffer
     uint64_t length,                     ///< length of unoptimized data
-    le_pack_Type_t itemType              ///< type of item that is being unoptimized
+    le_cbor_Type_t itemType              ///< type of item that is being unoptimized
 )
 {
     le_result_t result = LE_OK;
     uint8_t* slotIndexPtr = &(streamStatePtr->slotIndex);
     uint8_t* responsePtr;
     bool dataIsNonEmptyString = (streamStatePtr->lastTag == LE_PACK_OUT_STRING_SIZE && length>0) ||
-                                itemType == LE_PACK_TYPE_TEXT_STRING;
+                                itemType == LE_CBOR_TYPE_TEXT_STRING;
     if (proxyMessagePtr->commonHeader.type == RPC_PROXY_SERVER_RESPONSE)
     {
         // Retrieve the response pointer
@@ -2004,7 +2013,7 @@ static le_result_t RepackUnOptimizedData
         }
 
         // For byte strings, push the actual size of the returned buffer into the stream
-        if (itemType == LE_PACK_TYPE_BYTE_STRING)
+        if (itemType == LE_CBOR_TYPE_BYTE_STRING)
         {
             le_pack_PackSize((uint8_t **)bufferPtr, length);
         }
@@ -2038,8 +2047,8 @@ static le_result_t RepackUnOptimizedData
                       (void*) responsePtr,
                       (streamStatePtr->lastTag == LE_PACK_OUT_STRING_SIZE)? LE_PACK_OUT_STRING_POINTER:
                       (streamStatePtr->lastTag == LE_PACK_OUT_BYTE_STR_SIZE)? LE_PACK_OUT_BYTE_STR_POINTER:
-                      (itemType == LE_PACK_TYPE_TEXT_STRING)? LE_PACK_IN_STRING_POINTER:
-                      (itemType == LE_PACK_TYPE_BYTE_STRING)? LE_PACK_IN_BYTE_STR_POINTER: 0));
+                      (itemType == LE_CBOR_TYPE_TEXT_STRING)? LE_PACK_IN_STRING_POINTER:
+                      (itemType == LE_CBOR_TYPE_BYTE_STRING)? LE_PACK_IN_BYTE_STR_POINTER: 0));
 
         LE_DEBUG("Rolling-up data, dataSize [%" PRIu64 "], "
                  "proxy id [%" PRIu32 "], pointer [%p]",
@@ -2049,7 +2058,7 @@ static le_result_t RepackUnOptimizedData
         streamStatePtr->lastTag = 0;
         streamStatePtr->nextItemDispatchIdx = TagIdToDispatchIdx(streamStatePtr->lastTag);
     }
-    if (itemType == LE_PACK_TYPE_TEXT_STRING || itemType == LE_PACK_TYPE_BYTE_STRING)
+    if (itemType == LE_CBOR_TYPE_TEXT_STRING || itemType == LE_CBOR_TYPE_BYTE_STRING)
     {
         if (length > 0)
         {
@@ -2265,9 +2274,9 @@ static le_result_t HandleStringHeader
     uint8_t* workBuff = (uint8_t*)streamStatePtr->workBuff;
 
     ssize_t additionalBytes;
-    le_pack_Type_t itemType = le_pack_GetType(workBuff, &additionalBytes);
+    le_cbor_Type_t itemType = le_cbor_GetType(workBuff, &additionalBytes);
 
-    if (itemType == LE_PACK_TYPE_TEXT_STRING)
+    if (itemType == LE_CBOR_TYPE_TEXT_STRING)
     {
         if (!le_pack_UnpackStringHeader(&workBuff, &length))
         {
@@ -2275,7 +2284,7 @@ static le_result_t HandleStringHeader
             goto error;
         }
     }
-    else if(itemType == LE_PACK_TYPE_BYTE_STRING)
+    else if(itemType == LE_CBOR_TYPE_BYTE_STRING)
     {
         if (!le_pack_UnpackByteStringHeader(&workBuff, &length))
         {
@@ -2290,7 +2299,7 @@ static le_result_t HandleStringHeader
     }
 
     rpcProxy_CommonHeader_t* commonHeaderPtr = (rpcProxy_CommonHeader_t*) proxyMessagePtr;
-    if (itemType == LE_PACK_TYPE_BYTE_STRING &&
+    if (itemType == LE_CBOR_TYPE_BYTE_STRING &&
             commonHeaderPtr->type == RPC_PROXY_FILESTREAM_MESSAGE)
     {
         LE_DEBUG("Handling filestream data of length %"PRIuS"", length);
@@ -2336,7 +2345,7 @@ static le_result_t HandleStringHeader
             ret = LE_NO_MEMORY;
             goto error;
         }
-        else if (itemType == LE_PACK_TYPE_TEXT_STRING)
+        else if (itemType == LE_CBOR_TYPE_TEXT_STRING)
         {
             if (!le_pack_PackStringHeader((uint8_t**)bufferPtr, length))
             {
@@ -2344,7 +2353,7 @@ static le_result_t HandleStringHeader
                 goto error;
             }
         }
-        else if (itemType == LE_PACK_TYPE_BYTE_STRING)
+        else if (itemType == LE_CBOR_TYPE_BYTE_STRING)
         {
             if (!le_pack_PackByteStringHeader((uint8_t**)bufferPtr, length))
             {
@@ -2386,9 +2395,9 @@ static le_result_t HandleArrayHeader
     uint8_t* workBuff = (uint8_t*)streamStatePtr->workBuff;
 
     ssize_t additionalBytes;
-    le_pack_Type_t itemType = le_pack_GetType(workBuff, &additionalBytes);
+    le_cbor_Type_t itemType = le_cbor_GetType(workBuff, &additionalBytes);
 
-    if (itemType == LE_PACK_TYPE_ITEM_ARRAY && additionalBytes >=0)
+    if (itemType == LE_CBOR_TYPE_ITEM_ARRAY && additionalBytes >=0)
     {
         if (streamStatePtr->msgBuffSizeLeft < LE_PACK_ARRAY_HEADER_MAX_SIZE)
         {
@@ -2404,7 +2413,7 @@ static le_result_t HandleArrayHeader
             ret = LE_FAULT;
         }
     }
-    else if (itemType == LE_PACK_TYPE_ITEM_ARRAY && additionalBytes < 0)
+    else if (itemType == LE_CBOR_TYPE_ITEM_ARRAY && additionalBytes < 0)
     {
         rpcProxy_CommonHeader_t* commonHeaderPtr = (rpcProxy_CommonHeader_t*) proxyMessagePtr;
         bool packIndefHeader = (commonHeaderPtr->type != RPC_PROXY_FILESTREAM_MESSAGE);
@@ -2532,7 +2541,7 @@ static le_result_t HandleOutputSize
         ret = LE_FORMAT_ERROR;
         goto error;
     }
-
+#ifdef RPC_PROXY_LOCAL_SERVICE
     if (DoIOptimize(streamStatePtr))
     {
         if (streamStatePtr->msgBuffSizeLeft <
@@ -2543,9 +2552,10 @@ static le_result_t HandleOutputSize
         }
             // allocate memory for size and pack that memory pointer instead:
         ret = RepackUnOptimizedData(streamStatePtr, (rpcProxy_Message_t*)proxyMessagePtr, bufferPtr, value,
-                                        LE_PACK_TYPE_POS_INTEGER);
+                                        LE_CBOR_TYPE_POS_INTEGER);
     }
     else
+#endif
     {
         if (!le_pack_PackUint32((uint8_t**)bufferPtr, value))
         {
@@ -2694,7 +2704,7 @@ static le_result_t HandleWithDirectCopy
     void* buffStart = *bufferPtr;
     uint8_t* workBuff = (uint8_t*)streamStatePtr->workBuff;
     ssize_t additionalBytes;
-    le_pack_Type_t itemType = le_pack_GetType(workBuff, &additionalBytes);
+    le_cbor_Type_t itemType = le_cbor_GetType(workBuff, &additionalBytes);
     LE_UNUSED(itemType);
     LE_UNUSED(proxyMessagePtr);
 
@@ -2730,7 +2740,9 @@ static void FinishStream
     NetworkMessageState_t* netState =  CONTAINER_OF(streamStatePtr, NetworkMessageState_t,
                                                    streamState);
     netState->recvState = NETWORK_MSG_DONE;
+#ifdef RPC_PROXY_LOCAL_SERVICE
     streamStatePtr->slotIndex = 0;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -2748,7 +2760,7 @@ static le_result_t RepackItem
     uint8_t* workBuff = (uint8_t*)streamStatePtr->workBuff;
 
     ssize_t additionalBytes;
-    le_pack_Type_t itemType = le_pack_GetType(workBuff, &additionalBytes);
+    le_cbor_Type_t itemType = le_cbor_GetType(workBuff, &additionalBytes);
 
 
     LE_DEBUG("RPC RCV:RepackItem:lastTag %d, DispatchIdx:%d", streamStatePtr->lastTag,
@@ -2931,7 +2943,7 @@ le_result_t rpcProxy_RecvStream
         else if (streamStatePtr->state == STREAM_CBOR_HEADER)
         {
             ssize_t additionalBytes;
-            le_pack_Type_t itemType = le_pack_GetType(workBuff, &additionalBytes);
+            le_cbor_Type_t itemType = le_cbor_GetType(workBuff, &additionalBytes);
             LE_UNUSED(itemType);
             if (additionalBytes <= 0)
             {
@@ -3155,8 +3167,9 @@ le_result_t rpcProxy_InitializeStreamState
 {
     //Start by initializing everything to zero:
     memset(streamStatePtr, 0 , sizeof(StreamState_t));
+#ifdef RPC_PROXY_LOCAL_SERVICE
     streamStatePtr->localBuffers = LE_DLS_LIST_INIT;
-
+#endif
         rpcProxy_CommonHeader_t* commonHeaderPtr = (rpcProxy_CommonHeader_t*) proxyMessagePtr;
 
     return StreamStateInitializersTable[commonHeaderPtr->type](streamStatePtr, proxyMessagePtr);

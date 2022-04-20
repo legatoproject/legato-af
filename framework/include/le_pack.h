@@ -21,6 +21,9 @@
 #ifndef LE_PACK_H_INCLUDE_GUARD
 #define LE_PACK_H_INCLUDE_GUARD
 
+#ifdef LE_CONFIG_RPC
+#include "le_cbor.h"
+#endif
 
 // with ARM RVCT the max size of UINTPTR_MAX is signed.
 #if UINT32_MAX == UINTPTR_MAX || INT32_MAX == UINTPTR_MAX
@@ -40,20 +43,11 @@
 //semantic tag type:
 typedef uint16_t le_pack_SemanticTag_t;
 
-// le_pack type:
-typedef enum le_pack_Type
-{
-    LE_PACK_TYPE_POS_INTEGER = 0,
-    LE_PACK_TYPE_NEG_INTEGER = 1,
-    LE_PACK_TYPE_BYTE_STRING = 2,
-    LE_PACK_TYPE_TEXT_STRING = 3,
-    LE_PACK_TYPE_ITEM_ARRAY = 4,
-    LE_PACK_TYPE_SEMANTIC_TAG = 5,
-    LE_PACK_TYPE_BOOLEAN = 6,
-    LE_PACK_TYPE_DOUBLE = 7,
-    LE_PACK_TYPE_INDEF_END = 8,
-    LE_PACK_TYPE_INVALID_TYPE = 9,
-} le_pack_Type_t;
+#ifdef LE_CONFIG_RPC
+// Original packing/unpacking code doesn't check buffer size, after introducing le_cbor API, apply
+// this big enough value to indicate that buffer won't overflow
+#define LE_PACK_CBOR_BUFFER_LENGTH  1024
+#endif
 
 
 //--------------------------------------------------------------------------------------------------
@@ -62,23 +56,23 @@ typedef enum le_pack_Type
  */
 //--------------------------------------------------------------------------------------------------
 #ifdef LE_CONFIG_RPC
-#define LE_PACK_UINT8_MAX_SIZE              (1 + sizeof(uint8_t))
-#define LE_PACK_UINT16_MAX_SIZE             (1 + sizeof(uint16_t))
-#define LE_PACK_UINT32_MAX_SIZE             (1 + sizeof(uint32_t))
-#define LE_PACK_UINT64_MAX_SIZE             (1 + sizeof(uint64_t))
-#define LE_PACK_INT8_MAX_SIZE               (1 + sizeof(int8_t))
-#define LE_PACK_INT16_MAX_SIZE              (1 + sizeof(int16_t))
-#define LE_PACK_INT32_MAX_SIZE              (1 + sizeof(int32_t))
-#define LE_PACK_INT64_MAX_SIZE              (1 + sizeof(int64_t))
-#define LE_PACK_POS_INTEGER_MAX_SIZE        (1 + sizeof(uint64_t))
-#define LE_PACK_NEG_INTEGER_MAX_SIZE        (1 + sizeof(int64_t))
-#define LE_PACK_SEMANTIC_TAG_MAX_SIZE       (1 + sizeof(le_pack_SemanticTag_t))
-#define LE_PACK_BOOL_MAX_SIZE               (1)
-#define LE_PACK_DOUBLE_MAX_SIZE             (9)
-#define LE_PACK_INDEF_END_MAX_SIZE          (1)
-#define LE_PACK_STR_HEADER_MAX_SIZE         (1 + sizeof(uint32_t))
-#define LE_PACK_ARRAY_HEADER_MAX_SIZE       (1 + sizeof(uint32_t))
-#define LE_PACK_INDEF_ARRAY_HEADER_MAX_SIZE (1)
+#define LE_PACK_UINT8_MAX_SIZE              LE_CBOR_UINT8_MAX_SIZE
+#define LE_PACK_UINT16_MAX_SIZE             LE_CBOR_UINT16_MAX_SIZE
+#define LE_PACK_UINT32_MAX_SIZE             LE_CBOR_UINT32_MAX_SIZE
+#define LE_PACK_UINT64_MAX_SIZE             LE_CBOR_UINT64_MAX_SIZE
+#define LE_PACK_INT8_MAX_SIZE               LE_CBOR_INT8_MAX_SIZE
+#define LE_PACK_INT16_MAX_SIZE              LE_CBOR_INT16_MAX_SIZE
+#define LE_PACK_INT32_MAX_SIZE              LE_CBOR_INT32_MAX_SIZE
+#define LE_PACK_INT64_MAX_SIZE              LE_CBOR_INT64_MAX_SIZE
+#define LE_PACK_POS_INTEGER_MAX_SIZE        LE_CBOR_POS_INTEGER_MAX_SIZE
+#define LE_PACK_NEG_INTEGER_MAX_SIZE        LE_CBOR_NEG_INTEGER_MAX_SIZE
+#define LE_PACK_SEMANTIC_TAG_MAX_SIZE       LE_CBOR_SEMANTIC_TAG_MAX_SIZE
+#define LE_PACK_BOOL_MAX_SIZE               LE_CBOR_BOOL_MAX_SIZE
+#define LE_PACK_DOUBLE_MAX_SIZE             LE_CBOR_DOUBLE_MAX_SIZE
+#define LE_PACK_INDEF_END_MAX_SIZE          LE_CBOR_INDEF_END_MAX_SIZE
+#define LE_PACK_STR_HEADER_MAX_SIZE         LE_CBOR_STR_HEADER_MAX_SIZE
+#define LE_PACK_ARRAY_HEADER_MAX_SIZE       LE_CBOR_ARRAY_HEADER_MAX_SIZE
+#define LE_PACK_INDEF_ARRAY_HEADER_MAX_SIZE LE_CBOR_INDEF_ARRAY_HEADER_MAX_SIZE
 #define LE_PACK_SIZE_POINTER_TUPLE_MAX_SIZE (1 + 1 + sizeof(size_t) + 1 + sizeof(intptr_t))
 
 #else // no rpc:
@@ -130,31 +124,6 @@ typedef enum le_pack_Type
 
 
 //--------------------------------------------------------------------------------------------------
-/**
- * Internal macros:
- */
-//--------------------------------------------------------------------------------------------------
-#define _LE_PACK_CBOR_POS_INTEGER   0
-#define _LE_PACK_CBOR_NEG_INTEGER   1
-#define _LE_PACK_CBOR_BYTE_STRING   2
-#define _LE_PACK_CBOR_TEXT_STRING   3
-#define _LE_PACK_CBOR_ITEM_ARRAY    4
-#define _LE_PACK_CBOR_PAIR_MAP      5
-#define _LE_PACK_CBOR_SEMANTIC_TAG  6
-#define _LE_PACK_CBOR_PRIMITVE      7
-
-#define _LE_PACK_CBOR_COMPLEX_THRESHOLD    24
-
-#define _LE_PACK_CBOR_PRIMITIVE_FALSE      20
-#define _LE_PACK_CBOR_PRIMITIVE_TRUE       21
-#define _LE_PACK_CBOR_PRIMITIVE_DOUBLE     27
-#define _LE_PACK_CBOR_PRIMITIVE_BREAK      31
-#define _LE_PACK_CBOR_PRIMITIVE_INDEFINITE 31
-
-
-
-
-//--------------------------------------------------------------------------------------------------
 // Pack functions
 //--------------------------------------------------------------------------------------------------
 
@@ -176,52 +145,8 @@ typedef enum le_pack_Type
     do {                                            \
         memcpy(*bufferPtr, desPtr, length);         \
         *bufferPtr += length;                       \
-    } while(0)                                      \
+    } while(0)
 
-//--------------------------------------------------------------------------------------------------
-/**
- * pack tiny field
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_PACK_PACK_TINY_ITEM(major, additional)            \
-    do {                                                     \
-        *(*bufferPtr) = ((major & 0x7) << 5) | (additional); \
-        *bufferPtr += 1;                                     \
-    } while(0)                                               \
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pack an integer:
- */
-//--------------------------------------------------------------------------------------------------
-void _le_pack_packInteger
-(
-    uint8_t **bufferPtr,
-    uint64_t value,
-    unsigned int major
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pack a negative integer
- */
-//--------------------------------------------------------------------------------------------------
-void _le_pack_packNegativeInteger
-(
-    uint8_t **bufferPtr,
-    uint64_t value
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Pack a positive integer
- */
-//--------------------------------------------------------------------------------------------------
-void _le_pack_packPositiveInteger
-(
-    uint8_t **bufferPtr,
-    uint64_t value
-);
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -259,20 +184,11 @@ LE_DECLARE_INLINE bool le_pack_PackSemanticTag
  * prototype of Out-of-line functions containing rpc specific implementation:
  */
 //--------------------------------------------------------------------------------------------------
-bool le_pack_PackInt8_rpc(uint8_t** bufferPtr, int8_t value);
-bool le_pack_PackInt16_rpc(uint8_t** bufferPtr, int16_t value);
-bool le_pack_PackInt32_rpc(uint8_t** bufferPtr, int32_t value);
-bool le_pack_PackInt64_rpc(uint8_t** bufferPtr, int64_t value);
-bool le_pack_PackDouble_rpc(uint8_t** bufferPtr, double value);
 bool le_pack_PackResult_rpc(uint8_t** bufferPtr, le_result_t value);
 bool le_pack_PackTaggedSizeUint32Tuple_rpc(uint8_t** bufferPtr, size_t size, uint32_t value,
                                            le_pack_SemanticTag_t tagId);
 bool le_pack_PackTaggedSizeUint64Tuple_rpc(uint8_t** bufferPtr, size_t size, uint64_t value,
                                            le_pack_SemanticTag_t tagId);
-bool le_pack_PackString_rpc(uint8_t** bufferPtr, const char *stringPtr, uint32_t maxStringCount);
-bool le_pack_PackIndefArrayHeader_rpc(uint8_t** bufferPtr);
-bool le_pack_PackEndOfIndefArray_rpc(uint8_t** bufferPtr);
-bool le_pack_PackBool_rpc(uint8_t** bufferPtr, bool value);
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -290,7 +206,8 @@ LE_DECLARE_INLINE bool le_pack_PackUint8
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packPositiveInteger(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodePositiveInteger(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
 #endif
@@ -334,7 +251,8 @@ LE_DECLARE_INLINE bool le_pack_PackUint16
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packPositiveInteger(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodePositiveInteger(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
 #endif
@@ -379,7 +297,8 @@ LE_DECLARE_INLINE bool le_pack_PackUint32
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packPositiveInteger(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodePositiveInteger(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
 #endif
@@ -424,7 +343,8 @@ LE_DECLARE_INLINE bool le_pack_PackUint64
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packPositiveInteger(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodePositiveInteger(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
 #endif
@@ -468,7 +388,8 @@ LE_DECLARE_INLINE bool le_pack_PackInt8
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackInt8_rpc(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeInt8(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
     return true;
@@ -512,7 +433,8 @@ LE_DECLARE_INLINE bool le_pack_PackInt16
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackInt16_rpc(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeInt16(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
     return true;
@@ -556,7 +478,8 @@ LE_DECLARE_INLINE bool le_pack_PackInt32
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackInt32_rpc(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeInt32(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
     return true;
@@ -600,7 +523,8 @@ LE_DECLARE_INLINE bool le_pack_PackInt64
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackInt64_rpc(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeInt64(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
     return true;
@@ -646,8 +570,8 @@ LE_DECLARE_INLINE bool le_pack_PackSize
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packPositiveInteger(bufferPtr, value);
-    return true;
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodePositiveInteger(bufferPtr, &sz, value);
 #else
     return le_pack_PackUint32(bufferPtr, value);
 #endif
@@ -776,7 +700,8 @@ LE_DECLARE_INLINE bool le_pack_PackBool
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackBool_rpc(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeBool(bufferPtr, &sz, value);
 #else
     // Force boolean to uint8_t 0 or 1 for packing, regarldess of underlying OS type.
     // Underlying type has been int on some platforms in the past.
@@ -823,7 +748,8 @@ LE_DECLARE_INLINE bool le_pack_PackChar
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packPositiveInteger(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodePositiveInteger(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
 #endif
@@ -867,7 +793,8 @@ LE_DECLARE_INLINE bool le_pack_PackDouble
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackDouble_rpc(bufferPtr, value);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeDouble(bufferPtr, &sz, value);
 #else
     LE_PACK_PACK_SIMPLE_VALUE(value);
     return true;
@@ -1063,8 +990,8 @@ LE_DECLARE_INLINE bool le_pack_PackStringHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packInteger(bufferPtr, stringLen, _LE_PACK_CBOR_TEXT_STRING);
-    return true;
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeStringHeader(bufferPtr, &sz, stringLen);
 #else
     return le_pack_PackUint32(bufferPtr, stringLen);
 #endif
@@ -1084,7 +1011,8 @@ LE_DECLARE_INLINE bool le_pack_PackString
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackString_rpc(bufferPtr, stringPtr, maxStringCount);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeString(bufferPtr, &sz, stringPtr, maxStringCount);
 #else
     if (!stringPtr)
     {
@@ -1154,7 +1082,8 @@ LE_DECLARE_INLINE bool le_pack_PackArrayHeader
     }
 
 #ifdef LE_CONFIG_RPC
-    _le_pack_packInteger(bufferPtr, arrayCount, _LE_PACK_CBOR_ITEM_ARRAY);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodeArrayHeader(bufferPtr, &sz, arrayCount);
 #else
     LE_ASSERT(le_pack_PackSize(bufferPtr, arrayCount));
 #endif
@@ -1172,7 +1101,8 @@ LE_DECLARE_INLINE bool le_pack_PackIndefArrayHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackIndefArrayHeader_rpc(bufferPtr);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeIndefArrayHeader(bufferPtr, &sz);
 #else
     LE_UNUSED(bufferPtr);
     return true;
@@ -1190,7 +1120,8 @@ LE_DECLARE_INLINE bool le_pack_PackEndOfIndefArray
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_PackEndOfIndefArray_rpc(bufferPtr);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeEndOfIndefArray(bufferPtr, &sz);
 #else
     LE_UNUSED(bufferPtr);
     return true;
@@ -1209,8 +1140,8 @@ LE_DECLARE_INLINE bool le_pack_PackByteStringHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packInteger(bufferPtr, length, _LE_PACK_CBOR_BYTE_STRING);
-    return true;
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    return le_cbor_EncodeByteStringHeader(bufferPtr, &sz, length);
 #else
     return le_pack_PackUint32(bufferPtr, length);
 #endif
@@ -1229,7 +1160,8 @@ LE_DECLARE_INLINE bool le_pack_PackByteString
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packInteger(bufferPtr, byteStringCount, _LE_PACK_CBOR_BYTE_STRING);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodeByteStringHeader(bufferPtr, &sz, byteStringCount);
 #else
     le_pack_PackUint32(bufferPtr, byteStringCount);
 #endif
@@ -1305,7 +1237,8 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedByteString
 )
 {
 #ifdef LE_CONFIG_RPC
-    _le_pack_packInteger(bufferPtr, byteStringCount, _LE_PACK_CBOR_BYTE_STRING);
+    size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
+    le_cbor_EncodeByteStringHeader(bufferPtr, &sz, byteStringCount);
 #else
     le_pack_PackUint32(bufferPtr, byteStringCount);
 #endif
@@ -1421,55 +1354,6 @@ LE_DECLARE_INLINE bool le_pack_PackTaggedByteString
         *bufferPtr += length;                               \
     } while(0)                                              \
 
-//--------------------------------------------------------------------------------------------------
-/**
- * Get type.
- *
- * @return
- *      - an le_pack_Type_t enum.
- */
-//--------------------------------------------------------------------------------------------------
-le_pack_Type_t le_pack_GetType
-(
-    uint8_t* buffer,                      ///< [IN] buffer pointer
-    ssize_t* additionalBytes         ///< [OUT] number of additional bytes
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * unpack tiny field
- */
-//--------------------------------------------------------------------------------------------------
-#define LE_PACK_UNPACK_TINY_ITEM()                          \
-    do {                                                    \
-        uint8_t* buffer = *bufferPtr;                       \
-        major = (buffer[0] >> 5) & 0x7;                     \
-        additional = buffer[0] & 0x1F;                      \
-        *bufferPtr += 1;                                    \
-    } while(0)                                              \
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  unpack positive integer
- */
-//--------------------------------------------------------------------------------------------------
-bool _le_pack_unpackPositiveInteger(
-        uint8_t** bufferPtr,
-        uint64_t* valuePtr,
-        unsigned int expectedMajor
-);
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- *  unpack integer(may be positive or negative)
- */
-//--------------------------------------------------------------------------------------------------
-bool _le_pack_unpackInteger
-(
-    uint8_t** bufferPtr,
-    int64_t* valuePtr
-);
 
 #ifdef LE_CONFIG_RPC
 //--------------------------------------------------------------------------------------------------
@@ -1477,39 +1361,14 @@ bool _le_pack_unpackInteger
  *  Protoype of out-of-line functions containing rpc specific implementations:
  */
 //--------------------------------------------------------------------------------------------------
-bool le_pack_UnpackUint8_rpc(uint8_t** bufferPtr, uint8_t* valuePtr);
-bool le_pack_UnpackUint16_rpc(uint8_t** bufferPtr, uint16_t* valuePtr);
-bool le_pack_UnpackUint32_rpc(uint8_t** bufferPtr, uint32_t* valuePtr);
-bool le_pack_UnpackUint64_rpc(uint8_t** bufferPtr, uint64_t* valuePtr);
-bool le_pack_UnpackInt8_rpc(uint8_t** bufferPtr, int8_t* valuePtr);
-bool le_pack_UnpackInt16_rpc(uint8_t** bufferPtr, int16_t* valuePtr);
-bool le_pack_UnpackInt32_rpc(uint8_t** bufferPtr, int32_t* valuePtr);
-bool le_pack_UnpackInt64_rpc(uint8_t** bufferPtr, int64_t* valuePtr);
-bool le_pack_UnpackBool_rpc(uint8_t** bufferPtr, bool* valuePtr);
-bool le_pack_UnpackChar_rpc(uint8_t** bufferPtr, char* valuePtr);
-bool le_pack_UnpackDouble_rpc(uint8_t** bufferPtr, double* valuePtr);
 bool le_pack_UnpackResult_rpc(uint8_t** bufferPtr, le_result_t* valuePtr);
 bool le_pack_UnpackOnOff_rpc(uint8_t** bufferPtr, le_onoff_t* valuePtr);
-bool le_pack_UnpackStringHeader_rpc(uint8_t** bufferPtr, size_t* stringSizePtr);
-bool le_pack_UnpackIndefArrayHeader_rpc(uint8_t** bufferPtr);
-bool le_pack_UnpackEndOfIndefArray_rpc(uint8_t** bufferPtr);
-bool le_pack_UnpackByteStringHeader_rpc(uint8_t** bufferPtr, size_t* lengthPtr);
 bool le_pack_UnpackSizeUint32Tuple_rpc(uint8_t** bufferPtr, size_t* sizePtr, uint32_t* valuePtr,
                                        le_pack_SemanticTag_t* semanticTagPtr);
 bool le_pack_UnpackSizeUint64Tuple_rpc(uint8_t** bufferPtr, size_t* sizePtr, uint64_t* valuePtr,
                                        le_pack_SemanticTag_t* semanticTagPtr);
 bool le_pack_UnpackReference_rpc(uint8_t** bufferPtr, void* refPtr,
                                  le_pack_SemanticTag_t* semanticTagPtr);
-bool le_pack_UnpackString_rpc(uint8_t** bufferPtr, char *stringPtr, uint32_t bufferSize,
-                              uint32_t maxStringCount);
-bool le_pack_UnpackStringHeader_rpc(uint8_t** bufferPtr, size_t* stringSizePtr);
-bool le_pack_UnpackArrayHeader_rpc(uint8_t **bufferPtr, const void *arrayPtr, size_t elementSize,
-                                   size_t *arrayCountPtr, size_t arrayMaxCount);
-bool le_pack_UnpackIndefArrayHeader_rpc(uint8_t** bufferPtr);
-bool le_pack_UnpackEndOfIndefArray_rpc(uint8_t** bufferPtr);
-bool le_pack_UnpackByteStringHeader_rpc(uint8_t** bufferPtr, size_t* lengthPtr);
-bool le_pack_UnpackByteString_rpc(uint8_t** bufferPtr, void *arrayPtr, size_t *arrayCountPtr,
-                                  size_t arrayMaxCount);
 #endif
 
 //--------------------------------------------------------------------------------------------------
@@ -1581,7 +1440,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint8
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackUint8_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint8(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1600,7 +1459,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint16
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackUint16_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint16(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1619,7 +1478,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint32
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackUint32_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint32(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1638,7 +1497,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackUint64
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackUint64_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint64(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1657,7 +1516,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt8
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackInt8_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt8(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1676,7 +1535,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt16
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackInt16_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt16(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1695,7 +1554,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt32
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackInt32_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt32(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1714,7 +1573,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackInt64
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackInt64_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt64(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -1766,7 +1625,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint8
         return false;
     }
 
-    return le_pack_UnpackUint8_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint8(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1794,7 +1653,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint16
         return false;
     }
 
-    return le_pack_UnpackUint16_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint16(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1822,7 +1681,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint32
         return false;
     }
 
-    return le_pack_UnpackUint32_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint32(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1850,7 +1709,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedUint64
         return false;
     }
 
-    return le_pack_UnpackUint64_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeUint64(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1878,7 +1737,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt8
         return false;
     }
 
-    return le_pack_UnpackInt8_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt8(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1906,7 +1765,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt16
         return false;
     }
 
-    return le_pack_UnpackInt16_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt16(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1934,7 +1793,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt32
         return false;
     }
 
-    return le_pack_UnpackInt32_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt32(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -1962,7 +1821,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackTaggedInt64
         return false;
     }
 
-    return le_pack_UnpackInt64_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeInt64(bufferPtr, valuePtr);
 #else
     LE_UNUSED(bufferPtr);
     LE_UNUSED(tagId);
@@ -2101,7 +1960,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackBool
 {
 
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackBool_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeBool(bufferPtr, valuePtr);
 #else
     // Treat boolean as uint8_t for packing, regardless of underlying OS type.
     // Underlying type has been int on some platforms in the past.
@@ -2129,7 +1988,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackChar
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackChar_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeChar(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -2148,7 +2007,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackDouble
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackDouble_rpc(bufferPtr, valuePtr);
+    return le_cbor_DecodeDouble(bufferPtr, valuePtr);
 #else
     LE_PACK_UNPACK_SIMPLE_VALUE(valuePtr);
     return true;
@@ -2245,7 +2104,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackStringHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackStringHeader_rpc(bufferPtr, stringSizePtr);
+    return le_cbor_DecodeStringHeader(bufferPtr, stringSizePtr);
 #else
     if (!le_pack_UnpackSize(bufferPtr, stringSizePtr))
     {
@@ -2269,7 +2128,12 @@ LE_DECLARE_INLINE bool le_pack_UnpackString
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackString_rpc(bufferPtr, stringPtr, bufferSize, maxStringCount);
+    size_t size = maxStringCount;
+    if (size > bufferSize)
+    {
+        size = bufferSize;
+    }
+    return le_cbor_DecodeString(bufferPtr, stringPtr, bufferSize);
 #else
     // First get string size
     uint32_t stringSize;
@@ -2324,8 +2188,20 @@ LE_DECLARE_INLINE bool le_pack_UnpackArrayHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackArrayHeader_rpc(bufferPtr, arrayPtr, elementSize, arrayCountPtr,
-                                          arrayMaxCount);
+    if (!le_cbor_DecodeArrayHeader(bufferPtr, arrayCountPtr))
+    {
+        return false;
+    }
+    if (*arrayCountPtr > arrayMaxCount)
+    {
+        return false;
+    }
+    else if (!arrayPtr)
+    {
+        // Missing array pointer must match zero sized array.
+        return (*arrayCountPtr == 0);
+    }
+    return true;
 #else
     LE_UNUSED(elementSize);
     LE_ASSERT(le_pack_UnpackSize(bufferPtr, arrayCountPtr));
@@ -2354,7 +2230,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackIndefArrayHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackIndefArrayHeader_rpc(bufferPtr);
+    return le_cbor_DecodeIndefArrayHeader(bufferPtr);
 #else
     LE_UNUSED(bufferPtr);
     return true;
@@ -2372,7 +2248,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackEndOfIndefArray
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackEndOfIndefArray_rpc(bufferPtr);
+    return le_cbor_DecodeEndOfIndefArray(bufferPtr);
 #else
     LE_UNUSED(bufferPtr);
     return true;
@@ -2391,7 +2267,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackByteStringHeader
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackByteStringHeader_rpc(bufferPtr, lengthPtr);
+    return le_cbor_DecodeByteStringHeader(bufferPtr, lengthPtr);
 #else
     if (!le_pack_UnpackSize(bufferPtr, lengthPtr))
     {
@@ -2415,7 +2291,7 @@ LE_DECLARE_INLINE bool le_pack_UnpackByteString
 )
 {
 #ifdef LE_CONFIG_RPC
-    return le_pack_UnpackByteString_rpc(bufferPtr, arrayPtr, arrayCountPtr, arrayMaxCount);
+    return le_cbor_DecodeByteString(bufferPtr, arrayPtr, arrayCountPtr, arrayMaxCount);
 #else
     le_pack_UnpackSize(bufferPtr, arrayCountPtr);
     if (*arrayCountPtr > arrayMaxCount)
