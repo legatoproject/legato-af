@@ -1213,7 +1213,7 @@ le_result_t le_thread_SetStackSize
     {
         return LE_OK;
     }
-    else if (size < PTHREAD_STACK_MIN)
+    else if (size < LE_THREAD_STACK_MIN_SIZE)
     {
         return LE_OVERFLOW;
     }

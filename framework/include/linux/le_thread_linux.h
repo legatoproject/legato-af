@@ -26,7 +26,7 @@
  *  Minimum static stack size.  Smaller stacks will be clamped to this value.
  */
 //--------------------------------------------------------------------------------------------------
-#define LE_THREAD_STACK_MIN_SIZE    PTHREAD_STACK_MIN
+#define LE_THREAD_STACK_MIN_SIZE  16384  /* static value of PTHREAD_STACK_MIN */
 
 //--------------------------------------------------------------------------------------------------
 /**
