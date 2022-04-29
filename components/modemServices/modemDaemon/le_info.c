@@ -122,12 +122,8 @@ le_result_t le_info_GetImeiSv
 //--------------------------------------------------------------------------------------------------
 le_result_t le_info_GetFirmwareVersion
 (
-    char* versionPtr,
-        ///< [OUT]
-        ///< Firmware version string
-
-    size_t versionNumElements
-        ///< [IN]
+    char* versionPtr,            ///< [OUT] Firmware version string.
+    size_t versionNumElements    ///< [IN]
 )
 {
     // Check input parameters
@@ -142,6 +138,50 @@ le_result_t le_info_GetFirmwareVersion
         return LE_FAULT;
     }
     return pa_info_GetFirmwareVersion(versionPtr, versionNumElements);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TEE (Trusted Execution Environment) version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER The parameters are invalid
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_FAULT for any other errors
+ *
+ * @note If the caller is passing a bad pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetTeeVersion
+(
+    char* versionPtr,            ///< [OUT] Tee version string.
+    size_t versionNumElements    ///< [IN]
+)
+{
+    le_result_t res;
+    // Check input parameters
+    if (versionPtr == NULL)
+    {
+        LE_KILL_CLIENT("versionPtr is NULL !");
+        return LE_BAD_PARAMETER;
+    }
+    if (versionNumElements == 0)
+    {
+        LE_ERROR("parameter error");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Retrieve TEE version string
+    res = pa_info_GetTeeVersion(versionPtr, versionNumElements);
+    if (LE_NOT_FOUND == res)
+    {
+        memset(versionPtr, 0, versionNumElements);
+        strcpy(versionPtr, "0");
+        return LE_OK;
+    }
+    return res;
 }
 
 //--------------------------------------------------------------------------------------------------

@@ -31,6 +31,26 @@ le_result_t pa_info_GetFirmwareVersion
     return LE_FAULT;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the TEE (Trusted Execution Environment) version string
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_BAD_PARAMETER The parameters are invalid.
+ *      - LE_NOT_FOUND if the version string is not available
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetTeeVersion
+(
+    char* versionPtr,        ///< [OUT] Firmware version string
+    size_t versionSize       ///< [IN] Size of version buffer
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
