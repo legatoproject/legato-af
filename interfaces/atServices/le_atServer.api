@@ -364,6 +364,16 @@ ENUM AvailableDevice
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Parse options.
+ */
+//--------------------------------------------------------------------------------------------------
+BITMASK ParseOptions
+{
+    UNQUOTED_STRINGS   ///< Allow strings which are not surrounded by quotes.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Suspend server / enter data mode
  *
  * When this function is called the server stops monitoring the fd for events
@@ -447,6 +457,23 @@ FUNCTION le_result_t Close
 FUNCTION Cmd Create
 (
     string name[le_atDefs.COMMAND_MAX_LEN] IN   ///< AT command name string
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function created an AT command and register it into the AT parser.
+ *
+ * Compared to Create, it allows extra options on how a command is parsed.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION Cmd CreateEx
+(
+    string name[le_atDefs.COMMAND_MAX_LEN] IN,   ///< AT command name string
+    ParseOptions parseOpts IN                    ///< Parsing options
 );
 
 //--------------------------------------------------------------------------------------------------

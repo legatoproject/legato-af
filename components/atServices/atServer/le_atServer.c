@@ -136,6 +136,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Does a command allow unquoted strings?
+ */
+//--------------------------------------------------------------------------------------------------
+#define ALLOW_UNQUOTED_STRINGS(x) ((x)->parseOpts & LE_ATSERVER_UNQUOTED_STRINGS)
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Text prompt definition.
  */
 //--------------------------------------------------------------------------------------------------
@@ -618,6 +625,7 @@ typedef struct
     le_msg_SessionRef_t     sessionRef;                             ///< session reference
     bool                    isDialCommand;                          ///< specific dial command
     bool                    isBasicCommand;                         ///< is a basic format command
+    le_atServer_ParseOptions_t parseOpts;                           ///< command parsing options
     le_atServer_CommandHandlerFunc_t handlerFunc;                   ///< Handler associated with the
                                                                     ///< AT command
     void*                   handlerContextPtr;                      ///< client handler context
@@ -2145,13 +2153,14 @@ static le_result_t ParseParam
         }
         else
         {
-            if (!tokenQuote)
+            if (!tokenQuote && !ALLOW_UNQUOTED_STRINGS(cmdParserPtr->currentCmdPtr))
             {
                 // Put character in upper case
                 *cmdParserPtr->currentCharPtr = toupper(*cmdParserPtr->currentCharPtr);
             }
 
-            if ((tokenQuote) || ( IS_PARAM_CHAR(*cmdParserPtr->currentCharPtr) ))
+            if ((tokenQuote) || ( IS_PARAM_CHAR(*cmdParserPtr->currentCharPtr) ) ||
+                ALLOW_UNQUOTED_STRINGS(cmdParserPtr->currentCmdPtr))
             {
                 if (index < sizeof(paramPtr->param) -1)
                 {
@@ -2181,7 +2190,8 @@ static le_result_t ParseParam
             }
         }
 
-        if ((tokenQuote == false) &&
+        if ((ALLOW_UNQUOTED_STRINGS(cmdParserPtr->currentCmdPtr) ||
+             (tokenQuote == false)) &&
             (( *cmdParserPtr->currentCharPtr == AT_TOKEN_COMMA ) ||
              ( *cmdParserPtr->currentCharPtr == AT_TOKEN_SEMICOLON )))
         {
@@ -3391,10 +3401,11 @@ le_result_t le_atServer_Close
  *      - NULL if an error occurs.
  */
 //--------------------------------------------------------------------------------------------------
-le_atServer_CmdRef_t le_atServer_Create
+static le_atServer_CmdRef_t CreateCommand
 (
-    const char* namePtr
+    const char* namePtr,
         ///< [IN] AT command name string
+    le_atServer_ParseOptions_t parseOpts
 )
 {
     // Search if the command already exists
@@ -3445,7 +3456,47 @@ le_atServer_CmdRef_t le_atServer_Create
         cmdPtr->isDialCommand = false;
     }
 
+    cmdPtr->parseOpts = parseOpts;
+
     return cmdPtr->cmdRef;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creates an AT command and registers it into the AT parser.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+le_atServer_CmdRef_t le_atServer_Create
+(
+    const char* namePtr
+        ///< [IN] AT command name string
+)
+{
+    // call direct into create with no parameters
+    return CreateCommand(namePtr, 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function creates an AT command and registers it into the AT parser.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+le_atServer_CmdRef_t le_atServer_CreateEx
+(
+    const char* namePtr,
+        ///< [IN] AT command name string
+    le_atServer_ParseOptions_t parseOpts
+)
+{
+    return CreateCommand(namePtr, parseOpts);
 }
 
 //--------------------------------------------------------------------------------------------------
