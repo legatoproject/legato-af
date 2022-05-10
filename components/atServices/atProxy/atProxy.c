@@ -811,6 +811,40 @@ void le_atServer_SendUnsolicitedResponse
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Internal function to create an AT command and registers it into the AT parser.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+static le_atServer_CmdRef_t Create
+(
+    const char* namePtr                 ///< [IN] AT command name string
+)
+{
+    int i, num = sizeof(AtCmdRegistry)/sizeof(AtCmdRegistry[0]);
+
+    for (i=0; i<num; i++)
+    {
+        if (0 == strncmp(AtCmdRegistry[i].commandStr, namePtr, LE_ATDEFS_COMMAND_MAX_LEN))
+        {
+            break;
+        }
+    }
+
+    if (i != num)
+    {
+        return AT_PROXY_CONVERT_IND2REF((uint32_t)i);
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function creates an AT command and registers it into the AT parser.
  *
  * @return
@@ -824,23 +858,31 @@ void le_atServer_Create
     const char* namePtr                 ///< [IN] AT command name string
 )
 {
-    int i, num = sizeof(AtCmdRegistry)/sizeof(AtCmdRegistry[0]);
-    le_atServer_CmdRef_t ref = NULL;
+    le_atServer_CreateRespond(cmdRef, Create(namePtr));
+}
 
-    for (i=0; i<num; i++)
-    {
-        if (0 == strncmp(AtCmdRegistry[i].commandStr, namePtr, LE_ATDEFS_COMMAND_MAX_LEN))
-        {
-            break;
-        }
-    }
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function created an AT command and register it into the AT parser.
+ *
+ * Compared to Create, it allows extra options on how a command is parsed.
+ *
+ * @return
+ *      - Reference to the AT command.
+ *      - NULL if an error occurs.
+ */
+//--------------------------------------------------------------------------------------------------
+void le_atServer_CreateEx
+(
+    le_atServer_ServerCmdRef_t cmdRef,   ///< [IN] Asynchronous Server Command Reference
+    const char* namePtr,                 ///< [IN] AT command name string
+    le_atServer_ParseOptions_t parseOpts ///< [IN] Parsing options
+)
+{
+    // Ignore parse options -- on this platform all arguments must be quoted, per standard.
+    LE_UNUSED(parseOpts);
 
-    if (i != num)
-    {
-        ref = AT_PROXY_CONVERT_IND2REF((uint32_t)i);
-    }
-
-    le_atServer_CreateRespond(cmdRef, ref);
+    le_atServer_CreateExRespond(cmdRef, Create(namePtr));
 }
 
 //--------------------------------------------------------------------------------------------------

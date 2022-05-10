@@ -2,7 +2,7 @@ requires:
 {
     api:
     {
-        atServices/le_atServer.api [types-only]
+        le_atServer.api [types-only]
         portService/le_port.api [types-only]
     }
 }
