@@ -74,4 +74,10 @@ bindings:
     secStore.secStoreDaemon.le_instStat -> <root>.le_instStat
     secStore.secStoreDaemon.le_update   -> <root>.le_update
 }
+#elif ${LE_CONFIG_TARGET_GILL} = y
+bindings:
+{
+    secStore.le_pa_iksCrypto.le_ulpm -> powerMgr.le_ulpm
+    secStore.le_pa_iksCrypto.le_cfg -> configTree.le_cfg
+}
 #endif
