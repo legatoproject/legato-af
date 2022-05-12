@@ -25,8 +25,102 @@
 #define LEGATO_CBOR_INCLUDE_GUARD
 
 
-// Semantic tag type
-typedef uint16_t le_cbor_SemanticTag_t;
+// Callback prototypes
+typedef void (*le_cbor_Uint8Handler_t)(void *, uint8_t);
+
+typedef void (*le_cbor_Uint16Handler_t)(void *, uint16_t);
+
+typedef void (*le_cbor_Uint32Handler_t)(void *, uint32_t);
+
+typedef void (*le_cbor_Uint64Handler_t)(void *, uint64_t);
+
+typedef void (*le_cbor_Int8Handler_t)(void *, int8_t);
+
+typedef void (*le_cbor_Int16Handler_t)(void *, int16_t);
+
+typedef void (*le_cbor_Int32Handler_t)(void *, int32_t);
+
+typedef void (*le_cbor_Int64Handler_t)(void *, int64_t);
+
+typedef void (*le_cbor_SimpleHandler_t)(void *);
+
+typedef void (*le_cbor_StringHandler_t)(void *, const uint8_t*, size_t);
+
+typedef void (*le_cbor_CollectionHandler_t)(void *, size_t);
+
+typedef void (*le_cbor_FloatHandler_t)(void *, float);
+
+typedef void (*le_cbor_DoubleHandler_t)(void *, double);
+
+typedef void (*le_cbor_BoolHandler_t)(void *, bool);
+
+// Callback handlers for decoding stream
+typedef struct le_cbor_Handlers
+{
+  // Unsigned int
+  le_cbor_Uint8Handler_t uint8;
+  le_cbor_Uint16Handler_t uint16;
+  le_cbor_Uint32Handler_t uint32;
+  le_cbor_Uint64Handler_t uint64;
+
+  // Negative int
+  le_cbor_Int64Handler_t negInt64;
+  le_cbor_Int32Handler_t negInt32;
+  le_cbor_Int16Handler_t negInt16;
+  le_cbor_Int8Handler_t negInt8;
+
+  // Definite byte string
+  le_cbor_SimpleHandler_t byteStringStart;
+
+  // Indefinite byte string start
+  le_cbor_StringHandler_t byteString;
+
+  // Definite string
+  le_cbor_StringHandler_t string;
+
+  // Indefinite string start
+  le_cbor_SimpleHandler_t stringStart;
+
+  // Definite array
+  le_cbor_SimpleHandler_t indefArrayStart;
+
+  // Indefinite array
+  le_cbor_CollectionHandler_t arrayStart;
+
+  // Definite map
+  le_cbor_SimpleHandler_t indefMapStart;
+
+  // Indefinite map
+  le_cbor_CollectionHandler_t mapStart;
+
+  // Tags
+  le_cbor_Uint64Handler_t tag;
+
+  // Half float
+  le_cbor_FloatHandler_t float2;
+
+  // Single float
+  le_cbor_FloatHandler_t float4;
+
+  // Double float
+  le_cbor_DoubleHandler_t float8;
+
+  // Undef
+  le_cbor_SimpleHandler_t undefined;
+
+  // Null
+  le_cbor_SimpleHandler_t null;
+
+  // Bool
+  le_cbor_BoolHandler_t boolean;
+
+  // Indefinite item break
+  le_cbor_SimpleHandler_t indefBreak;
+}
+le_cbor_Handlers_t;
+
+// Tag type
+typedef uint64_t le_cbor_Tag_t;
 
 // Required sizes for encoding different types of data
 #define LE_CBOR_UINT8_MAX_SIZE                  (1 + sizeof(uint8_t))
@@ -39,14 +133,18 @@ typedef uint16_t le_cbor_SemanticTag_t;
 #define LE_CBOR_INT64_MAX_SIZE                  (1 + sizeof(int64_t))
 #define LE_CBOR_POS_INTEGER_MAX_SIZE            (1 + sizeof(uint64_t))
 #define LE_CBOR_NEG_INTEGER_MAX_SIZE            (1 + sizeof(int64_t))
-#define LE_CBOR_SEMANTIC_TAG_MAX_SIZE           (1 + sizeof(le_cbor_SemanticTag_t))
+#define LE_CBOR_TAG_MAX_SIZE                    (1 + sizeof(le_cbor_Tag_t))
 #define LE_CBOR_BOOL_MAX_SIZE                   (1)
-#define LE_CBOR_DOUBLE_MAX_SIZE                 (1 + sizeof(uint64_t))
+#define LE_CBOR_DOUBLE_MAX_SIZE                 (1 + sizeof(double))
+#define LE_CBOR_FLOAT_MAX_SIZE                  (1 + sizeof(float))
+#define LE_CBOR_HALF_FLOAT_MAX_SIZE             (1 + 2)
 #define LE_CBOR_INDEF_END_MAX_SIZE              (1)
 #define LE_CBOR_STR_HEADER_MAX_SIZE             (1 + sizeof(uint32_t))
 #define LE_CBOR_ARRAY_HEADER_MAX_SIZE           (1 + sizeof(uint32_t))
 #define LE_CBOR_INDEF_ARRAY_HEADER_MAX_SIZE     (1)
 #define LE_CBOR_INDEF_MAP_HEADER_MAX_SIZE       (1)
+#define LE_CBOR_INDEF_STR_HEADER_MAX_SIZE       (1)
+#define LE_CBOR_INDEF_BYTE_STR_HEADER_MAX_SIZE  (1)
 #define LE_CBOR_NULL_MAX_SIZE                   (1)
 
 // CBOR data types
@@ -57,7 +155,7 @@ typedef enum le_cbor_Type
     LE_CBOR_TYPE_BYTE_STRING = 2,
     LE_CBOR_TYPE_TEXT_STRING = 3,
     LE_CBOR_TYPE_ITEM_ARRAY = 4,
-    LE_CBOR_TYPE_SEMANTIC_TAG = 5,
+    LE_CBOR_TYPE_TAG = 5,
     LE_CBOR_TYPE_BOOLEAN = 6,
     LE_CBOR_TYPE_DOUBLE = 7,
     LE_CBOR_TYPE_INDEF_END = 8,
@@ -68,18 +166,18 @@ typedef enum le_cbor_Type
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Encode a TagID into a buffer, increment the buffer pointer if encoding is successful
+ * Encode a tag ID into a buffer, increment the buffer pointer if encoding is successful
  *
  * @return
  *      - true      if successfully encoded
  *      - false     otherwise
  */
 //--------------------------------------------------------------------------------------------------
-bool le_cbor_EncodeSemanticTag
+bool le_cbor_EncodeTag
 (
     uint8_t** bufferPtr,            ///< [OUT] Pointer of buffer to store the encoded data
     size_t* bufLen,                 ///< [IN/OUT] Size of the buffer available
-    le_cbor_SemanticTag_t value     ///< [IN] TagID to be encoded
+    le_cbor_Tag_t value             ///< [IN] Tag to be encoded
 );
 
 
@@ -590,6 +688,22 @@ bool le_cbor_DecodeChar
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Decode a float type value from a buffer, increment the buffer pointer if decoding is successful
+ *
+ * @return
+ *      - true      if successfully decoded
+ *      - false     failed to decode
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_cbor_DecodeFloat
+(
+    uint8_t** bufferPtr,            ///< [IN/OUT] Pointer of buffer for decoding
+    float* valuePtr                 ///< [OUT] Decoded value
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Decode a double type value from a buffer, increment the buffer pointer if decoding is successful
  *
  * @return
@@ -635,6 +749,22 @@ bool le_cbor_DecodeStringHeader
 (
     uint8_t** bufferPtr,            ///< [IN/OUT] Pointer of buffer for decoding
     size_t* stringSizePtr           ///< [OUT] Decoded value
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode a map header from a buffer, increment the buffer pointer if decoding is successful
+ *
+ * @return
+ *      - true      if successfully decoded
+ *      - false     failed to decode
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_cbor_DecodeMapHeader
+(
+    uint8_t **bufferPtr,            ///< [IN/OUT] Pointer of buffer for decoding
+    size_t *mapCountPtr             ///< [OUT] Decoded value
 );
 
 
@@ -723,18 +853,36 @@ bool le_cbor_DecodeByteString
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Decode TagID from a buffer, increment the buffer pointer if decoding is successful
+ * Decode a tag ID from a buffer, increment the buffer pointer if decoding is successful
  *
  * @return
  *      - true      if successfully decoded
  *      - false     failed to decode
  */
 //--------------------------------------------------------------------------------------------------
-bool le_cbor_DecodeSemanticTag
+bool le_cbor_DecodeTag
 (
     uint8_t** bufferPtr,                ///< [IN/OUT] Pointer of buffer for decoding
-    le_cbor_SemanticTag_t* tagIdPtr     ///< [OUT] Decoded value
+    le_cbor_Tag_t* tagIdPtr             ///< [OUT] Decoded value
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Decode one item from cbor stream in buffer, increment the buffer pointer and decrease the
+ * available buffer size if decoding is successful
+ *
+ * @return
+ *      - true      if successfully decoded
+ *      - false     failed to decode
+ */
+//--------------------------------------------------------------------------------------------------
+bool le_cbor_DecodeStream
+(
+    uint8_t** bufferPtr,                ///< [IN/OUT] Pointer of buffer for decoding
+    size_t* bufferSize,                 ///< [IN/OUT] Available size of the buffer
+    const le_cbor_Handlers_t* callbacks,///< [IN] Callback handlers
+    void* context                       ///< [OUT] Context used for callbacks to store decoded data
+);
 
 #endif // LEGATO_CBOR_INCLUDE_GUARD

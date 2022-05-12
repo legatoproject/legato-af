@@ -197,7 +197,7 @@ bool le_pack_PackSemanticTag
 )
 {
     size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
-    return le_cbor_EncodeSemanticTag(bufferPtr, &sz, value);
+    return le_cbor_EncodeTag(bufferPtr, &sz, value);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -216,7 +216,15 @@ bool le_pack_UnpackSemanticTag
     le_pack_SemanticTag_t* tagIdPtr
 )
 {
-    return le_cbor_DecodeSemanticTag(bufferPtr, tagIdPtr);
+    uint64_t tagId;
+    if (!le_cbor_DecodeTag(bufferPtr, &tagId) ||
+        !(tagId <= UINT16_MAX))
+    {
+        return false;
+    }
+
+    *tagIdPtr = tagId;
+    return true;
 }
 
 #else
@@ -250,7 +258,7 @@ bool le_pack_PackTaggedSizeUint32Tuple_rpc
     bool result;
     size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
 
-    result = le_cbor_EncodeSemanticTag(bufferPtr, &sz, tagId);
+    result = le_cbor_EncodeTag(bufferPtr, &sz, tagId);
     if (result)
     {
         result = le_cbor_EncodeArrayHeader(bufferPtr, &sz, 2);
@@ -277,7 +285,7 @@ bool le_pack_PackTaggedSizeUint64Tuple_rpc
     bool result;
     size_t sz = LE_PACK_CBOR_BUFFER_LENGTH;
 
-    result = le_cbor_EncodeSemanticTag(bufferPtr, &sz, tagId);
+    result = le_cbor_EncodeTag(bufferPtr, &sz, tagId);
     if (result)
     {
         result = le_cbor_EncodeArrayHeader(bufferPtr, &sz, 2);
@@ -335,9 +343,12 @@ bool le_pack_UnpackReference_rpc
 )
 {
     uint32_t refAsInt;
+    uint64_t tagId;
+    if (!le_cbor_DecodeTag(bufferPtr, &tagId))
+    {
+        return false;
+    }
 
-    le_pack_SemanticTag_t tagId;
-    le_cbor_DecodeSemanticTag(bufferPtr, &tagId);
     if (tagId != LE_PACK_REFERENCE &&
         tagId != LE_PACK_CONTEXT_PTR_REFERENCE &&
         tagId != LE_PACK_ASYNC_HANDLER_REFERENCE)
@@ -377,8 +388,12 @@ bool le_pack_UnpackSizeUint32Tuple_rpc
     le_pack_SemanticTag_t* semanticTagPtr
 )
 {
-    le_pack_SemanticTag_t tagId;
-    le_cbor_DecodeSemanticTag(bufferPtr, &tagId);
+    uint64_t tagId;
+    if (!le_cbor_DecodeTag(bufferPtr, &tagId))
+    {
+        return false;
+    }
+
     if (tagId != LE_PACK_IN_STRING_POINTER && tagId != LE_PACK_OUT_STRING_POINTER &&
         tagId != LE_PACK_IN_BYTE_STR_POINTER && tagId != LE_PACK_OUT_BYTE_STR_POINTER)
     {
@@ -407,8 +422,12 @@ bool le_pack_UnpackSizeUint64Tuple_rpc
     le_pack_SemanticTag_t* semanticTagPtr
 )
 {
-    le_pack_SemanticTag_t tagId;
-    le_cbor_DecodeSemanticTag(bufferPtr, &tagId);
+    uint64_t tagId;
+    if (!le_cbor_DecodeTag(bufferPtr, &tagId))
+    {
+        return false;
+    }
+
     if (tagId != LE_PACK_IN_STRING_POINTER && tagId != LE_PACK_OUT_STRING_POINTER &&
         tagId != LE_PACK_IN_BYTE_STR_POINTER && tagId != LE_PACK_OUT_BYTE_STR_POINTER)
     {

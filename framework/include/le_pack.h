@@ -66,7 +66,8 @@ typedef uint16_t le_pack_SemanticTag_t;
 #define LE_PACK_INT64_MAX_SIZE              LE_CBOR_INT64_MAX_SIZE
 #define LE_PACK_POS_INTEGER_MAX_SIZE        LE_CBOR_POS_INTEGER_MAX_SIZE
 #define LE_PACK_NEG_INTEGER_MAX_SIZE        LE_CBOR_NEG_INTEGER_MAX_SIZE
-#define LE_PACK_SEMANTIC_TAG_MAX_SIZE       LE_CBOR_SEMANTIC_TAG_MAX_SIZE
+// le_pack.h/pack.c only uses uint16_t type tag, which is le_pack_SemanticTag_t
+#define LE_PACK_SEMANTIC_TAG_MAX_SIZE       (1 + sizeof(le_pack_SemanticTag_t))
 #define LE_PACK_BOOL_MAX_SIZE               LE_CBOR_BOOL_MAX_SIZE
 #define LE_PACK_DOUBLE_MAX_SIZE             LE_CBOR_DOUBLE_MAX_SIZE
 #define LE_PACK_INDEF_END_MAX_SIZE          LE_CBOR_INDEF_END_MAX_SIZE
