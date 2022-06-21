@@ -204,6 +204,34 @@ COMPONENT_INIT
     printf("File size of '%s': %"PRIuS"\n", newFilePath, fileSize);
     LE_ASSERT((2 * strlen((char*)dataToWrite)) == fileSize);
 
+    // Truncate down to 5 characters
+    LE_ASSERT_OK(le_fs_SetSize(newFilePath, 5));
+
+    // Get file size
+    fileSize = 0;
+    LE_ASSERT_OK(le_fs_GetSize(newFilePath, &fileSize));
+    printf("File size of '%s': %"PRIuS"\n", newFilePath, fileSize);
+    LE_ASSERT(5 == fileSize);
+
+    // Open the file
+    printf("Open file '%s'\n", newFilePath);
+    LE_ASSERT_OK(le_fs_Open(newFilePath, LE_FS_RDWR | LE_FS_APPEND, &fileRef));
+    printf("File handler: %p\n", fileRef);
+    LE_ASSERT(0 <= fileRef);
+
+    // Read 150 bytes from the current position
+    memset(readData, '\0', sizeof(readData));
+    readLength = SHORT_DATA_LENGTH;
+    LE_ASSERT_OK(le_fs_Read(fileRef, readData, &readLength));
+    printf("Read %d bytes: '%s'\n", (int)readLength, readData);
+    LE_ASSERT(5 == readLength);
+    LE_ASSERT(0 == strncmp("Hello", (char*)readData, readLength));
+
+    // Close the opened file
+    printf("Closing file handler: %p\n", fileRef);
+    LE_ASSERT_OK(le_fs_Close(fileRef));
+    fileRef = NULL;
+
     // Create and open a new file
     const char deleteFilePath[PATH_LENGTH] = "/foo/bar/delete.txt";
     printf("Open file '%s'\n", deleteFilePath);

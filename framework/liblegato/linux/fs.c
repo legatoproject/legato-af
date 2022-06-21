@@ -477,6 +477,7 @@ le_result_t le_fs_Seek
     return LE_OK;
 }
 
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function is called to get the size of a file.
@@ -535,6 +536,60 @@ le_result_t le_fs_GetSize
     *sizePtr = st.st_size;
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * This function is called to change the size of a file.  If smaller than the current
+ * size of the file, the file will be truncated.  If larger than the current size, the file
+ * will be expanded with null bytes ('\0').
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_API_FILESYSTEM le_result_t le_fs_SetSize
+(
+    const char* filePathPtr,    ///< [IN]  File path
+    size_t      newSize         ///< [IN] New size of the file.
+)
+{
+    int rc;
+    char path[PATH_MAX];
+
+    // Check whether input is null. filePathPtr can be null as it is a pointer (i.e. pointer to
+    // const char).
+    if (filePathPtr == NULL)
+    {
+        LE_ERROR("File path can't be null");
+        return LE_BAD_PARAMETER;
+    }
+
+    // Check if the file path starts with '/'
+    if ('/' != *filePathPtr)
+    {
+        LE_ERROR("File path should start with '/'");
+        return LE_BAD_PARAMETER;
+    }
+
+    if (NULL == BuildPathName(path, PATH_MAX, filePathPtr))
+    {
+        return LE_UNSUPPORTED;
+    }
+
+    rc = truncate(path, newSize);
+
+    if (rc < 0)
+    {
+        return LE_FAULT;
+    }
+    else
+    {
+        return LE_OK;
+    }
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

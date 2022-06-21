@@ -186,6 +186,25 @@ LE_API_FILESYSTEM le_result_t le_fs_GetSize
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function is called to change the size of a file.  If smaller than the current
+ * size of the file, the file will be truncated.  If larger than the current size, the file
+ * will be expanded with null bytes ('\0').
+ *
+ * @return
+ *  - LE_OK             The function succeeded.
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_FAULT          The function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_API_FILESYSTEM le_result_t le_fs_SetSize
+(
+    const char *filePath,      ///< [IN] File path
+    size_t      newSize        ///< [IN] New size of the file.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function is called to delete a file.
  *
  * @return
