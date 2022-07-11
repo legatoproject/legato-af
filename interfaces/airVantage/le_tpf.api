@@ -64,6 +64,41 @@ FUNCTION le_result_t GetPackageUri
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Function to set the cipher suite profile index for download from 3rd party server using HTTP(S)
+ * protocol
+ *
+ * @return
+ *      - LE_OK                 on success
+ *      - LE_FAULT              if failed to configure the cipher suite index
+ *
+ * @note
+ *      Parameter cipherSuiteProfileIndex can be -1 which indicates that the caller doesn't specify
+ *      a cipher suite to use, in this case, only the internal default root certificate will be used
+ *      for https connection.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetCipherSuiteProfileIndex
+(
+    int32 cipherSuiteProfileIndex IN            ///< Cipher suite profile profile index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to get the cipher suite profile index for download from 3rd party server.
+ *
+ * @return
+ *      - LE_OK                 on success
+ *      - LE_NOT_FOUND          if configuration not found in file system
+ *      - LE_FAULT              failure in all other cases
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCipherSuiteProfileIndex
+(
+    int32 cipherSuiteProfileIndex OUT           ///< Cipher suite profile index
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Start a package download from a 3rd party server
  *
  * This will cause a query to be sent to the server, for pending updates.

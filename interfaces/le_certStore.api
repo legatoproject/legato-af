@@ -1,0 +1,112 @@
+//--------------------------------------------------------------------------------------------------
+/**
+ * @page c_le_certStorre certificate storage API
+ *
+ * @ref le_certStorre_interface.h "API Reference" <br>
+ *
+ *
+ * The certificate storage service provides a set of API function to store and retrieve certificate,
+ * key related information.
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Maximum certificate/key size
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE MAX_CERT_KEY_SIZE = 3001;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Authentication type
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM AuthType
+{
+    SERVER_AUTH   = 1,
+    MUTUAL_AUTH   = 3,
+    UNKNOWN_AUTH  = 0xFF
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Cipher Suite information
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT CipherSuiteInfo
+{
+    uint8 cipherIndex;      ///< cipher suite index to the internal list of cipher suites
+    uint8 rootCertIndex;    ///< root certificate index
+    uint8 clientCertIndex;  ///< client certificate index
+    AuthType authType;      ///< authentication type
+};
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve cipher suite information: cipher index, root cert index, client cert index and auth type
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_NOT_FOUND      when cipher suite information can't be found
+ *      - LE_FAULT          otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetCipherSuiteInfo
+(
+    uint32 cipherProfileIndex IN,                   ///< cipher index in sslcrypto list
+    CipherSuiteInfo cipherSuiteInfo OUT             ///< cipher suite information
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve root certificate
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_OVERFLOW       the certificate buffer is too small
+ *      - LE_NOT_FOUND      couldn't find the certificate
+ *      - LE_FAULT          otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetRootCert
+(
+    uint8       rootCertIndex IN,                   ///< root certificate index
+    uint8       certBuf[MAX_CERT_KEY_SIZE] OUT      ///< certificate buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve client certificate
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_OVERFLOW       the certificate buffer is too small
+ *      - LE_NOT_FOUND      couldn't find the certificate
+ *      - LE_FAULT          otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetClientCert
+(
+    uint8       clientCertIndex IN,                 ///< client certificate index
+    uint8       certBuf[MAX_CERT_KEY_SIZE] OUT      ///< certificate buffer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Retrieve private key
+ *
+ * @return
+ *      - LE_OK             on success
+ *      - LE_OVERFLOW       the private key buffer is too small
+ *      - LE_NOT_FOUND      couldn't find the private key
+ *      - LE_FAULT          otherwise
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetPrivateKey
+(
+    uint8       clientCertIndex IN,                 ///< client certificate index
+    uint8       keyBuf[MAX_CERT_KEY_SIZE] OUT       ///< private key buffer
+);
