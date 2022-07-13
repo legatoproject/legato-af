@@ -12,8 +12,10 @@ requires:
         modemServices/le_adc.api
         modemServices/le_temp.api
         modemServices/le_ips.api
+#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
         modemServices/le_rtc.api
         modemServices/le_mdmCfg.api
+#endif
         le_cellnet.api
         le_dcs.api
         le_fwupdate.api [optional]
@@ -32,8 +34,10 @@ sources:
     cm_adc.c
     cm_ips.c
     cm_common.c
+#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     cm_rtc.c
     cm_mdmCfg.c
+#endif
 }
 
 cflags:

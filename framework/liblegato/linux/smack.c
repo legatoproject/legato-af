@@ -1704,7 +1704,11 @@ le_result_t smack_SetFdSmackLabel
 //--------------------------------------------------------------------------------------------------
 void smack_LoadDefaultRules()
 {
-    // Default rules are quite small and very general.
+#if LE_CONFIG_TARGET_EM92XX
+    LE_INFO("Smack disabled: No rules loaded");
+
+#else
+    // Default rules are quite small very general.
     char readBuffer[256];
     int numBytesRead = file_ReadStr(SMACK_DEFAULT_ACCESS_FILE, readBuffer, sizeof(readBuffer));
     if (numBytesRead  == -1 || numBytesRead > sizeof(readBuffer))
@@ -1714,5 +1718,7 @@ void smack_LoadDefaultRules()
     }
 
     file_WriteStr(SMACK_LOAD_FILE, readBuffer, 0);
+#endif
+
 }
 #endif

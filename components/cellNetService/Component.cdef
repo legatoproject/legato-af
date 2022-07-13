@@ -12,7 +12,7 @@ requires:
     {
         le_sim.api
         le_mrc.api
-        le_secStore.api
+        le_secStore.api  [optional]
     }
 
     component:

@@ -1,0 +1,90 @@
+//--------------------------------------------------------------------------------------------------
+// Target definitions specific to Sierra Wireless WP76xx modules.
+//
+// Copyright (C), Sierra Wireless Inc.
+//--------------------------------------------------------------------------------------------------
+
+#include mdm9x07.sinc
+
+buildVars:
+{
+    // Use simu PAs temporarily
+    LEGATO_AVC_PA = ${PA_DIR}/simu/components/le_pa_avc
+
+    // QMI PAs
+    LEGATO_AUDIO_PA = ${LEGATO_QMI_AUDIO_PA}
+    LEGATO_AUDIO_PA_PCM = ${PA_DIR}/audio/pcm/alsa-intf
+    LEGATO_AUDIO_PA_AMR = ${PA_DIR}/audio/amr/opencore-amr
+    LEGATO_UTIL_PA = ${LEGATO_QMI_UTIL}
+    LEGATO_MODEM_PA = ${LEGATO_QMI_MODEM_PA}
+    LEGATO_MODEM_PA_RSIM = ${LEGATO_QMI_RSIM_PA}
+    LEGATO_DCS_PA = ${LEGATO_LINUX_DCS_PA}
+    LEGATO_CLOCKSYNC_PA = ${LEGATO_LINUX_CLOCKSYNC_PA}
+
+    #if ${LE_CONFIG_ENABLE_ECALL} = y
+        LEGATO_MODEM_PA_ECALL = ${LEGATO_QMI_MODEM_PA_ECALL}
+    #endif
+
+    LEGATO_GNSS_PA = ${LEGATO_QMI_GNSS_PA}
+    LEGATO_AVC_PA = ${PA_DIR}/at/components/le_pa_avc
+    LEGATO_SECSTORE_PA = ${PA_DIR}/trustZone/swi/components/le_pa_secStoreTz
+
+    #if ${LE_CONFIG_ENABLE_IOT_KEYSTORE_API} = y
+        LEGATO_IOT_KEYSTORE_PA = ${PA_DIR}/trustZone/swi/components/le_pa_iksApi
+    #endif
+
+    LEGATO_FWUPDATE_PA = ${LEGATO_QMI_FWUPDATE_PA}
+
+    LEGATO_UARTMODE_PA = ${LEGATO_QMI_UARTMODE_PA}
+
+    // Yocto image has to be updated on device through FOTA to include the libraries
+    // needed for time series.
+    LDFLAG_LEGATO_TIMESERIES = '-lz -ltinycbor'
+
+    //MK_CONFIG_SECSTORE_DISABLE_LIMIT = y
+    MK_CONFIG_MODEMSERVICE_NO_POWERMANAGER = y
+    MK_CONFIG_MODEMSERVICE_NO_LPT = y
+    MK_CONFIG_MODEMSERVICE_NO_RIPIN = y
+    MK_CONFIG_MODEMSERVICE_SIMPLE = y
+    MK_CONFIG_NO_SECSTORE = y
+}
+
+cflags:
+{
+    -DSIERRA_MDM9X28
+    -DSIERRA_WP76XX
+
+    // Audio HW settings
+    -DPCM_IF=SEC_AUX
+    -DI2S_IF=SEC_MI2S
+    -DUSB_IF=AFE_PCM
+    -DCODEC_IF=PRI_MI2S
+
+    // ALSA Multimedia devices and hardware index settings for playback and recording
+    -DMM_1_ALSA_MIXER_CTRL=MultiMedia1
+    -DMM_1_ALSA_PCM_DEVICE_ID=0
+    -DMM_2_ALSA_MIXER_CTRL=MultiMedia2
+    -DMM_2_ALSA_PCM_DEVICE_ID=13
+
+    // External ADCs
+    -DADC_BEGIN_NUM=0
+    -DADC_COUNT=4
+
+    // PDP Contexts
+    -DPDP_MAX_PROFILE=16
+    -DPDP_MAX_MULTIPDP=8
+
+    // Embedded UICC
+    -DEUICC
+
+    // LwM2MCore flags
+    -DLWM2M_OBJECT_9
+
+    // SecStore disable limit flags
+    //-DMK_CONFIG_SECSTORE_DISABLE_LIMIT
+    -DMK_CONFIG_MODEMSERVICE_NO_POWERMANAGER
+    -DMK_CONFIG_MODEMSERVICE_NO_LPT
+    -DMK_CONFIG_MODEMSERVICE_SIMPLE
+    -DMK_CONFIG_NO_SECSTORE
+    -DMK_CONFIG_MODEMSERVICE_NO_RIPIN
+}

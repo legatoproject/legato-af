@@ -12,7 +12,9 @@ executables:
     cm = (cm)
     fwupdate = (fwupdate)
     secstore = (secstore)
+#if ${MK_CONFIG_MODEMSERVICE_NO_POWERMANAGER} = ""
     pmtool = (pmtool)
+#endif
     gnss = (gnss)
     uartMode = (uartMode)
     kmod = (moduleLoad)
@@ -34,8 +36,10 @@ bindings:
     cm.cm.le_adc -> modemService.le_adc
     cm.cm.le_temp -> modemService.le_temp
     cm.cm.le_ips -> modemService.le_ips
+#if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
     cm.cm.le_rtc -> modemService.le_rtc
     cm.cm.le_mdmCfg -> modemService.le_mdmCfg
+#endif
     cm.cm.le_cellnet -> cellNetService.le_cellnet
     cm.cm.le_ulpm -> powerMgr.le_ulpm
     cm.cm.le_dcs -> dataConnectionService.le_dcs
@@ -49,9 +53,11 @@ bindings:
 
     secstore.secstore.secStoreAdmin -> secStore.secStoreAdmin
 
+#if ${MK_CONFIG_MODEMSERVICE_NO_POWERMANAGER} = ""
     pmtool.pmtool.le_pm -> powerMgr.le_pm
     pmtool.pmtool.le_ulpm -> powerMgr.le_ulpm
     pmtool.pmtool.le_bootReason -> powerMgr.le_bootReason
+#endif
 
     kmod.moduleLoad.le_kernelModule -> <root>.le_kernelModule
 #endif

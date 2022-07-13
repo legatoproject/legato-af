@@ -15,7 +15,11 @@ processes:
 
     faultAction: restart
 #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
+#if ${MK_CONFIG_NO_SECSTORE} = y
+    watchdogTimeout: never
+#else
     maxWatchdogTimeout: 120000
+#endif
 #else
     watchdogTimeout: never
 #endif

@@ -301,9 +301,19 @@ void BuildScriptGenerator_t::GenerateBuildRules
               "  command = cd $builddir/$workingdir && $\n"
               "            export CFLAGS=\"" << sysrootOption << " $cFlags\" $\n"
               "            CXXFLAGS=\"" << sysrootOption << " $cxxFlags\" $\n"
-              "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n"
-              "            CPPFLAGS=\"" << sysrootOption << " $cppFlags\" $\n"
-              "            " << GetPathEnvVarDecl() << " $\n"
+              "            LDFLAGS=\"" << sysrootOption << " $ldFlags\" $\n";
+
+    const std::string& target = buildParams.target;
+    if (target == "em92xx")
+    {
+        script << "            CPPFLAGS=\"" << sysrootOption << " $cppFlags -mfpu=neon -mfloat-abi=hard\" $\n";
+    }
+    else
+    {
+        script << "            CPPFLAGS=\"" << sysrootOption << " $cppFlags\" $\n";
+    }
+
+    script << "            " << GetPathEnvVarDecl() << " $\n"
               "            && $\n"
               "            $externalCommand\n"
               "\n";
