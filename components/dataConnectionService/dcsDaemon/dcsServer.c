@@ -1404,6 +1404,8 @@ static void ProcessCommand
             RequestCount--;
         }
 
+        LE_DEBUG("RELEASE: RequestCount %d, IsConnected %d", RequestCount, IsConnected);
+
         if (0 == RequestCount)
         {
             // Try and disconnect the current technology
@@ -1419,7 +1421,12 @@ static void ProcessCommand
         dcsTech_Start(cmdData.channelName, cmdData.technology);
         break;
     case STOP_COMMAND:
-        dcsTech_Stop(cmdData.channelName, cmdData.technology);
+        if (dcsTech_Stop(cmdData.channelName, cmdData.technology) == LE_OK)
+        {
+            // for the purpose of DCS we're no longer connected, even if the underlying connection
+            // is still up
+            IsConnected = false;
+        }
         break;
     default:
         LE_ERROR("Command %i is not valid", cmdData.command);
