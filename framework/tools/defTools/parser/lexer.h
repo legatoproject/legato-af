@@ -22,6 +22,10 @@
 class Lexer_t
 {
     private:
+        // Number of tokens handled since last error recovery.  If this is too small,
+        // next attempt to bail will be a fatal error as there was no recovery
+        unsigned int tokensSinceError;
+
         // Abandon current section, skipping to just after the next closing '}'
         // Used as part of error recovery
         void BailUntil(parseTree::Token_t::Type_t untilType,

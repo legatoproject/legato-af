@@ -91,7 +91,8 @@ Lexer_t::Lexer_t
     parseTree::DefFile_t* fileObjPtr
 )
 //--------------------------------------------------------------------------------------------------
-:   beVerbose(false)
+:   tokensSinceError(100),
+    beVerbose(false)
 //--------------------------------------------------------------------------------------------------
 {
     // Setup the lexer context for the top-level file
@@ -652,6 +653,8 @@ void Lexer_t::NextToken
             break;
         }
     }
+
+    ++tokensSinceError;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -737,6 +740,8 @@ void Lexer_t::BailUntil
         }
     }
     while (done == false);
+
+    tokensSinceError = 0;
 }
 
 
@@ -758,8 +763,8 @@ void Lexer_t::ResetTo(parseTree::Token_t* resetTokenPtr)
 
     // But don't rewind past whitespace or comments
     auto firstTokenPtr = resetTokenPtr;
-    while (firstTokenPtr->nextPtr->type == parseTree::Token_t::COMMENT ||
-           firstTokenPtr->nextPtr->type == parseTree::Token_t::WHITESPACE)
+    while ((firstTokenPtr->nextPtr->type == parseTree::Token_t::COMMENT ||
+            firstTokenPtr->nextPtr->type == parseTree::Token_t::WHITESPACE))
     {
         firstTokenPtr = firstTokenPtr->nextPtr;
     }
@@ -2634,10 +2639,16 @@ void Lexer_t::ContinueAfterError
 )
 {
     std::cerr << "[ERROR] " << e.what() << std::endl;
-    BailUntil(nextType, stopAtNewline);
+
+    if (tokensSinceError < 2)
+    {
+        throw mk::Exception_t(LE_I18N("Failed to recover from previous error, exiting"));
+    }
 
     if (this->recoverFromErrors)
     {
+        BailUntil(nextType, stopAtNewline);
+
         errorList.push_back(e);
     }
     else

@@ -57,9 +57,11 @@ static void SetBuildVar
 
         if (varUsedTokenPtr)
         {
-            if ((varUsedTokenPtr->line > nameTokenPtr->line) ||
+            // Only used in lookahead -- reset the lookahead but otherwise continue.
+            if ((varUsedTokenPtr->filePtr == nameTokenPtr->filePtr) &&
+                ((varUsedTokenPtr->line > nameTokenPtr->line) ||
                 ((varUsedTokenPtr->line == nameTokenPtr->line) &&
-                 (varUsedTokenPtr->column > nameTokenPtr->column)))
+                 (varUsedTokenPtr->column > nameTokenPtr->column))))
             {
                 needReset = true;
             }
