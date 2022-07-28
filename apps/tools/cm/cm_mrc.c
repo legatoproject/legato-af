@@ -35,8 +35,6 @@ void cm_mrc_PrintRadioHelp
             "\tcm radio rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]>\n\n"
             "To get radio access technologies prefererences\n"
             "\tcm radio getRAT \n\n"
-            "To resume automatic RAT selection.\n"
-            "\tcm radio rat AUTO\n\n"
             );
 }
 
@@ -519,7 +517,7 @@ void cm_mrc_ProcessRadioCommand
     else if (0 == strcmp(command, "rat"))
     {
         if (cm_cmn_CheckEnoughParams(1, numArgs, "RAT value missing. e.g. cm radio"
-                        " rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]> or <AUTO>"))
+                        " rat <[CDMA] [GSM] [UMTS] [LTE] [TDSCDMA]>"))
         {
             le_mrc_RatBitMask_t rat = 0;
             const char* ratStrPtr;
@@ -530,20 +528,7 @@ void cm_mrc_ProcessRadioCommand
                 ratStrPtr = le_arg_GetArg(index);
                 LE_DEBUG("Args (%d) => '%s'",index, ratStrPtr);
 
-                if (0 == strcmp(ratStrPtr, "AUTO"))
-                {
-                    if(cm_mrc_SetRat(LE_MRC_BITMASK_RAT_ALL) == LE_OK)
-                    {
-                        exit(EXIT_SUCCESS);
-                    }
-                    else
-                    {
-                        LE_ERROR("Failed to set LE_MRC_BITMASK_RAT_ALL rat value");
-                        printf("Failed to set LE_MRC_BITMASK_RAT_ALL rat value\n");
-                        exit(EXIT_FAILURE);
-                    }
-                }
-                else if (0 == strcmp(ratStrPtr, "CDMA"))
+                if (0 == strcmp(ratStrPtr, "CDMA"))
                 {
                     rat |= LE_MRC_BITMASK_RAT_CDMA;
                 }
