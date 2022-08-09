@@ -632,26 +632,6 @@ le_result_t le_dcs_Stop
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer channel event handler
- */
-//--------------------------------------------------------------------------------------------------
-static void DcsFirstLayerEventHandler (void *reportPtr, void *secondLayerHandlerFunc)
-{
-    le_dcs_channelDbEventReport_t *evtReport = reportPtr;
-    le_dcs_channelDb_t *channelDb;
-    le_dcs_EventHandlerFunc_t clientHandlerFunc = (le_dcs_EventHandlerFunc_t)secondLayerHandlerFunc;
-
-    channelDb = evtReport->channelDb;
-    if (!channelDb)
-    {
-        return;
-    }
-    clientHandlerFunc(channelDb->channelRef, evtReport->event, 0, le_event_GetContextPtr());
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * This function adds a channel event handler
  *
  * @return
@@ -669,7 +649,6 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     char eventName[LE_DCS_APPNAME_MAX_LEN + LE_DCS_CHANNEL_NAME_MAX_LEN + 10] = {0};
     le_dcs_channelDb_t *channelDb;
     char *channelName, appName[LE_DCS_APPNAME_MAX_LEN] = {0};
-    le_event_HandlerRef_t handlerRef;
     le_dcs_channelDbEventHdlr_t *channelEvtHdlr;
     pid_t pid;
     uid_t uid;
@@ -698,7 +677,7 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     if (channelEvtHdlr)
     {
         LE_DEBUG("Remove old event handler ref %p of channel %s before adding new",
-                 channelEvtHdlr->hdlrRef, channelName);
+                 le_ref_CreateFastRef(channelEvtHdlr), channelName);
         le_dls_Remove(&channelDb->evtHdlrs, &(channelEvtHdlr->hdlrLink));
         le_mem_Release(channelEvtHdlr);
     }
@@ -720,24 +699,12 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     // Each channelDb has its own event for reporting state changes
     snprintf(eventName, sizeof(eventName)-1, "%s:channel:%s", appName, channelName);
     channelEvtHdlr->appSessionRefKey = sessionRefKey;
-    channelEvtHdlr->channelEventId = le_event_CreateId(eventName,
-                                                       sizeof(le_dcs_channelDbEventReport_t));
     channelEvtHdlr->channelEventHdlr = channelHandlerPtr;
     channelEvtHdlr->hdlrLink = LE_DLS_LINK_INIT;
-    handlerRef = le_event_AddLayeredHandler("le_dcs_EventHandler",
-                                            channelEvtHdlr->channelEventId,
-                                            DcsFirstLayerEventHandler,
-                                            (le_event_HandlerFunc_t)channelHandlerPtr);
-    channelEvtHdlr->hdlrRef = (le_dcs_EventHandlerRef_t)handlerRef;
     le_dls_Queue(&channelDb->evtHdlrs, &(channelEvtHdlr->hdlrLink));
-    le_event_SetContextPtr(handlerRef, contextPtr);
+    channelEvtHdlr->contextPtr = contextPtr;
 
-    dcs_SessionCleanupSaveEventHandler(appName, sessionRef, channelDb, handlerRef);
-
-    LE_INFO("Event handler with reference %p and event ID %p added", handlerRef,
-            channelEvtHdlr->channelEventId);
-
-    return channelEvtHdlr->hdlrRef;
+    return le_ref_CreateFastRef(channelEvtHdlr);
 }
 
 

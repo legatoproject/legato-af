@@ -38,6 +38,16 @@ LE_MEM_DEFINE_STATIC_POOL(StartRequestRefDbPool, LE_DCF_START_REQ_REF_MAP_SIZE,
                           sizeof(le_dcs_startRequestRefDb_t));
 static le_mem_PoolRef_t StartRequestRefDbPool;
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Memory pool for state events.  Do not use le_event mechanism as channels are created
+ * and deleted dynamically.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ChannelDbEvtReport, LE_DCS_CHANNELDB_EVTHDLRS_MAX,
+                          sizeof(le_dcs_channelDbEventReport_t));
+static le_mem_PoolRef_t ChannelDbEvtReportPool = NULL;
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -104,26 +114,6 @@ static void ChannelQueryTimeEnforcerTimerHandler
             dcsTech_CollectChannelQueryResults(i, LE_FAULT, NULL, 0);
         }
     }
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Destructor function that runs when a channel event handler is deallocated
- */
-//--------------------------------------------------------------------------------------------------
-static void DcsChannelDbEventHandlersDestructor
-(
-    void *objPtr
-)
-{
-    le_dcs_channelDbEventHdlr_t *channelAppEvt = (le_dcs_channelDbEventHdlr_t *)objPtr;
-    if (!channelAppEvt)
-    {
-        return;
-    }
-    le_event_RemoveHandler((le_event_HandlerRef_t)channelAppEvt->hdlrRef);
-    channelAppEvt->hdlrRef = NULL;
 }
 
 
@@ -229,6 +219,34 @@ le_dcs_channelDbEventHdlr_t *dcs_GetChannelAppEvtHdlr
     return NULL;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer channel event handler
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsFirstLayerEventHandler (void *reportPtr, void *channelEvtPtr)
+{
+    le_dcs_channelDbEventReport_t *evtReport = reportPtr;
+    le_dcs_channelDb_t *channelDb;
+    le_dcs_channelDbEventHdlr_t *channelAppEvt = channelEvtPtr;
+
+    LE_ASSERT(evtReport && channelAppEvt);
+
+    channelDb = evtReport->channelDb;
+    if (!channelDb)
+    {
+        return;
+    }
+
+    channelAppEvt->channelEventHdlr(channelDb->channelRef, evtReport->event, 0,
+                                    channelAppEvt->contextPtr);
+
+    le_mem_Release(evtReport);
+
+    // Release the extra reference for channelAppEvt
+    le_mem_Release(channelAppEvt);
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -246,7 +264,7 @@ void dcs_ChannelEvtHdlrSendNotice
     void* appSessionRefKey = dcs_GetSessionRefKey(appSessionRef);
     le_dcs_channelDbEventHdlr_t *channelAppEvt =
         dcs_GetChannelAppEvtHdlr(channelDb, appSessionRefKey);
-    le_dcs_channelDbEventReport_t evtReport;
+    le_dcs_channelDbEventReport_t *evtReportPtr;
 
     if (!channelAppEvt)
     {
@@ -255,11 +273,17 @@ void dcs_ChannelEvtHdlrSendNotice
         return;
     }
 
+    evtReportPtr = le_mem_Alloc(ChannelDbEvtReportPool);
+
     LE_DEBUG("Send %s event notice for channel %s to app with session reference %p",
              dcs_ConvertEventToString(evt), channelDb->channelName, appSessionRef);
-    evtReport.channelDb = channelDb;
-    evtReport.event = evt;
-    le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
+    evtReportPtr->channelDb = channelDb;
+    evtReportPtr->event = evt;
+
+    // Avoid race between event triggering and handler being deregistered
+    le_mem_AddRef(channelAppEvt);
+
+    le_event_QueueFunction(DcsFirstLayerEventHandler, evtReportPtr, channelAppEvt);
 }
 
 
@@ -277,18 +301,16 @@ static le_result_t DcsApplyTechSystemDownEventAction
 {
     le_dls_Link_t *evtHdlrPtr;
     le_dcs_channelDbEventHdlr_t *channelAppEvt;
-    le_dcs_channelDbEventReport_t evtReport;
 
     evtHdlrPtr = le_dls_Peek(&channelDb->evtHdlrs);
     while (evtHdlrPtr)
     {
         // traverse all event handlers to trigger an event notification
         channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
-        LE_DEBUG("Send Down event notice for channel %s to app with session reference %p",
-                 channelDb->channelName, dcs_GetSessionRef(channelAppEvt->appSessionRefKey));
-        evtReport.channelDb = channelDb;
-        evtReport.event = LE_DCS_EVENT_TEMP_DOWN;
-        le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
+        dcs_ChannelEvtHdlrSendNotice(channelDb,
+                                     dcs_GetSessionRef(channelAppEvt->appSessionRefKey),
+                                     LE_DCS_EVENT_TEMP_DOWN);
+
         evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
     }
     return LE_OK;
@@ -338,17 +360,15 @@ void dcs_EventNotifierTechStateTransition
                 // this logic executed
                 le_dls_Link_t *evtHdlrPtr = le_dls_Peek(&channelDb->evtHdlrs);
                 le_dcs_channelDbEventHdlr_t *channelAppEvt;
-                le_dcs_channelDbEventReport_t evtReport;
+
                 while (evtHdlrPtr)
                 {
                     // traverse all event handlers to trigger an event notification
                     channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
-                    LE_DEBUG("Send Up event notice for channel %s to app with session reference %p",
-                             channelDb->channelName,
-                             dcs_GetSessionRef(channelAppEvt->appSessionRefKey));
-                    evtReport.channelDb = channelDb;
-                    evtReport.event = techState ? LE_DCS_EVENT_UP : LE_DCS_EVENT_DOWN;
-                    le_event_Report(channelAppEvt->channelEventId, &evtReport, sizeof(evtReport));
+                    dcs_ChannelEvtHdlrSendNotice(channelDb,
+                                                 dcs_GetSessionRef(channelAppEvt->appSessionRefKey),
+                                                 techState ? LE_DCS_EVENT_UP : LE_DCS_EVENT_DOWN);
+
                     evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
                 }
             }
@@ -527,8 +547,6 @@ void dcs_ChannelEventNotifier
 {
     le_dls_Link_t *evtHdlrPtr;
     le_dcs_channelDbEventHdlr_t *channelAppEvt;
-    le_event_Id_t channelEventId;
-    le_dcs_channelDbEventReport_t evtReport;
 
     le_dcs_channelDb_t *channelDb = dcs_GetChannelDbFromRef(channelRef);
     if (!channelDb)
@@ -541,20 +559,16 @@ void dcs_ChannelEventNotifier
     while (evtHdlrPtr)
     {
         channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
-        if (channelAppEvt && (channelEventId = channelAppEvt->channelEventId) != NULL )
+        dcs_ChannelEvtHdlrSendNotice(channelDb,
+                                     dcs_GetSessionRef(channelAppEvt->appSessionRefKey),
+                                     evt);
+
+        if (evt == LE_DCS_EVENT_DOWN)
         {
-            LE_DEBUG("Notify app of event %d on channel %s with eventID %p, handler %p",
-                     (uint16_t)evt, channelDb->channelName, channelEventId,
-                     channelAppEvt->channelEventHdlr);
-            evtReport.channelDb = channelDb;
-            evtReport.event = evt;
-            le_event_Report(channelEventId, &evtReport, sizeof(evtReport));
-            if (evt == LE_DCS_EVENT_DOWN)
-            {
-                // Reset the refcount upon sending a Down event northbound
-                dcs_AdjustReqCount(channelDb, false);
-            }
+            // Reset the refcount upon sending a Down event northbound
+            dcs_AdjustReqCount(channelDb, false);
         }
+
         evtHdlrPtr = le_dls_PeekNext(&channelDb->evtHdlrs, evtHdlrPtr);
     }
 }
@@ -594,13 +608,12 @@ le_dcs_channelDb_t *dcs_GetChannelEvtHdlr
         while (evtHdlrPtr)
         {
             channelAppEvt = CONTAINER_OF(evtHdlrPtr, le_dcs_channelDbEventHdlr_t, hdlrLink);
-            if (channelAppEvt && (channelAppEvt->hdlrRef == hdlrRef))
+            if (le_ref_CreateFastRef(channelAppEvt) == hdlrRef)
             {
                 if (!toDel) {
                     return channelDb;
                 }
-                LE_DEBUG("Removing event handler with reference %p with event ID %p", hdlrRef,
-                         channelAppEvt->channelEventId);
+                LE_DEBUG("Removing event handler with reference %p", hdlrRef);
                 le_dls_Remove(&channelDb->evtHdlrs, &channelAppEvt->hdlrLink);
                 le_mem_Release(channelAppEvt);
                 return channelDb;
@@ -1069,7 +1082,6 @@ void dcs_InitDbPools
     ChannelDbEvtHdlrPool = le_mem_InitStaticPool(ChannelDbEvtHdlrPool,
                                                  LE_DCS_CHANNELDB_EVTHDLRS_MAX,
                                                  sizeof(le_dcs_channelDbEventHdlr_t));
-    le_mem_SetDestructor(ChannelDbEvtHdlrPool, DcsChannelDbEventHandlersDestructor);
 
     // Create a safe reference map for data channel objects
     ChannelRefMap = le_ref_InitStaticMap(ChannelRefMap, LE_DCS_CHANNELDBS_MAX);
@@ -1085,4 +1097,9 @@ void dcs_InitDbPools
                                                   LE_DCF_START_REQ_REF_MAP_SIZE,
                                                   sizeof(le_dcs_startRequestRefDb_t));
     le_mem_SetDestructor(StartRequestRefDbPool, DcsStartRequestRefDbDestructor);
+
+    // Allocate the event report pool, and set the max number of objects
+    ChannelDbEvtReportPool = le_mem_InitStaticPool(ChannelDbEvtReport,
+                                                   LE_DCS_CHANNELDB_EVTHDLRS_MAX,
+                                                   sizeof(le_dcs_channelDbEventReport_t));
 }

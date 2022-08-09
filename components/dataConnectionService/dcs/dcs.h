@@ -82,9 +82,8 @@ typedef struct
 //--------------------------------------------------------------------------------------------------
 typedef struct
 {
-    le_event_Id_t channelEventId;                ///< channel event ID of the app
     le_dcs_EventHandlerFunc_t channelEventHdlr;  ///< channel event handler of the app
-    le_dcs_EventHandlerRef_t hdlrRef;            ///< handler reference as identifier upon removal
+    void *contextPtr;                            ///< Context pointer for the event handler
     void* appSessionRefKey;                      ///< session ref key of the app owning this handler
     le_dls_Link_t hdlrLink;
 } le_dcs_channelDbEventHdlr_t;
@@ -177,15 +176,10 @@ LE_SHARED le_result_t dcs_Stop(le_msg_SessionRef_t sessionRef,
 LE_SHARED const char *dcs_ConvertTechEnumToName(le_dcs_Technology_t tech);
 LE_SHARED const char *dcs_ConvertEventToString(le_dcs_Event_t event);
 le_result_t dcs_GetAdminState(le_dcs_ChannelRef_t channelRef, le_dcs_State_t *state);
-bool dcs_IsEventHandlerDeletable(le_dcs_channelDb_t *channelDb,
-                                 le_dcs_EventHandlerRef_t handlerRefToDelete);
 bool dcs_IsSessionExitChannelClosable(le_dcs_channelDb_t *channelDb,
                                       le_dcs_ReqObjRef_t reqRefToDelete);
 void dcs_SessionCleanupSaveReqRef(char const* appName, le_msg_SessionRef_t sessionRef,
                                   le_dcs_channelDb_t* channelDb, le_dcs_ReqObjRef_t reqRef);
-void dcs_SessionCleanupSaveEventHandler(char const* appName, le_msg_SessionRef_t sessionRef,
-                                        le_dcs_channelDb_t* channelDb,
-                                        le_event_HandlerRef_t handlerRef);
 void dcs_cleanConfigTree(void);
 
 // from dcs_db.c

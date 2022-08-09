@@ -123,54 +123,6 @@ const char *dcs_ConvertEventToString
 }
 
 
-//--------------------------------------------------------------------------------------------------
-/**
- * This utility function checks the config tree path that specifies whether a channel event handler
- * is to be deleted or allowed to stay. It is called from dcs_RemoveEventHandler() either via a
- * client app's session closure or its le_dcs_RemoveEventHandler() API call.
- *
- * @return
- *     - True if the channel event handler can be deleted; false if otherwise
- */
-//--------------------------------------------------------------------------------------------------
-bool dcs_IsEventHandlerDeletable
-(
-    le_dcs_channelDb_t *channelDb,
-    le_dcs_EventHandlerRef_t handlerRefToDelete
-)
-{
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-    le_dcs_EventHandlerRef_t handlerRef;
-    le_cfg_IteratorRef_t cfg;
-
-    LE_DEBUG("Event handler ref %p for channel %s of tech %d", handlerRefToDelete,
-             channelDb->channelName, channelDb->technology);
-
-    snprintf(configPath, sizeof(configPath), "%s/%s/%d/%s", DCS_CONFIG_TREE_ROOT_DIR,
-             CFG_PATH_SESSION_CLEANUP, channelDb->technology, channelDb->channelName);
-    cfg = le_cfg_CreateReadTxn(configPath);
-    if (!le_cfg_NodeExists(cfg, CFG_SESSION_CLEANUP_HANDLERREF))
-    {
-        LE_DEBUG("Not configured to skip; thus deletable");
-        le_cfg_CancelTxn(cfg);
-        return true;
-    }
-
-    handlerRef =
-        (le_dcs_EventHandlerRef_t)(intptr_t)le_cfg_GetInt(cfg, CFG_SESSION_CLEANUP_HANDLERREF, 0);
-    if (handlerRef == handlerRefToDelete)
-    {
-        LE_DEBUG("Configured to skip; thus not deletable");
-        le_cfg_CancelTxn(cfg);
-        return false;
-    }
-
-    LE_DEBUG("Not configured to skip; thus deletable");
-    le_cfg_CancelTxn(cfg);
-#endif
-    return true;
-}
-
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -283,48 +235,6 @@ void dcs_SessionCleanupSaveReqRef
     }
 
     le_cfg_SetInt(cfg, CFG_SESSION_CLEANUP_REQREF, (intptr_t)reqRef);
-    le_cfg_CommitTxn(cfg);
-#endif
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
- * This function seeks to save the given channel handler reference for the given data channel onto
- * the config tree if the specified client app by name & session reference has session cleanup
- * filtering enabled for use.
- */
-//--------------------------------------------------------------------------------------------------
-void dcs_SessionCleanupSaveEventHandler
-(
-    char const* appName,
-    le_msg_SessionRef_t sessionRef,
-    le_dcs_channelDb_t* channelDb,
-    le_event_HandlerRef_t handlerRef
-)
-{
-#if LE_CONFIG_ENABLE_CONFIG_TREE
-    le_cfg_IteratorRef_t cfg;
-
-    if (!dcs_IsSessionCleanupConfigured(appName))
-    {
-        // No need to proceed saving
-        return;
-    }
-    LE_DEBUG("Saving event handler ref %p for app %s & session ref %p", handlerRef, appName,
-             sessionRef);
-
-    // Save the handlerRef
-    snprintf(configPath, sizeof(configPath), "%s/%s/%d/%s", DCS_CONFIG_TREE_ROOT_DIR,
-             CFG_PATH_SESSION_CLEANUP, channelDb->technology, channelDb->channelName);
-    cfg = le_cfg_CreateWriteTxn(configPath);
-    if (!cfg)
-    {
-        LE_ERROR("Failed to create config tree node to write info of client %s", appName);
-        return;
-    }
-
-    le_cfg_SetInt(cfg, CFG_SESSION_CLEANUP_HANDLERREF, (intptr_t)handlerRef);
     le_cfg_CommitTxn(cfg);
 #endif
 }

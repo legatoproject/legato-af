@@ -22,6 +22,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Memory pool for state events.  Do not use le_event mechanism as channels are created
+ * and deleted dynamically.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_MEM_DEFINE_STATIC_POOL(ChannelDbEvtReport, LE_DCS_CHANNELDB_EVTHDLRS_MAX,
+                          sizeof(le_dcs_channelDbEventReport_t));
+static le_mem_PoolRef_t ChannelDbEvtReportPool = NULL;
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Iterator reference for simulated config tree
  */
 //--------------------------------------------------------------------------------------------------
@@ -1165,26 +1175,6 @@ uint16_t dcs_GetReqCount
 
 //--------------------------------------------------------------------------------------------------
 /**
- * The first-layer channel event handler used by the stub function le_dcs_AddEventHandler
- */
-//--------------------------------------------------------------------------------------------------
-static void DcsFirstLayerEventHandler (void *reportPtr, void *secondLayerHandlerFunc)
-{
-    le_dcs_channelDbEventReport_t *evtReport = reportPtr;
-    le_dcs_channelDb_t *channelDb;
-    le_dcs_EventHandlerFunc_t clientHandlerFunc = secondLayerHandlerFunc;
-
-    channelDb = evtReport->channelDb;
-    if (!channelDb)
-    {
-        return;
-    }
-    clientHandlerFunc(channelDb->channelRef, evtReport->event, 0, le_event_GetContextPtr());
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Stub function for adding an le_dcs channel event handler
  */
 //--------------------------------------------------------------------------------------------------
@@ -1196,13 +1186,11 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
     void *contextPtr
 )
 {
-    le_event_HandlerRef_t handlerRef;
-
     LE_UNUSED(sessionRef);
 
-    if (DcsChannelEvtHdlr.channelEventId != 0)
+    if (DcsChannelEvtHdlr.channelEventHdlr != 0)
     {
-        return DcsChannelEvtHdlr.hdlrRef;
+        return le_ref_CreateFastRef(&DcsChannelEvtHdlr);
     }
     if (!channelHandlerPtr)
     {
@@ -1210,16 +1198,9 @@ le_dcs_EventHandlerRef_t dcs_AddEventHandler
         return NULL;
     }
     memset(&DcsChannelEvtHdlr, 0, sizeof(le_dcs_channelDbEventHdlr_t));
-    DcsChannelEvtHdlr.channelEventId = le_event_CreateId(DcsChannelDb.channelName,
-                                                         sizeof(le_dcs_channelDbEventReport_t));
     DcsChannelEvtHdlr.channelEventHdlr = channelHandlerPtr;
-    handlerRef = le_event_AddLayeredHandler("le_dcs_EventHandler",
-                                            DcsChannelEvtHdlr.channelEventId,
-                                            DcsFirstLayerEventHandler,
-                                            (le_event_HandlerFunc_t)channelHandlerPtr);
-    DcsChannelEvtHdlr.hdlrRef = (le_dcs_EventHandlerRef_t)handlerRef;
-    le_event_SetContextPtr(handlerRef, contextPtr);
-    return DcsChannelEvtHdlr.hdlrRef;
+    DcsChannelEvtHdlr.contextPtr = contextPtr;
+    return le_ref_CreateFastRef(&DcsChannelEvtHdlr);
 }
 
 
@@ -1236,14 +1217,31 @@ void dcs_RemoveEventHandler
 {
     LE_UNUSED(sessionRef);
 
-    if (channelHandlerRef != DcsChannelEvtHdlr.hdlrRef)
+    if (channelHandlerRef != le_ref_CreateFastRef(&DcsChannelEvtHdlr))
     {
         return;
     }
-    le_event_RemoveHandler((le_event_HandlerRef_t)DcsChannelEvtHdlr.hdlrRef);
     memset(&DcsChannelEvtHdlr, 0, sizeof(le_dcs_channelDbEventHdlr_t));
 }
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * The first-layer channel event handler
+ */
+//--------------------------------------------------------------------------------------------------
+static void DcsFirstLayerEventHandler (void *reportPtr, void *channelEvtPtr)
+{
+    le_dcs_channelDbEventReport_t *evtReport = reportPtr;
+    le_dcs_channelDb_t *channelDb;
+    le_dcs_channelDbEventHdlr_t *channelAppEvt = channelEvtPtr;
+
+    channelDb = evtReport->channelDb;
+
+    channelAppEvt->channelEventHdlr(channelDb->channelRef, evtReport->event, 0,
+                                    channelAppEvt->contextPtr);
+    le_mem_Release(evtReport);
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1255,17 +1253,28 @@ void le_dcsTest_SimulateConnEvent
     le_dcs_Event_t evt
 )
 {
-    le_dcs_channelDbEventReport_t evtReport;
+    le_dcs_channelDbEventReport_t *evtReportPtr;
 
-    if (DcsChannelEvtHdlr.channelEventId == 0)
+    if (!DcsChannelEvtHdlr.channelEventHdlr)
     {
         return;
     }
 
+    if (!ChannelDbEvtReportPool)
+    {
+        // Allocate the event report pool, and set the max number of objects
+        ChannelDbEvtReportPool = le_mem_InitStaticPool(ChannelDbEvtReport,
+                                                       LE_DCS_CHANNELDB_EVTHDLRS_MAX,
+                                                       sizeof(le_dcs_channelDbEventReport_t));
+    }
+
+    evtReportPtr = le_mem_Alloc(ChannelDbEvtReportPool);
+
     LE_INFO("Simulating event %d", evt);
-    evtReport.channelDb = &DcsChannelDb;
-    evtReport.event = evt;
-    le_event_Report(DcsChannelEvtHdlr.channelEventId, &evtReport, sizeof(evtReport));
+    evtReportPtr->channelDb = &DcsChannelDb;
+    evtReportPtr->event = evt;
+
+    le_event_QueueFunction(DcsFirstLayerEventHandler, evtReportPtr, &DcsChannelEvtHdlr);
 }
 
 
