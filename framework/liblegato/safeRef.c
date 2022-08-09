@@ -72,6 +72,11 @@ LE_DEFINE_INLINE le_ref_MapRef_t le_ref_CreateMap
 );
 #endif
 
+LE_DEFINE_INLINE void *le_ref_CreateFastRef
+(
+    void *ref
+);
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Trace if tracing is enabled for a given reference map.

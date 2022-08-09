@@ -15,8 +15,15 @@
  * pass those references back into the API damaged or stale ("stale" meaning
  * something that has been deleted).
  *
- * <b> Safe References </b> are designed to help protect against damaged or stale references being
- * used by clients.
+ * Legato provides two mechanisms to help protect against invalid references being passed to
+ * a public API: <b> Safe References </b> track all outstanding objects, and protect against
+ * damaged or stale references being used by clients.  <b> Fast References </b> do not track
+ * outstanding objects, but still provide some protection against damaged references being
+ * used by clients.  <b> Safe references </b> should be used if the application needs maximum
+ * protection, or a method to quickly look up an object from its reference.
+ * <b> Fast references </b> can be used if the object is stored in another data structure
+ * (e.g. a linked list), and the application simply needs to know if references refer to the
+ * same object.
  *
  * @section c_safeRef_create Create Safe Reference
  *
@@ -58,12 +65,14 @@
  *
  * @section c_safeRef_multithreading Multithreading
  *
- * This API's functions are reentrant, but not thread safe. If there's the slightest
+ * <b> Safe References </b> are reentrant, but not thread safe. If there's the slightest
  * possibility the same Reference Map will be accessed by two threads at the same time, use
  * a mutex or some other thread synchronization mechanism to protect the Reference Map from
  * concurrent access.
  *
- * @section c_safeRef_example Sample Code
+ * <b> Fast References </b> are both reentrant and thread safe.
+ *
+ * @section c_safeRef_example Safe Reference Sample Code
  *
  * Here's an API Definition sample:
  *
@@ -464,5 +473,27 @@ void le_ref_EnableTrace
 (
     le_ref_MapRef_t mapRef ///< [in] Reference to the map
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get a fast reference for a pointer
+ */
+//--------------------------------------------------------------------------------------------------
+LE_DECLARE_INLINE void *le_ref_CreateFastRef
+(
+    void *ref     ///< [in] Pointer value to create a new Fast Reference for.
+)
+{
+    uintptr_t parity = (uintptr_t)ref;
+    parity ^= (parity >> 16);
+    parity ^= (parity >> 8);
+    parity ^= (parity >> 4);
+    parity ^= (parity >> 2);
+    parity ^= (parity >> 1);
+    parity &= 1;
+
+    // apply some blinding, and add parity.  Assumes last two bits are 00.
+    return (void *)((uintptr_t)ref ^ 0x0c0ffee1 ^ (parity << 1));
+}
 
 #endif // LEGATO_SAFEREF_INCLUDE_GUARD
