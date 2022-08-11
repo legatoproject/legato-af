@@ -70,6 +70,13 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Add line number information for SynchronizeTest()
+ */
+//--------------------------------------------------------------------------------------------------
+#define SynchronizeTest() SynchronizeTestDebug(__LINE__)
+
+//--------------------------------------------------------------------------------------------------
+/**
  *  List of technologies to use
  */
 //--------------------------------------------------------------------------------------------------
@@ -97,8 +104,7 @@ static bool ExpectedConnectionStatus = false;
 typedef struct
 {
     uint32_t                            appId;
-    le_sem_Ref_t                        appSemaphore;
-    le_thread_Ref_t                     appThreadRef;
+    uint32_t                            appEvents;
     le_data_ConnectionStateHandlerRef_t appStateHandlerRef;
     le_data_RequestObjRef_t             appRequestRef;
 } AppContext_t;
@@ -176,17 +182,53 @@ static void TestTechnologies
  *  Synchronize test thread (i.e. main) and application threads
  */
 //--------------------------------------------------------------------------------------------------
-static void SynchronizeTest
+static void SynchronizeTestDebug
 (
-    void
+    int lineno
 )
 {
     int i = 0;
-    le_clk_Time_t timeToWait = {LONG_TIMEOUT, 0};
+    le_result_t loopResult;
+    fd_set readFds;
+    struct timeval timeout;
+    int loopFd = le_event_GetFd();
 
+    /* Wait until all pending events are processed */
+    do
+    {
+        bool allReady = true;
+
+        while ((loopResult = le_event_ServiceLoop()) == LE_OK)
+            continue;
+
+        for (i = 0; i < CLIENTS_NB; i++)
+        {
+            if (!AppCtx[i].appEvents)
+            {
+                allReady = false;
+            }
+        }
+
+        if (allReady)
+        {
+            break;
+        }
+
+        FD_ZERO(&readFds);
+        FD_SET(loopFd, &readFds);
+        timeout.tv_sec = LONG_TIMEOUT;
+        timeout.tv_usec = 0;
+    } while (select(loopFd + 1, &readFds, NULL, NULL, &timeout) > 0);
+
+    // Make loop exited because there's no event, not due to error
+    LE_ASSERT(loopResult == LE_WOULD_BLOCK);
+
+    /* Check all apps have received the event, and reset event received flag */
     for (i = 0; i < CLIENTS_NB; i++)
     {
-        LE_ASSERT_OK(le_sem_WaitWithTimeOut(AppCtx[i].appSemaphore, timeToWait));
+        LE_FATAL_IF(!AppCtx[i].appEvents, "line %d: Missing expected event on app %d", lineno, i);
+
+        AppCtx[i].appEvents--;
     }
 }
 
@@ -293,7 +335,7 @@ static void DcsRemoveHandler
              appCtxPtr->appStateHandlerRef, appCtxPtr->appId);
     appCtxPtr->appStateHandlerRef = NULL;
 
-    le_sem_Post(appCtxPtr->appSemaphore);
+    appCtxPtr->appEvents++;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -310,7 +352,8 @@ static void DcsStateHandler
 {
     AppContext_t* appCtxPtr = (AppContext_t*)contextPtr;
 
-    LE_INFO("Received connection status %d for interface '%s'", isConnected, intfName);
+    LE_INFO("App %d received connection status %d for interface '%s'",
+            appCtxPtr->appId, isConnected, intfName);
     if (isConnected)
     {
         le_data_Technology_t currentTech = le_data_GetTechnology();
@@ -320,7 +363,9 @@ static void DcsStateHandler
     }
 
     // Check if connection status is coherent
-    LE_ASSERT(ExpectedConnectionStatus == isConnected);
+    LE_FATAL_IF(ExpectedConnectionStatus != isConnected,
+                "Expected connection status (%d) != isConnected (%d)",
+                ExpectedConnectionStatus, isConnected);
 
     // Check interface name when connected
     if (isConnected)
@@ -331,34 +376,26 @@ static void DcsStateHandler
     // Note: the technology retrieved by le_data_GetTechnology() cannot be tested again an expected
     // value as it changes as soon as the current technology is not available anymore.
 
-    le_sem_Post(appCtxPtr->appSemaphore);
+    appCtxPtr->appEvents++;
 }
 
 //--------------------------------------------------------------------------------------------------
 /**
- *  Thread used to simulate an application
+ *  Simulate call to add a handler from an external application
  */
 //--------------------------------------------------------------------------------------------------
-static void* AppHandler
+static void AddHandler
 (
-    void* ctxPtr
+    AppContext_t* appCtxPtr
 )
 {
-    AppContext_t* appCtxPtr = (AppContext_t*) ctxPtr;
-
     // Register handler for data connection state change
-    appCtxPtr->appStateHandlerRef = le_data_AddConnectionStateHandler(DcsStateHandler, ctxPtr);
+    appCtxPtr->appStateHandlerRef = le_data_AddConnectionStateHandler(DcsStateHandler, appCtxPtr);
     LE_ASSERT(NULL != appCtxPtr->appStateHandlerRef);
     LE_INFO("DcsStateHandler %p added for application #%d",
              appCtxPtr->appStateHandlerRef, appCtxPtr->appId);
 
-    // Semaphore is used to synchronize the task execution with the core test
-    le_sem_Post(appCtxPtr->appSemaphore);
-
-    // Run the event loop
-    le_event_RunLoop();
-
-    return NULL;
+    appCtxPtr->appEvents++;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -472,15 +509,8 @@ static void Testle_data_Service
     // Start threads in order to simulate multi-users of data connection service
     for (i = 0; i < CLIENTS_NB; i++)
     {
-        char threadString[20] = {0};
-        char semString[20]    = {0};
-        snprintf(threadString, 20, "app%dHandler", i);
-        snprintf(semString, 20, "app%dSem", i);
         AppCtx[i].appId = i;
-        // Create a semaphore to coordinate the test
-        AppCtx[i].appSemaphore = le_sem_Create(semString, 0);
-        AppCtx[i].appThreadRef = le_thread_Create(threadString, AppHandler, &AppCtx[i]);
-        le_thread_Start(AppCtx[i].appThreadRef);
+        AddHandler(&AppCtx[i]);
     }
 
     // Wait for threads start
@@ -497,7 +527,7 @@ static void Testle_data_Service
     result = le_data_SetCellularProfileIndex(PA_MDC_MIN_INDEX_3GPP2_PROFILE);
     for (i = 0; i < CLIENTS_NB; i++)
     {
-        le_event_QueueFunctionToThread(AppCtx[i].appThreadRef, DcsRequest, &AppCtx[i], NULL);
+        le_event_QueueFunction(DcsRequest, &AppCtx[i], NULL);
 
         // Wait for the handlers call
         SynchronizeTest();
@@ -548,7 +578,7 @@ static void Testle_data_Service
     // by the application threads
     for (i = 0; i < CLIENTS_NB; i++)
     {
-        le_event_QueueFunctionToThread(AppCtx[i].appThreadRef, DcsRelease, &AppCtx[i], NULL);
+        le_event_QueueFunction(DcsRelease, &AppCtx[i], NULL);
     }
 
     // All data connection released, wait for the disconnection notifications
@@ -558,8 +588,7 @@ static void Testle_data_Service
     // to be called by the application threads
     for (i = 0; i < CLIENTS_NB; i++)
     {
-        le_event_QueueFunctionToThread(AppCtx[i].appThreadRef, DcsRemoveHandler,
-                                       &AppCtx[i], NULL);
+        le_event_QueueFunction(DcsRemoveHandler, &AppCtx[i], NULL);
     }
     // Wait for handlers removal
     SynchronizeTest();
@@ -569,11 +598,18 @@ static void Testle_data_Service
     LE_INFO("Wait for Wifi disconnection");
     le_wifiClientTest_SimulateEvent(LE_WIFICLIENT_EVENT_DISCONNECTED);
 #endif
-    // Wait for the semaphore timeout to check that handlers are not called
-    le_clk_Time_t timeToWait = {SHORT_TIMEOUT, 0};
+    le_result_t loopResult;
+
+    // Run event loop, and make sure no apps are signalled
+    while ((loopResult = le_event_ServiceLoop()) == LE_OK)
+        continue;
+
+    // Make loop exited because there's no event, not due to error
+    LE_ASSERT(loopResult == LE_WOULD_BLOCK);
+
     for (i = 0; i < CLIENTS_NB; i++)
     {
-        LE_ASSERT(LE_TIMEOUT == le_sem_WaitWithTimeOut(AppCtx[i].appSemaphore, timeToWait));
+        LE_ASSERT(!AppCtx[i].appEvents);
     }
 
     LE_ASSERT(LE_BAD_PARAMETER == le_data_AddRoute("216.58.206.45.228"));
@@ -584,9 +620,9 @@ static void Testle_data_Service
  * This thread is used to launch the data connection service unit tests
  */
 //--------------------------------------------------------------------------------------------------
-static void* DcsUnitTestThread
+static void* DcsUnitTest
 (
-    void* contextPtr
+    void
 )
 {
     LE_INFO("DCS UT Thread Started");
@@ -615,6 +651,6 @@ COMPONENT_INIT
 
     LE_INFO("======== Start UnitTest of Data Connection service ========");
 
-    // Create and start the unit test thread
-    le_thread_Start(le_thread_Create("DCS UT Thread", DcsUnitTestThread, NULL));
+    // start the unit tests
+    DcsUnitTest();
 }
