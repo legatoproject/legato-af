@@ -66,7 +66,7 @@ platform service's @ref defFilesAdef.
 
 The watchdog consists of 3 configurable settings:
  - timeout: the time the watchdog daemon waits for a "kick" in normal operation.
- - maxTimeout: the maximum time the watchdog daemon waits for a kick (including on startup,
+ - maxWatchdogTimeout: the maximum time the watchdog daemon waits for a kick (including on startup,
    when performing a system recovery, and after le_wdog_Timeout()).
  - action: the action the watchdog daemon takes when it does not receive a "kick".
 
@@ -74,8 +74,8 @@ The watchdog consists of 3 configurable settings:
 bind the watchdog API into your app and use the @ref c_wdog API's functions to configure the
 behavior of the watchdog and the app.
 
-@note Setting the maxTimeout also ensures the watchdog is started on system boot (rather than the
-first instance of @c le_wdog_Kick()).
+@note Setting the maxWatchdogTimeout also ensures the watchdog is started on system boot
+(rather than the first instance of @c le_wdog_Kick()).
 
 Default watchdog kick timeout: @b 30 @b seconds
 
@@ -95,6 +95,29 @@ To disable the watchdog for all the daemons within the Legato Application Framew
 
 To disable the watchdog for the Platform Services on your target disable the @ref SERVICES_WATCHDOG
 setting in the legato KConfig.
+
+@subsection conceptsRuntimeArch_watchdogChain Watchdog Chain
+
+The system level watchdog takes a kicks from an executable to monitor the overall application health.
+In some cases an application will want to monitor multiple tasks within the application, and only
+kick the watchdog if all those tasks are still operating normally.  Or an application may want to
+monitor an event loop and kick the system watchdog if the event loop is processing messages
+normally.  To handle these cases, Legato provide the @c watchdogChain component.
+
+The watchdog chain allows an application developer to define a number of tasks in the chain which
+must all be alive in order for the application to be considered alive.  As long as all links in
+the chain are kicked, the chain is considered alive and the application will kick the system
+watchdog.  If any link is not kicked, the link breaks and the entire chain will be broken, so the
+system watchdog is not kicked.
+
+To use the watchdog chain:
+
+1. Add the @c watchdogChain component to the executable.
+2. Initialize the watchdog chain with the number of links needed for the executable using
+   le_wdogChain_Init().  This is typically done in @c COMPONENT_INIT
+3. To automatically monitor an event loop with the watchdog chain, call
+   le_wdogChain_MonitorEventLoop() from within the thread whose event loop you wish to monitor.
+4. To manually kick a watchdog chain element, call @ref le_wdogChain_Kick()
 
 @section conceptsRuntimeArch_logs Logs
 

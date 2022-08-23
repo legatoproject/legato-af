@@ -650,6 +650,7 @@ WARN_LOGFILE           =
 
 INPUT                  = "@LEGATO_ROOT@/framework/doc" \
                          "@LEGATO_ROOT@/framework/include" \
+                         "@LEGATO_ROOT@/components/watchdogChain" \
                          "@LEGATO_ROOT@/apps/sample/eCallDemo/doc" \
                          "@LEGATO_ROOT@/modules/WiFi/doc" \
                          "@LEGATO_BINARY_DIR@/interfaces" \
