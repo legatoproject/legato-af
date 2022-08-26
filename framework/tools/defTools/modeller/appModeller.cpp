@@ -2173,7 +2173,7 @@ model::App_t* GetApp
         {
             SetStart(appPtr, ToSimpleSectionPtr(sectionPtr));
         }
-        else if (sectionName == "group")
+        else if (sectionName == "runGroup")
         {
             SetRunGroup(appPtr, ToSimpleSectionPtr(sectionPtr));
         }
