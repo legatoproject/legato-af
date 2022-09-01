@@ -17,6 +17,10 @@ fi
 # Set position-independent code
 CFLAGS="$CFLAGS -Wall -Werror -fPIC -I${LEGATO_ROOT}/framework/daemons/linux"
 
+if [ "${LEGATO_TARGET_ARCH}" == armv7hf ]; then
+    CFLAGS="$CFLAGS -mfpu=neon -mfloat-abi=hard"
+fi
+
 # Set default log level for framework daemons
 CFLAGS="$CFLAGS -DLE_SUPERVISOR_LOG_LEVEL=${LE_SUPERVISOR_LOG_LEVEL}"
 CFLAGS="$CFLAGS -DLE_SERVICEDIRECTORY_LOG_LEVEL=${LE_SERVICEDIRECTORY_LOG_LEVEL}"

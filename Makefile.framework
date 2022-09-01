@@ -141,6 +141,9 @@ ifneq ($(filter %gcc %clang %gcc% %clang%,$(TARGET_CC)),)
 else ifneq ($(filter %armcc%,$(TARGET_CC)),)
   CFLAGS += --diag_error=warning
 endif
+ifeq ($(LEGATO_TARGET_ARCH),armv7hf)
+  CFLAGS += -mfpu=neon -mfloat-abi=hard
+endif
 CFLAGS += -I$(LEGATO_ROOT)/framework/include \
 	-I${LEGATO_ROOT}/build/${TARGET}/framework/include \
 	-I$(LEGATO_ROOT)/framework/liblegato \

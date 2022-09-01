@@ -296,6 +296,26 @@ static const FileLinkObj_t DefaultSystemLinks[] =
     {.src = "/lib/libresolv.so.2", .dest = "/lib/"}
 };
 
+#elif defined(TARGET_IMPORTS_ARMV7HF)
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Files and directories to import into all applications by default for the default system.
+ */
+//--------------------------------------------------------------------------------------------------
+static const FileLinkObj_t DefaultSystemLinks[] =
+{
+    {.src = "/lib/ld-linux-armhf.so.3", .dest = "/lib/"},
+    {.src = "/lib/libc.so.6", .dest = "/lib/"},
+    {.src = "/lib/libpthread.so.0", .dest = "/lib/"},
+    {.src = "/lib/librt.so.1", .dest = "/lib/"},
+    {.src = "/lib/libdl.so.2", .dest = "/lib/"},
+    {.src = "/lib/libgcc_s.so.1", .dest = "/lib/"},
+    {.src = "/lib/libm.so.6", .dest = "/lib/"},
+    {.src = "/usr/lib/libstdc++.so.6", .dest = "/lib/"},
+    {.src = "/lib/libresolv.so.2", .dest = "/lib/"}
+};
+
 #elif defined(TARGET_IMPORTS_RASPI)
 
 //--------------------------------------------------------------------------------------------------

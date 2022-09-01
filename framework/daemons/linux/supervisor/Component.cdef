@@ -49,6 +49,8 @@ cflags:
         -DTARGET_IMPORTS_ARMV6
     #elif ${LEGATO_TARGET_ARCH} = armv7
         -DTARGET_IMPORTS_ARMV7
+    #elif ${LEGATO_TARGET_ARCH} = armv7hf
+        -DTARGET_IMPORTS_ARMV7HF
     #elif ${LEGATO_TARGET} = virt-x86
         -DTARGET_IMPORTS_X86
     #elif ${LEGATO_TARGET} = virt-arm

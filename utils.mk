@@ -10,6 +10,13 @@ ifeq ($(shell whoami),jenkins)
   # Make it always verbose if building under Jenkins
   V := 1
 endif
+
+ifeq ($(LEGATO_TARGET_ARCH),armv7hf)
+  MKSYS_FLAGS += --cflags="-mfpu=neon -mfloat-abi=hard" --ldflags="-mfpu=neon -mfloat-abi=hard"
+  MKEXE_FLAGS += --cflags="-mfpu=neon -mfloat-abi=hard" --ldflags="-mfpu=neon -mfloat-abi=hard"
+  MKAPP_FLAGS += --cflags="-mfpu=neon -mfloat-abi=hard" --ldflags="-mfpu=neon -mfloat-abi=hard"
+endif
+
 ifeq ($(or $(V),$(VERBOSE)),1)
   Q :=
   V := 1

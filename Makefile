@@ -150,6 +150,9 @@ ifeq ($(LE_CONFIG_READ_ONLY),y)
 endif
 
 export MKTOOLS_FLAGS:=$(addprefix --cflags=,$($(TARGET_CAPS)_CFLAGS))
+ifeq ($(LEGATO_TARGET_ARCH),armv7hf)
+  MKTOOLS_FLAGS += --cflags="-mfpu=neon -mfloat-abi=hard" --ldflags="-mfpu=neon -mfloat-abi=hard"
+endif
 export MKSYS_FLAGS=$(MKTOOLS_FLAGS)
 export MKAPP_FLAGS=$(MKTOOLS_FLAGS)
 export MKEXE_FLAGS=$(MKTOOLS_FLAGS)

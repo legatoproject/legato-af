@@ -73,6 +73,9 @@ APP_DIR := $(LEGATO_ROOT)/build/$(TARGET)/tools
 LIB_DIR := $(BUILD_DIR)/lib
 
 LOCAL_MKTOOLS_FLAGS = -t $(TARGET)
+ifeq ($(LEGATO_TARGET_ARCH),armv7hf)
+  LOCAL_MKTOOLS_FLAGS += --cflags="-mfpu=neon -mfloat-abi=hard" --ldflags="-mfpu=neon -mfloat-abi=hard"
+endif
 
 LOCAL_MKEXE_FLAGS = $(MKEXE_FLAGS) -l $(LIB_DIR) -w $(BUILD_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
 LOCAL_MKAPP_FLAGS = $(MKAPP_FLAGS) -o $(APP_DIR) -w $(BUILD_APP_DIR)/tools/$@ $(LOCAL_MKTOOLS_FLAGS)
