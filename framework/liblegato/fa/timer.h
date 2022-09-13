@@ -52,6 +52,9 @@ typedef struct
     le_timer_Ref_t safeRef;                  ///< For the API user to refer to this timer by
     bool isWakeupEnabled;                    ///< Will system be woken up from suspended timer.
                                              ///  Default behaviour will be set to true.
+#if LE_CONFIG_DEBUG_TIMER
+    le_thread_Ref_t threadRef;               ///< For storing thread reference that created timer.
+#endif
 }
 Timer_t;
 

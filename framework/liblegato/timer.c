@@ -125,7 +125,9 @@ static Timer_t* CreateTimer
     timerPtr->safeRef = le_ref_CreateRef(SafeRefMap, timerPtr);
     Unlock();
     timerPtr->isWakeupEnabled = true;
-
+#if LE_CONFIG_DEBUG_TIMER
+    timerPtr->threadRef = le_thread_GetCurrent(); // Get the thread reference that created the timer
+#endif
     return timerPtr;
 }
 
@@ -252,6 +254,12 @@ static void RemoveFromTimerList
     Timer_t* timerPtr                   ///< [IN] The timer to remove
 )
 {
+#if LE_CONFIG_DEBUG_TIMER
+    // Thread that creates the timer must only remove the timer from the list.
+    // To be safe more than one thread must not manipulate the timer list.
+    LE_ASSERT(timerPtr->threadRef == le_thread_GetCurrent());
+#endif
+
     // Remove the timer from the active list
     timerPtr->isActive = false;
     TimerListChangeCount++;

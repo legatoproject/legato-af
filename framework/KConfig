@@ -766,5 +766,10 @@ config RPC_PROXY_CONNECT_SERVICE_REQUEST_TIMER_INTERVAL
   The length of time the RPC Proxy will wait before abandoning a
   pending connect-service request.
 
+config DEBUG_TIMER
+  bool "Enable debug timers"
+  default n
+  ---help---
+  Add debugging to ensure timers are created and manipulated by only one thread.
 
 endmenu
