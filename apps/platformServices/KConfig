@@ -100,8 +100,8 @@ config AVC_HTTP_TIMEOUT_MS
 
 config AVC_FEATURE_FILETRANSFER
   bool "Enable file transfer feature"
-  default y if TARGET_WP77XX
-  default y if TARGET_WP76XX
+  default n if TARGET_WP77XX
+  default n if TARGET_WP76XX
   default n
   ---help---
     Select this to enable file transfer feature.
