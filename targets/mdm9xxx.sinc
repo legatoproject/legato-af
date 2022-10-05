@@ -105,6 +105,26 @@ buildVars:
         #endif
     #endif
 
+    // AvcService app
+    LEGATO_AVC_SERVICE = ${LEGATO_ROOT}/apps/platformServices/airVantageConnector/bin/${LEGATO_TARGET}/avcService.${LEGATO_TARGET}.app
+
+    // If both source code and IKS proprietary lib/header exist, we will build avcService from source
+    #if dir_exists(${LEGATO_ROOT}/apps/platformServices/airVantageConnector)
+        #if dir_exists(${LEGATO_ROOT}/proprietary/qct/wp76xx/inc/security)
+            LEGATO_AVC_SERVICE = ${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcService
+        #endif
+    #endif
+
+    // Secure storage app
+    LEGATO_SECSTORE_SERVICE = ${LEGATO_ROOT}/apps/platformServices/bin/${LEGATO_TARGET}/secStore.${LEGATO_TARGET}.app
+
+    // If both source code and IKS proprietary lib/header exist, we will build secStore from source
+    #if dir_exists(${LEGATO_ROOT}/components/secStore)
+        #if dir_exists(${LEGATO_ROOT}/proprietary/qct/wp76xx/inc/security)
+            LEGATO_SECSTORE_SERVICE = ${LEGATO_ROOT}/apps/platformServices/secStore
+        #endif
+    #endif
+
     // Eventual QMI services
     LEGATO_EXTRA_SINC = ${LEGATO_ROOT}/apps/platformServices/defaultQmiServices.sinc
 }

@@ -43,6 +43,10 @@ buildVars:
     LDFLAG_LEGATO_TIMESERIES = '-lz -ltinycbor'
 
     //MK_CONFIG_SECSTORE_DISABLE_LIMIT = y
+    #if ${LE_CONFIG_ENABLE_IOT_KEYSTORE_API} = y
+        MK_CONFIG_AVMS_USE_IOT_KEYSTORE = y
+    #endif
+
 }
 
 cflags:
@@ -78,4 +82,12 @@ cflags:
 
     // SecStore disable limit flags
     //-DMK_CONFIG_SECSTORE_DISABLE_LIMIT
+
+#if ${LE_CONFIG_AVC_FEATURE_FILETRANSFER} = y
+    -DLWM2M_OBJECT_33406
+#endif
+
+    #if ${LE_CONFIG_ENABLE_IOT_KEYSTORE_API} = y
+        -DMK_CONFIG_AVMS_USE_IOT_KEYSTORE
+    #endif
 }

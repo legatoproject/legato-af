@@ -10,7 +10,7 @@ apps:
     #if ${LE_CONFIG_APP_AVC_LEGACY} = y
         ${LEGATO_ROOT}/apps/platformServices/airVantage/avcService
     #elif ${LE_CONFIG_APP_AVC_LWM2MCORE} = y
-        ${LEGATO_ROOT}/apps/platformServices/airVantageConnector/avcService
+        ${LEGATO_AVC_SERVICE}
         #if ${LEGATO_TARGET} = wp750x
             ${LEGATO_ROOT}/apps/platformServices/airVantage/avcCompat
         #elif ${LEGATO_TARGET} = wp85

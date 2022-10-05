@@ -2,6 +2,7 @@
 
 if [ x"$LE_CONFIG_LINUX" = "xy" ]; then
     PLATFORM_CFLAGS="-I${LEGATO_ROOT}/3rdParty/Lwm2mCore/include/platform-specific/linux -fPIC"
+    PLATFORM_CFLAGS="${PLATFORM_CFLAGS} -I${LEGATO_ROOT}/proprietary/qct/wp76xx/inc/security"
 
     # In case this is a Yocto toolchain, declare OECORE_NATIVE_SYSROOT as to make perl (used by autoreconf)
     # work properly.

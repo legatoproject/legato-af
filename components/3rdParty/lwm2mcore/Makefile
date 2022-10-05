@@ -23,7 +23,8 @@ INCLUDES=\
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/packageDownloader \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core \
     -I${LEGATO_ROOT}/3rdParty/Lwm2mCore/3rdParty/wakaama/core/er-coap-13 \
-    -I${LEGATO_BUILD}/3rdParty/tinydtls/include/tinydtls
+    -I${LEGATO_BUILD}/3rdParty/tinydtls/include/tinydtls \
+    -I${LEGATO_ROOT}/proprietary/qct/wp76xx/inc/security
 
 CFLAGS+=\
     -DLWM2M_CLIENT_MODE \

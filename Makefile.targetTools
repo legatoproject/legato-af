@@ -29,7 +29,8 @@ BUILD_PRODUCTS = 	config		\
 					update \
 					sbtrace \
 					scripts \
-					devMode
+					devMode \
+					avcService
 
 # Create a list of all proprietary apps, then add them as product to build
 ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)
@@ -45,6 +46,21 @@ ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)
   endif
 endif
 BUILD_PRODUCTS += ${PROPRIETARY_APPS}
+
+# If QMI source exists, we will generate a prebuilt secStore from source
+ifneq ($(findstring $(TARGET), wp76xx wp77xx),)
+  ifneq ($(wildcard $(LEGATO_ROOT)/platformAdaptor/qmi/src),)
+    ifeq ($(LE_CONFIG_ENABLE_IOT_KEYSTORE_API),y)
+      export LEGATO_IOT_KEYSTORE_PA = $(LEGATO_ROOT)/platformAdaptor/trustZone/swi/components/le_pa_iksApi
+    endif
+    export LEGATO_SECSTORE_PA = $(LEGATO_ROOT)/platformAdaptor/trustZone/swi/components/le_pa_secStoreTz
+    export LEGATO_QMI_SECSTORE_COMPAT = $(LEGATO_ROOT)/platformAdaptor/qmi/src/components/sfsSecStore
+    export LEGATO_PROPRIETARY_QCT_DIR = $(LEGATO_ROOT)/proprietary/qct/$(TARGET)
+    export LEGATO_QMI_UTIL_SRC_FILES = $(LEGATO_ROOT)/platformAdaptor/qmi/src/components/swiQmi
+    export LEGATO_UTIL_PA = $(LEGATO_ROOT)/platformAdaptor/qmi/src/components/swiQmi/mdm9x28/swiQmi
+    BUILD_PRODUCTS += secStore
+  endif
+endif
 
 # Make sure required variables are set.
 ifndef TARGET
@@ -218,3 +234,19 @@ ${PROPRIETARY_APPS}:
 			-o $(LEGATO_ROOT)/build/$(TARGET)/proprietary/$@ \
 			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/proprietary/$@ \
 			$(LOCAL_PROPRIETARY_APPS_FLAGS)
+
+avcService:
+	$(L) MKAPP $@
+	$(Q)mkapp $(LEGATO_ROOT)/apps/platformServices/airVantageConnector/$@.adef \
+			-b \-i $(LEGATO_ROOT)/interfaces/modemServices \
+			-t $(TARGET) \
+			-o $(LEGATO_ROOT)/build/$(TARGET)/prebuiltApps/$@ \
+			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/prebuiltApps/$@
+
+secStore:
+	$(L) MKAPP $@
+	$(Q)mkapp $(LEGATO_ROOT)/apps/platformServices/$@.adef \
+			-b \
+			-t $(TARGET) \
+			-o $(LEGATO_ROOT)/build/$(TARGET)/prebuiltApps/$@ \
+			-w $(LEGATO_ROOT)/build/$(TARGET)/apps/prebuiltApps/$@

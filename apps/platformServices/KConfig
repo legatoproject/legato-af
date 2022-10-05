@@ -100,9 +100,6 @@ config AVC_HTTP_TIMEOUT_MS
 
 config AVC_FEATURE_EDM
   bool "Enable Extended Device Management (EDM)"
-  default y if TARGET_WP750X
-  default y if TARGET_WP76XX
-  default y if TARGET_WP77XX
   default n
   ---help---
   Enable SIM Reachability / Extended Device Management (EDM)
@@ -223,8 +220,7 @@ config ENABLE_SECSTORE_ADMIN
 
 config SECSTORE_IKS_BACKEND
   bool "Use IoT Keystore as SecStore encryption engine"
-  depends on EXPERIMENTAL
-  default n
+  default y
   ---help---
     Use IoT Keystore as SecStore back-end to encrypt/decrypt the user data.
 

@@ -63,11 +63,6 @@ extern:
 bindings:
 {
     secStore.secStoreDaemon.le_appInfo  -> <root>.le_appInfo
-
-    #if ${LE_CONFIG_SERVICES_WATCHDOG} = y
-    secStore.watchdogChain.le_wdog      -> <root>.le_wdog
-    #endif
-
     secStore.secStoreDaemon.le_instStat -> <root>.le_instStat
     secStore.secStoreDaemon.le_update   -> <root>.le_update
 }

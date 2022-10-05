@@ -210,6 +210,94 @@ StageProprietaryApp() {
     done
 }
 
+StageAvcService() {
+    echo "Staging app avcService"
+    for target in "${@:1}"; do
+        if ! echo "$TARGETS" | grep -E $target'(,|$)' > /dev/null; then
+            continue
+        fi
+
+        local src="build/${target}/prebuiltApps/avcService/avcService.${target}.app"
+        local dst="apps/platformServices/airVantageConnector/bin/${target}/avcService.${target}.app"
+
+        echo -n "        (target $target) = $src -> $dst"
+
+        # If package is already available, do not replace the .app file unless
+        # the content has changed.
+        if [ -e "$dst" ]; then
+            # Creates a temporary directory in which both tarball are extracted.
+            local tmpdir=$(mktemp -d --suffix="releaselegato")
+            mkdir "$tmpdir/src" "$tmpdir/dst"
+
+            if ! tar jxf $src -C "$tmpdir/src" ||
+               ! tar jxf $dst -C "$tmpdir/dst"; then
+                rm -rf $tmpdir
+                ExitWithError "Error while extracting avcService"
+            fi
+
+            # The content of the directory is then compared.
+            diff -r "$tmpdir/src" "$tmpdir/dst" >/dev/null 2>&1
+            local diffret=$?
+            #rm -rf "$tmpdir"
+
+            if [ $diffret -eq 0 ]; then
+                echo " (skipped)"
+                continue
+            fi
+        fi
+
+        echo
+        install -D $LEGATO_ROOT/$src $STAGE_DIR/$dst
+        if [ $? -ne 0 ]; then
+            ExitWithError "Unable to copy '$src'"
+        fi
+    done
+}
+
+StageSecureStorageService() {
+    echo "Staging app secStore"
+    for target in "${@:1}"; do
+        if ! echo "$TARGETS" | grep -E $target'(,|$)' > /dev/null; then
+            continue
+        fi
+
+        local src="build/${target}/prebuiltApps/secStore/secStore.${target}.app"
+        local dst="apps/platformServices/bin/${target}/secStore.${target}.app"
+
+        echo -n "        (target $target) = $src -> $dst"
+
+        # If package is already available, do not replace the .app file unless
+        # the content has changed.
+        if [ -e "$dst" ]; then
+            # Creates a temporary directory in which both tarball are extracted.
+            local tmpdir=$(mktemp -d --suffix="releaselegato")
+            mkdir "$tmpdir/src" "$tmpdir/dst"
+
+            if ! tar jxf $src -C "$tmpdir/src" ||
+               ! tar jxf $dst -C "$tmpdir/dst"; then
+                rm -rf $tmpdir
+                ExitWithError "Error while extracting avcService"
+            fi
+
+            # The content of the directory is then compared.
+            diff -r "$tmpdir/src" "$tmpdir/dst" >/dev/null 2>&1
+            local diffret=$?
+            #rm -rf "$tmpdir"
+
+            if [ $diffret -eq 0 ]; then
+                echo " (skipped)"
+                continue
+            fi
+        fi
+
+        echo
+        install -D $LEGATO_ROOT/$src $STAGE_DIR/$dst
+        if [ $? -ne 0 ]; then
+            ExitWithError "Unable to copy '$src'"
+        fi
+    done
+}
+
 StageComponent "le_pa_start" "framework/lib/libComponent_le_pa_start.so" ar7 wp85 ar758x ar759x wp76xx
 
 StagePaComponent swiQmi          modemService        ar7 wp85 ar758x ar759x wp76xx
@@ -239,6 +327,12 @@ fi
 if [ -e "$LEGATO_ROOT/apps/proprietary/qmiAirVantage" ]; then
     StageProprietaryApp qmiAirVantage   wp85 wp76xx
 fi
+if [ -e "$LEGATO_ROOT/apps/platformServices/airVantageConnector" ]; then
+    StageAvcService wp76xx
+fi
+if [ -e "$LEGATO_ROOT/components/secStore" ]; then
+    StageSecureStorageService wp76xx
+fi
 
 cp version $STAGE_DIR
 cp package.properties $STAGE_DIR
@@ -261,6 +355,14 @@ for alias in $(echo $TARGETS | tr ',' ' '); do
                 ln -s "$target" "$STAGE_DIR/apps/proprietary/$app/bin/$alias"
             fi
         done
+
+        if [ -e "$STAGE_DIR/apps/platformServices/airVantageConnector/bin/${target}" ]; then
+            ln -s "$target" "$STAGE_DIR/apps/platformServices/airVantageConnector/bin/$alias"
+        fi
+
+        if [ -e "$STAGE_DIR/apps/platformServices/bin/${target}" ]; then
+            ln -s "$target" "$STAGE_DIR/apps/platformServices/bin/$alias"
+        fi
     fi
 done
 

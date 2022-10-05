@@ -27,7 +27,7 @@ apps:
     $LEGATO_ROOT/apps/platformServices/modemService
     $LEGATO_ROOT/apps/platformServices/positioningService
     $LEGATO_ROOT/apps/platformServices/powerMgr
-    $LEGATO_ROOT/apps/platformServices/secStore
+    ${LEGATO_SECSTORE_SERVICE}
     $LEGATO_ROOT/apps/platformServices/smsInboxService
     $LEGATO_ROOT/apps/platformServices/voiceCallService
     $LEGATO_ROOT/apps/platformServices/gpioService
