@@ -722,4 +722,33 @@ LE_SHARED le_result_t le_httpClient_Resume
     le_httpClient_Ref_t     ref       ///< [IN] HTTP session context reference
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_httpClient_GetTlsErrorCode
+(
+    le_httpClient_Ref_t     ref       ///< [IN] HTTP session context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_httpClient_SetTlsErrorCode
+(
+    le_httpClient_Ref_t     ref,        ///< [IN] HTTP session context reference
+    int err_code                        ///< [IN] INT error code
+);
+
 #endif  // LE_HTTP_CLIENT_LIB_H

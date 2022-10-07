@@ -530,4 +530,33 @@ LE_SHARED le_result_t le_socket_TrigMonitoring
     le_socket_Ref_t          socketRef       ///< [IN] Socket context reference
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_socket_GetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef       ///< [IN] Socket context reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_socket_SetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef,         ///< [IN] Socket context reference
+    int err_code                                ///< [IN] INT error code
+);
+
 #endif  // LE_SOCKET_LIB_H

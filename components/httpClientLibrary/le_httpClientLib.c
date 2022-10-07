@@ -1885,6 +1885,55 @@ le_result_t le_httpClient_Resume
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int le_httpClient_GetTlsErrorCode
+(
+    le_httpClient_Ref_t     ref       ///< [IN] HTTP session context reference
+)
+{
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    return le_socket_GetTlsErrorCode(contextPtr->socketRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_httpClient_SetTlsErrorCode
+(
+    le_httpClient_Ref_t     ref,        ///< [IN] HTTP session context reference
+    int err_code                        ///< [IN] INT tls error code
+)
+{
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return;
+    }
+
+    le_socket_SetTlsErrorCode(contextPtr->socketRef, err_code);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Component once initializer.
  */
 //--------------------------------------------------------------------------------------------------

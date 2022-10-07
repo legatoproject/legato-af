@@ -56,6 +56,7 @@ typedef struct
     BIO*                     bioPtr;    ///< I/O stream abstraction pointer
     SSL_CTX*                 sslCtxPtr; ///< SSL internal context pointer
     bool                     isInit;    ///< TRUE if the secure socket context is initialized
+    int                      openssl_errcode; ///< OpenSSL error codes.
 }
 OpensslCtx_t;
 
@@ -215,6 +216,7 @@ le_result_t secSocket_AddCertificate
     if (!bio)
     {
         LE_ERROR("Unable to allocate BIO pointer");
+        contextPtr->openssl_errcode = ERR_R_MALLOC_FAILURE;
         goto end;
     }
 
@@ -222,6 +224,7 @@ le_result_t secSocket_AddCertificate
     cert = d2i_X509(NULL, &certificatePtr, certificateLen);
     if (!cert)
     {
+        contextPtr->openssl_errcode = ERR_R_X509_LIB;
         LE_ERROR("Unable to read certificate");
         goto end;
     }
@@ -232,6 +235,7 @@ le_result_t secSocket_AddCertificate
     if ((X509_cmp_time(X509_get_notBefore(cert), &currentTime.sec) >= 0)  ||
         (X509_cmp_time(X509_get_notAfter(cert), &currentTime.sec) <= 0))
     {
+        contextPtr->openssl_errcode = X509_V_ERR_CERT_HAS_EXPIRED;
         LE_ERROR("Current certificate expired, please add a valid certificate");
         status = LE_FORMAT_ERROR;
         goto end;
@@ -241,6 +245,7 @@ le_result_t secSocket_AddCertificate
     store = SSL_CTX_get_cert_store(contextPtr->sslCtxPtr);
     if (!store)
     {
+        contextPtr->openssl_errcode = X509_V_ERR_UNABLE_TO_GET_CRL;
         LE_ERROR("Unable to get a pointer to the X509 certificate");
         goto end;
     }
@@ -248,6 +253,8 @@ le_result_t secSocket_AddCertificate
     // Add certificate to the verification pool
     if (!X509_STORE_add_cert(store, cert))
     {
+        unsigned long code = ERR_peek_last_error();
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
         LE_ERROR("Unable to add certificate to pool");
         goto end;
     }
@@ -467,6 +474,7 @@ err:
 
     if ((ERR_GET_LIB(code) == ERR_LIB_BIO) || (ERR_GET_LIB(code) == ERR_LIB_SSL))
     {
+        contextPtr->openssl_errcode = ERR_GET_REASON(code);
         switch (ERR_GET_REASON(code))
         {
             case ERR_R_MALLOC_FAILURE:
@@ -616,6 +624,7 @@ le_result_t secSocket_Write
     if (0 >= r)
     {
         LE_ERROR("Write failed. Error code: %d", r);
+        contextPtr->openssl_errcode = r;
         return LE_FAULT;
     }
 
@@ -707,6 +716,7 @@ le_result_t secSocket_Read
         else
         {
             LE_ERROR("Read failed. Error code: %d", rv);
+            contextPtr->openssl_errcode = rv;
             return LE_FAULT;
         }
     }
@@ -742,6 +752,52 @@ bool secSocket_IsDataAvailable
     return (BIO_pending(contextPtr->bioPtr) ? true: false);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int secSocket_GetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr     ///< [IN] Secure socket context pointer
+)
+{
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+
+    if (!contextPtr)
+    {
+        return 0;
+    }
+    return contextPtr->openssl_errcode;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr,    ///< [IN] Secure socket context pointer
+    int err_code                ///< [IN] INT error code
+)
+{
+    OpensslCtx_t* contextPtr = GetContext(ctxPtr);
+
+    if (!contextPtr)
+    {
+        return;
+    }
+    contextPtr->openssl_errcode = err_code;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**

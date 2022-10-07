@@ -1305,6 +1305,55 @@ le_result_t le_socket_TrigMonitoring
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int le_socket_GetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef       ///< [IN] Socket context reference
+)
+{
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, socketRef);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", socketRef);
+        return LE_BAD_PARAMETER;
+    }
+
+    return secSocket_GetTlsErrorCode(contextPtr->secureCtxPtr);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void le_socket_SetTlsErrorCode
+(
+    le_socket_Ref_t          socketRef,         ///< [IN] Socket context reference
+    int err_code                                ///< [IN] INT error code
+)
+{
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, socketRef);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", socketRef);
+        return;
+    }
+
+    secSocket_SetTlsErrorCode(contextPtr->secureCtxPtr, err_code);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Component once initializer.
  */
 //--------------------------------------------------------------------------------------------------

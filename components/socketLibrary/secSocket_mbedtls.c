@@ -74,6 +74,7 @@ typedef struct
     uint8_t               auth;                             ///< Authentication type.
     const char          **alpn_list;                        ///< ALPN Protocol Name list
     int                   ciphersuite[2];                   ///< Cipher suite(s) to use.
+    int                   mbedtls_errcode;                  ///< MbedTLS error codes.
 }
 MbedtlsCtx_t;
 
@@ -221,15 +222,16 @@ static int ReadFromStream
     while (r < 0)
     {
         r = mbedtls_ssl_read(ctxPtr, (unsigned char*)bufferPtr, (size_t)length);
+
+        LE_INFO_IF(r == 0, "Reached the end of the data stream");
         if ((r == MBEDTLS_ERR_SSL_PEER_CLOSE_NOTIFY) || (r == MBEDTLS_ERR_NET_RECV_FAILED))
         {
             LE_ERROR("Peer close notification or socket unreadable");
-            r = 0;
+            break;
         }
         else if (r == MBEDTLS_ERR_SSL_TIMEOUT)
         {
             LE_ERROR("Timeout on read");
-            r = LE_TIMEOUT;
             break;
         }
         else if ((r < 0) && (r != MBEDTLS_ERR_SSL_WANT_READ) && (r != MBEDTLS_ERR_SSL_WANT_WRITE))
@@ -247,8 +249,6 @@ static int ReadFromStream
         {
             break;
         }
-
-        LE_INFO_IF(r == 0, "Reached the end of the data stream");
     }
     count = 0;
     return r;
@@ -327,6 +327,7 @@ le_result_t secSocket_AddCertificate
     ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
     if (ret < 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_x509_crt_parse returned -0x%x", -ret);
         return LE_FAULT;
     }
@@ -335,6 +336,7 @@ le_result_t secSocket_AddCertificate
     if ((mbedtls_x509_time_is_past(&contextPtr->caCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->caCert.valid_from)))
     {
+        contextPtr->mbedtls_errcode = MBEDTLS_X509_BADCERT_EXPIRED;
         LE_ERROR("Current root CA certificates expired, please add valid certificates");
         return LE_FORMAT_ERROR;
     }
@@ -370,6 +372,7 @@ le_result_t secSocket_AddOwnCertificate
     ret = mbedtls_x509_crt_parse(&(contextPtr->ownCert), certificatePtr, certificateLen);
     if (ret < 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_x509_crt_parse returned -0x%x", -ret);
         return LE_FAULT;
     }
@@ -378,6 +381,7 @@ le_result_t secSocket_AddOwnCertificate
     if ((mbedtls_x509_time_is_past(&contextPtr->ownCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->ownCert.valid_from)))
     {
+        contextPtr->mbedtls_errcode = MBEDTLS_X509_BADCERT_EXPIRED;
         LE_ERROR("Current client certificates expired, please add valid certificates");
         return LE_FORMAT_ERROR;
     }
@@ -412,6 +416,7 @@ le_result_t secSocket_AddOwnPrivateKey
     ret = mbedtls_pk_parse_key(&(contextPtr->ownPkey), pkeyPtr, pkeyLen, NULL, 0);
     if (ret < 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_pk_parse_key returned -0x%x", -ret);
         return LE_FAULT;
     }
@@ -521,6 +526,7 @@ le_result_t secSocket_PerformHandshake
                                            MBEDTLS_SSL_TRANSPORT_STREAM,
                                            MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_ssl_config_defaults returned %d", ret);
         // Only possible error is linked to memory allocation issue
         return LE_NO_MEMORY;
@@ -548,6 +554,7 @@ le_result_t secSocket_PerformHandshake
                                              &(contextPtr->ownCert),
                                              &(contextPtr->ownPkey))) != 0)
         {
+            contextPtr->mbedtls_errcode = ret;
             LE_ERROR("Failed! mbedtls_ssl_conf_own_cert returned %d", ret);
             return LE_FAULT;
         }
@@ -564,6 +571,7 @@ le_result_t secSocket_PerformHandshake
 
     if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_ssl_setup returned %d", ret);
         if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
         {
@@ -574,6 +582,7 @@ le_result_t secSocket_PerformHandshake
 
     if ((ret = mbedtls_ssl_set_hostname(&(contextPtr->sslCtx), hostPtr)) != 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_ssl_set_hostname returned %d", ret);
         if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
         {
@@ -592,6 +601,7 @@ le_result_t secSocket_PerformHandshake
     LE_INFO("Performing the SSL/TLS handshake...");
     while ((ret = mbedtls_ssl_handshake(&(contextPtr->sslCtx))) != 0)
     {
+        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_ssl_handshake returned -0x%x", -ret);
         if ((ret != MBEDTLS_ERR_SSL_WANT_READ) && (ret != MBEDTLS_ERR_SSL_WANT_WRITE))
         {
@@ -759,12 +769,15 @@ le_result_t secSocket_Write
 )
 {
     MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+    int ret;
 
     LE_ASSERT(contextPtr != NULL);
     LE_ASSERT(dataPtr != NULL);
 
-    if (0 > WriteToStream(&(contextPtr->sslCtx), dataPtr, (int)dataLen))
+    ret = WriteToStream(&(contextPtr->sslCtx), dataPtr, (int)dataLen);
+    if (0 > ret)
     {
+        contextPtr->mbedtls_errcode = ret;
         return LE_FAULT;
     }
 
@@ -800,12 +813,16 @@ le_result_t secSocket_Read
 
     mbedtls_ssl_conf_read_timeout(&(contextPtr->sslConf), timeout);
     count = ReadFromStream(&(contextPtr->sslCtx), dataPtr, (int)*dataLenPtr);
-    if (count == LE_TIMEOUT)
+    if (count <= 0)
     {
-        return LE_TIMEOUT;
-    }
-    else if (count <= 0)
-    {
+        if (count < 0)
+        {
+            contextPtr->mbedtls_errcode = count;
+            if (count == MBEDTLS_ERR_SSL_TIMEOUT)
+            {
+                return LE_TIMEOUT;
+            }
+        }
         LE_INFO("ERROR on reading data from stream");
         return LE_FAULT;
     }
@@ -833,6 +850,46 @@ bool secSocket_IsDataAvailable
     return (mbedtls_ssl_get_bytes_avail(&(contextPtr->sslCtx)) != 0);
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int secSocket_GetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr     ///< [IN] Secure socket context pointer
+)
+{
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    return contextPtr->mbedtls_errcode;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr,    ///< [IN] Secure socket context pointer
+    int err_code                ///< [IN] INT error code
+)
+{
+    MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    contextPtr->mbedtls_errcode = err_code;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
