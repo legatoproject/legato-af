@@ -378,8 +378,10 @@ GenerateCwe() {
     FindTool "hdrcnv" HDRCNV
     CheckRet
 
-    FindTool "cwezip" CWEZIP
-    CheckRet
+    if $SUPPORT_COMPRESSION; then
+        FindTool "cwezip" CWEZIP
+        CheckRet
+    fi
 
     local temp_dir="$OUTPUT_DIR/legatoimg/$img_suffix"
     mkdir -p $temp_dir
@@ -537,6 +539,28 @@ CreateImg_mdm9x40() {
     GenerateCwe $LEGATO_IMG $img_suffix $pid
 }
 
+CreateImg_em92xx() {
+    local img_type=${1:-ubi}
+    local ubi_img_type=${2:-squashfs}
+
+    local page_size=4096
+    local pid='SD65'
+    local oob_size=224
+    local peb_size=256KiB
+    COMPAT_BYTE=00000001
+    PLATFORM='SD65'
+    SUPPORT_COMPRESSION=false
+    WITH_DM_VERITY=false
+
+    local img_suffix=$img_type
+    if [[ "$img_type" == "ubi" ]]; then
+        img_suffix="${ubi_img_type}.${img_type}"
+    fi
+
+    CreateImgFs $img_type $img_suffix $ubi_img_type ${page_size} ${oob_size} ${peb_size}
+    GenerateCwe $LEGATO_IMG $img_suffix ${pid}
+}
+
 DefaultImg() {
     local img_suffix=${1:-yaffs2}
 
@@ -570,6 +594,10 @@ case $TARGET in
         ;;
     ar759x)
         CreateImg_mdm9x40 ubi squashfs
+        DefaultImg "squashfs.ubi"
+        ;;
+    em92xx)
+        CreateImg_em92xx ubi squashfs
         DefaultImg "squashfs.ubi"
         ;;
     raspi)
