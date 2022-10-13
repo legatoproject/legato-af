@@ -17,6 +17,37 @@
 #include "jansson.h"
 #include <sys/statvfs.h>
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static file descriptor for file transfer
+ */
+//--------------------------------------------------------------------------------------------------
+static int StaticFd = -1;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Static file stream thread reference
+ */
+//--------------------------------------------------------------------------------------------------
+static le_thread_Ref_t FileStreamRef = NULL;
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File streaming thread stack size in words
+ */
+//--------------------------------------------------------------------------------------------------
+#define THREAD_STACK_SIZE (5*1024)
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Allocate stacks for both threads
+ */
+//--------------------------------------------------------------------------------------------------
+LE_THREAD_DEFINE_STATIC_STACK(FileStreamThreadStrStack, THREAD_STACK_SIZE);
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -481,7 +512,7 @@ static le_result_t FileInfoFromJsonFileRead
     json_decref(root);
     if (false == doesFileExist)
     {
-        return LE_BAD_PARAMETER;
+        return LE_NOT_FOUND;
     }
 
     return LE_OK;
@@ -965,7 +996,7 @@ static le_result_t FileInfoFromJsonFileCheckFileName
             }
         }
 
-        if (strlen(fileHashPtr))
+        if (fileHashPtr && strlen(fileHashPtr))
         {
             tempPtr = json_object_get(fileObjectPtr, JSON_FILE_FIELD_HASH);
             if (tempPtr)
@@ -2676,7 +2707,7 @@ LE_SHARED le_result_t pa_fileStream_GetPathStorage
  * This instance ID value range is [0 - LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD[ for any stored
  * files.
  * If the instance ID value is LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD, it indicates that this
- * file is transferring
+ * file is transferring.
  *
  * @return
  *      - LE_OK if the file is already present.
@@ -2689,7 +2720,7 @@ LE_SHARED le_result_t pa_fileStream_IsFilePresent
 (
     const char* fileNamePtr,    ///< [IN] File name
     const char* fileHashPtr,    ///< [IN] File hash (optional)
-    uint16_t*   instanceIdPtr   ///< [OUT] Instance Id if the file is present
+    uint16_t*   instanceIdPtr   ///< [OUT] Instance Id if the file is present (optional)
 )
 {
     le_result_t result;
@@ -2716,6 +2747,241 @@ LE_SHARED le_result_t pa_fileStream_IsFilePresent
     }
     return result;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * File streaming thread
+ */
+//--------------------------------------------------------------------------------------------------
+static void* FileStreamThread
+(
+    void* ctxPtr    ///< [IN] Context pointer
+)
+{
+    static le_result_t result;
+    size_t fileToReadLen = 0;
+    char* fileNamePtr = (char*)ctxPtr;
+    size_t len = LE_FILESTREAMCLIENT_FILE_NAME_MAX_BYTES
+                    + strlen(FILESTREAM_LEFS_DIR)
+                    + strlen(FILESTREAM_STORAGE_LEFS_DIR)
+                    + 10;
+    char namePtr[len];
+    le_fs_FileRef_t fileRef;
+    int fd = -1;
+    size_t readDataLen = 0;
+
+    #define DATA_LEN 500 // To be updated
+    uint8_t data[DATA_LEN];
+    size_t dataLen = DATA_LEN;
+
+    // Initialize the return value at every start
+    result = LE_OK;
+
+    // Block SIGPIPE so we receive EPIPE
+    le_sig_Block(SIGPIPE);
+
+    // Open the pipe
+    fd = le_fd_Open(LE_FILESTREAMSERVER_FIFO_PATH, O_WRONLY);
+    if (-1 == fd)
+    {
+        LE_ERROR("Failed to open FIFO %d", errno);
+        result =  LE_FAULT;
+        goto errorEnd;
+    }
+    StaticFd = fd;
+    // Open the file
+    snprintf(namePtr,
+             len,
+             "%s%s/%s",
+             FILESTREAM_LEFS_DIR,
+             FILESTREAM_STORAGE_LEFS_DIR,
+             fileNamePtr);
+
+    LE_INFO("File name to read: %s", namePtr);
+
+    result = le_fs_GetSize(namePtr, &fileToReadLen);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Failed to get the file len (%s)", LE_RESULT_TXT(result));
+        goto errorCloseFd;
+    }
+    LE_INFO("File len %zd", fileToReadLen);
+
+    dataLen = DATA_LEN;
+    result = le_fs_Open(namePtr, LE_FS_RDONLY, &fileRef);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Failed to open the file (%s)", LE_RESULT_TXT(result));
+        goto errorCloseFd;
+    }
+
+    readDataLen = 0;
+    while(true)
+    {
+        result = le_fs_Read(fileRef, data, &dataLen);
+        if (LE_OK != result)
+        {
+            LE_ERROR("Error to read data file %s", LE_RESULT_TXT(result));
+            goto errorCloseFile;
+        }
+        if (!dataLen)
+        {
+            break;
+        }
+        readDataLen += dataLen;
+        LE_DEBUG("readDataLen %zd - %zd fileToReadLen -  %zd", readDataLen, fileToReadLen, dataLen);
+
+        ssize_t count = -1;
+        do
+        {
+            count = le_fd_Write(fd, data, dataLen);
+            if (-1 == count)
+            {
+                LE_ERROR("Failed to write to fifo: %s", strerror(errno));
+
+                if ((-1 == count) && (EAGAIN == errno))
+                {
+                    count = 0;
+                }
+                else if ((-1 == count) && (EINTR != errno))
+                {
+                    LE_ERROR("Error during write: %m");
+                    goto errorCloseFile;
+                }
+            }
+            LE_DEBUG("Read from file: %d bytes", (uint32_t)count);
+        }while ((-1 == count) && (EINTR == errno));
+
+
+        if (dataLen > count)
+        {
+            LE_ERROR("Failed to write data: size %"PRIu32", count %zd", dataLen, count);
+        }
+    }
+
+errorCloseFile:
+    if (LE_OK != le_fs_Close(fileRef))
+    {
+        LE_ERROR("failed to close file %s", namePtr);
+    }
+
+errorCloseFd:
+    if ((-1 != fd) && (0 != le_fd_Close(fd)))
+    {
+        LE_ERROR("failed to close fd");
+    }
+    else
+    {
+        LE_DEBUG("FD closed on file service");
+    }
+
+errorEnd:
+    FileStreamRef = NULL;
+    return (void*)&result;
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to request a stream
+ *
+ * @return
+ *      - LE_OK              On success
+ *      - LE_BUSY            If a stream is on-going
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_OUT_OF_RANGE    Storage is too small
+ *      - LE_NOT_FOUND       If the file is not present.
+ *      - LE_FAULT           On failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fileStream_StartStream
+(
+    const char* fileNamePtr         ///< [IN] File name
+)
+{
+    le_result_t result;
+    static char fileToStreamPtr[LE_FILESTREAMSERVER_FILE_NAME_MAX_BYTES];
+
+    if (FileStreamRef)
+    {
+        LE_ERROR("A streaming is still in progress, wait for its end");
+        return LE_BUSY;
+    }
+
+    if ((!fileNamePtr) || (fileNamePtr && (!strlen(fileNamePtr))))
+    {
+        LE_ERROR("file name is not correct");
+        return LE_BAD_PARAMETER;
+    }
+
+    result = FileInfoFromJsonFileCheckFileName(FILESTREAM_FILE_LIST,
+                                               fileNamePtr,
+                                               NULL,
+                                               NULL);
+    LE_DEBUG("Check file name %s in %s return %d (%s)",
+             fileNamePtr, FILESTREAM_FILE_LIST, result, LE_RESULT_TXT(result));
+
+    if (LE_OK != result)
+    {
+        LE_ERROR("Issue on file name check: %s", LE_RESULT_TXT(result));
+        return result;
+    }
+
+    LE_INFO("File %s is present, stream will begin", fileNamePtr);
+    // Start the File Streaming thread
+    memset(fileToStreamPtr,0, sizeof(fileToStreamPtr));
+    snprintf(fileToStreamPtr, sizeof(fileToStreamPtr), "%s", fileNamePtr);
+    FileStreamRef = le_thread_Create("FileStreaming", FileStreamThread, (void*)fileToStreamPtr);
+    le_thread_SetJoinable(FileStreamRef);
+    LE_THREAD_SET_STATIC_STACK(FileStreamRef, FileStreamThreadStrStack);
+    le_thread_Start(FileStreamRef);
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to abort a stream
+ *
+ * @return
+ *      - LE_OK              On success
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fileStream_AbortStream
+(
+    void
+)
+{
+    le_result_t result;
+
+    LE_DEBUG("le_fileStreamServer_AbortStream");
+    if (!FileStreamRef)
+    {
+        LE_DEBUG("No on-going stream");
+        return LE_OK;
+    }
+
+    result = le_thread_Cancel(FileStreamRef);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Can not cancel streaming file: %s", LE_RESULT_TXT(result));
+    }
+    else
+    {
+        LE_DEBUG("THREAD CANCELED");
+    }
+
+    if (-1 == le_fd_Close(StaticFd))
+    {
+        LE_ERROR("Error to close W FIFO %d", errno);
+    }
+    FileStreamRef = NULL;
+    return LE_OK;
+}
+
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -226,7 +226,7 @@ LE_SHARED le_result_t pa_fileStream_GetPathStorage
  * This instance ID value range is [0 - LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD[ for any stored
  * files.
  * If the instance ID value is LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD, it indicates that this
- * file is transferring
+ * file is transferring.
  *
  * @return
  *      - LE_OK if the file is already present.
@@ -240,6 +240,39 @@ LE_SHARED le_result_t pa_fileStream_IsFilePresent
     const char* fileNamePtr,    ///< [IN] File name
     const char* fileHashPtr,    ///< [IN] File hash (optional)
     uint16_t*   instanceIdPtr   ///< [OUT] Instance Id if the file is present
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to request a stream
+ *
+ * @return
+ *      - LE_OK              On success
+ *      - LE_BUSY            If a stream is on-going
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_OUT_OF_RANGE    Storage is too small
+ *      - LE_NOT_FOUND       If the file is not present.
+ *      - LE_FAULT           On failure
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fileStream_StartStream
+(
+    const char* fileNamePtr         ///< [IN] File name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to abort a stream
+ *
+ * @return
+ *      - LE_OK              On success
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_fileStream_AbortStream
+(
+    void
 );
 
 //--------------------------------------------------------------------------------------------------

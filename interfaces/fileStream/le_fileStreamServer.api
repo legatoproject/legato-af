@@ -98,6 +98,13 @@ DEFINE DOWNLOADING_FILE_INSTANCE = -1;
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Define FIFO path for file stream
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE FIFO_PATH = "/tmp/fileStream/fifo";
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Init Stream
  *
  * @return
@@ -311,4 +318,41 @@ FUNCTION le_result_t IsFilePresent
 HANDLER Stream
 (
     file fd IN                                             ///< File descriptor of the stream
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to request a stream
+ *
+ * @return
+ *      - LE_OK              On success
+ *      - LE_BUSY            If a stream is on-going
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_TIMEOUT         After 900 seconds without data received
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_OUT_OF_RANGE    Storage is too small
+ *      - LE_NOT_FOUND       If the file is not present.
+ *      - LE_FAULT           On failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t StartStream
+(
+    string      fileNamePtr[FILE_NAME_MAX_LEN]      IN      ///< File name
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Function to abort a stream
+ *
+ * @return
+ *      - LE_OK              On success
+ *      - LE_BUSY            If a stream is on-going
+ *      - LE_BAD_PARAMETER   If an input parameter is not valid
+ *      - LE_CLOSED          File descriptor has been closed before all data have been received
+ *      - LE_NOT_FOUND       If the file is not present.
+ *      - LE_FAULT           On failure
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t AbortStream
+(
 );

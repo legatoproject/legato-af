@@ -20,7 +20,7 @@
  * This instance ID value range is [0 - LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD[ for any stored
  * files.
  * If the instance ID value is LE_FILESTREAMSERVER_INSTANCE_ID_DOWNLOAD, it indicates that this
- * file is transferring
+ * file is transferring.
  *
  * @return:
  *      - LE_OK on success
