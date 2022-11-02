@@ -867,7 +867,12 @@ int secSocket_GetTlsErrorCode
 {
     MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
-    LE_ASSERT(contextPtr != NULL);
+    if (!contextPtr)
+    {
+        LE_INFO("Non secure case, will just return no error (0)");
+        return 0;
+    }
+
     return contextPtr->mbedtls_errcode;
 }
 
