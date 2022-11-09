@@ -276,8 +276,8 @@ int secSocket_GetTlsErrorCode
 //--------------------------------------------------------------------------------------------------
 void secSocket_SetTlsErrorCode
 (
-    secSocket_Ctx_t *ctxPtr,    ///< [IN] Secure socket context pointer
-    int err_code                ///< [IN] INT error code
+    secSocket_Ctx_t *ctxPtr,     ///< [IN] Secure socket context pointer
+    int             err_code     ///< [IN] INT error code
 );
 
 //--------------------------------------------------------------------------------------------------

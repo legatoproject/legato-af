@@ -281,3 +281,38 @@ bool secSocket_IsDataAvailable
 {
     return false;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+int secSocket_GetTlsErrorCode
+(
+    secSocket_Ctx_t *ctxPtr     ///< [IN] Secure socket context pointer
+)
+{
+    return 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsErrorCode
+(
+    secSocket_Ctx_t        *ctxPtr,   ///< [IN] Secure socket context pointer
+    int                    err_code   ///< [IN] INT error code
+)
+{
+    return;
+}

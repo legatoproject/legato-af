@@ -556,7 +556,7 @@ LE_SHARED int le_socket_GetTlsErrorCode
 LE_SHARED void le_socket_SetTlsErrorCode
 (
     le_socket_Ref_t          socketRef,         ///< [IN] Socket context reference
-    int err_code                                ///< [IN] INT error code
+    int                      err_code           ///< [IN] INT error code
 );
 
 #endif  // LE_SOCKET_LIB_H

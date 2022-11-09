@@ -261,6 +261,8 @@ le_result_t NetworkConnect
     if (!net->socketRef)
     {
         LE_ERROR("Failed to create MQTT client socket for server %s:%d.", addr, port);
+        net->extError = EXT_SOC_SET_CLI_SOCKET_ERR;
+
         return LE_FAULT;
     }
 
@@ -271,7 +273,7 @@ le_result_t NetworkConnect
                                               net->certificatePtr,
                                               net->certificateLen))
         {
-            LE_ERROR("Failed to add certificate");
+            LE_ERROR("Failed to add root CA certificate into tls");
             goto freeSocket;
         }
 
@@ -281,7 +283,7 @@ le_result_t NetworkConnect
                                                      net->ownCertificatePtr,
                                                      net->ownCertificateLen))
             {
-                LE_ERROR("Failed to add client certificate");
+                LE_ERROR("Failed to add client certificate into tls");
                 goto freeSocket;
             }
 
@@ -289,7 +291,7 @@ le_result_t NetworkConnect
                                                     net->ownPrivateKeyPtr,
                                                     net->ownPrivateKeyLen))
             {
-                LE_ERROR("Failed to add client private key");
+                LE_ERROR("Failed to add client private key into tls");
                 goto freeSocket;
             }
         } // End of mutual authentication
@@ -297,12 +299,14 @@ le_result_t NetworkConnect
         if (LE_OK != le_socket_SetAuthType(net->socketRef, net->auth))
         {
             LE_ERROR("Failed to set mutual authentication type");
+            net->extError = EXT_TLS_SET_AUTH_ERR;
             goto freeSocket;
         }
 
         if (LE_OK != le_socket_SetCipherSuites(net->socketRef, net->cipherIdx))
         {
             LE_ERROR("Failed to set cipher suite");
+            net->extError = EXT_TLS_SET_CIPHER_SUITE_ERR;
             goto freeSocket;
         }
 
@@ -311,6 +315,7 @@ le_result_t NetworkConnect
             if (LE_OK != le_socket_SetAlpnProtocolList(net->socketRef, net->alpnList))
             {
                 LE_ERROR("Failed to set ALPN protocol list");
+                net->extError = EXT_TLS_SET_ALPN_ERR;
                 goto freeSocket;
             }
         }
@@ -319,8 +324,10 @@ le_result_t NetworkConnect
     // Set response timeout.
     if (LE_OK != le_socket_SetTimeout(net->socketRef, timeoutMs))
     {
-       LE_ERROR("Failed to set response timeout.");
-       goto freeSocket;
+        LE_ERROR("Failed to set response timeout.");
+        net->extError = EXT_SOC_SET_CNX_TIMEOUT_ERR;
+
+        goto freeSocket;
     }
 
     // Store the receive handler callback function and context pointer
@@ -331,20 +338,25 @@ le_result_t NetworkConnect
     if (LE_OK != le_socket_AddEventHandler(net->socketRef, StatusRecvHandler, net))
     {
         LE_ERROR("Failed to add socket event handler");
+        net->extError = EXT_SOC_SET_EVENT_HANDLER_ERR;
+
         goto freeSocket;
     }
 
     // Enable async mode and start fd monitor.
     if (LE_OK != le_socket_SetMonitoring(net->socketRef, true))
     {
-       LE_ERROR("Failed to enable data socket monitor.");
-       goto freeSocket;
+        LE_ERROR("Failed to enable data socket monitor.");
+        net->extError = EXT_SOC_SET_ASYNC_ERR;
+
+        goto freeSocket;
     }
 
     // Connect the MQTT broker.
     if (LE_OK != le_socket_Connect(net->socketRef))
     {
         LE_ERROR("Failed to connect MQTT broker %s:%d.", addr, port);
+        net->extError = EXT_SOC_CNX_REMOTE_SERVER_ERR;
         goto freeSocket;
     }
 
@@ -353,6 +365,13 @@ le_result_t NetworkConnect
 freeSocket:
     if(net->socketRef != NULL)
     {
+        /* NetworkConnect failed.
+           Keep client tls err before delete client. */
+        int tls_err = le_socket_GetTlsErrorCode(net->socketRef);
+        if(tls_err != 0)
+        {
+            net->extError = (le_exterr_result_t)tls_err;
+        }
         le_socket_Delete(net->socketRef);
         net->socketRef = NULL;
         net->handlerFunc = NULL;
@@ -375,6 +394,12 @@ void NetworkDisconnect
 {
     if (net->socketRef != NULL)
     {
+        /* Keep client tls err before delete client. */
+        int tls_err = le_socket_GetTlsErrorCode(net->socketRef);
+        if(tls_err != 0)
+        {
+            net->extError = (le_exterr_result_t)tls_err;
+        }
         le_socket_Disconnect(net->socketRef);
         le_socket_Delete(net->socketRef);
         net->socketRef = NULL;
@@ -404,6 +429,7 @@ static int MqttWrite
     if (LE_OK != le_socket_SetTimeout(net->socketRef, timeoutMs))
     {
        LE_ERROR("Failed to set response timeout.");
+       net->extError = EXT_SOC_SET_WRITE_TIMEOUT_ERR;
        return -1;
     }
 
@@ -442,6 +468,7 @@ static int MqttRead
     if (LE_OK != le_socket_SetTimeout(net->socketRef, timeoutMs))
     {
        LE_ERROR("Failed to set response timeout.");
+       net->extError = EXT_SOC_SET_READ_TIMEOUT_ERR;
        return -1;
     }
 

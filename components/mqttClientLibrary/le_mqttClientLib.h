@@ -243,6 +243,63 @@ LE_SHARED le_result_t le_mqttClient_AddReceiveHandler
     void                        *contextPtr     ///< [IN] Additional data to pass to the handler.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_mqttClient_GetTlsErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef     ///< [IN] Session reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_mqttClient_SetTlsErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef,    ///< [IN] Session reference
+    int                          err_code       ///< [IN] INT error code
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get ext error code
+ *
+ * @note Get ext error code
+ *
+ * @return
+ *  - le_exterr_result_t ext error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_exterr_result_t le_mqttClient_GetExtErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef     ///< [IN] Session reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ext error code
+ *
+ * @note Set ext error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_mqttClient_SetExtErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef,    ///< [IN] Session reference
+    le_exterr_result_t err_code                 ///< [IN] le_exterr_result_t error code
+);
 
 //--------------------------------------------------------------------------------------------------
 /**

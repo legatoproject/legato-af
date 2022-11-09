@@ -1893,7 +1893,7 @@ le_result_t le_httpClient_Resume
  *  - INT tls error code
  */
 //--------------------------------------------------------------------------------------------------
-int le_httpClient_GetTlsErrorCode
+LE_SHARED int le_httpClient_GetTlsErrorCode
 (
     le_httpClient_Ref_t     ref       ///< [IN] HTTP session context reference
 )
@@ -1902,7 +1902,7 @@ int le_httpClient_GetTlsErrorCode
     if (contextPtr == NULL)
     {
         LE_ERROR("Reference not found: %p", ref);
-        return LE_BAD_PARAMETER;
+        return 0;
     }
 
     return le_socket_GetTlsErrorCode(contextPtr->socketRef);
@@ -1916,10 +1916,10 @@ int le_httpClient_GetTlsErrorCode
  *
  */
 //--------------------------------------------------------------------------------------------------
-void le_httpClient_SetTlsErrorCode
+LE_SHARED void le_httpClient_SetTlsErrorCode
 (
     le_httpClient_Ref_t     ref,        ///< [IN] HTTP session context reference
-    int err_code                        ///< [IN] INT tls error code
+    int                     err_code    ///< [IN] INT tls error code
 )
 {
     HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);

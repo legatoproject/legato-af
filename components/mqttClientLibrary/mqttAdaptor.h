@@ -45,6 +45,7 @@ typedef struct Network
     MqttWriteFunc mqttwrite;                  ///< write function pointer
     networkStatusHandler handlerFunc;         ///< Network status callback function
     void* contextPtr;                         ///< Network status callback function context pointer
+    le_exterr_result_t extError;              ///< Network ext error code
 } Network;
 
 

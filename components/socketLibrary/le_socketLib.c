@@ -1322,7 +1322,7 @@ int le_socket_GetTlsErrorCode
     if (contextPtr == NULL)
     {
         LE_ERROR("Reference not found: %p", socketRef);
-        return LE_BAD_PARAMETER;
+        return 0;
     }
 
     return secSocket_GetTlsErrorCode(contextPtr->secureCtxPtr);
@@ -1339,7 +1339,7 @@ int le_socket_GetTlsErrorCode
 void le_socket_SetTlsErrorCode
 (
     le_socket_Ref_t          socketRef,         ///< [IN] Socket context reference
-    int err_code                                ///< [IN] INT error code
+    int                      err_code           ///< [IN] INT error code
 )
 {
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, socketRef);

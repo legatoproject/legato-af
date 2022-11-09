@@ -516,4 +516,62 @@ LE_SHARED le_result_t le_ftpClient_GetInfo
 
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_ftpClient_GetTlsErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef      ///< [IN] Session reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_ftpClient_SetTlsErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef,     ///< [IN] Session reference
+    int                         err_code        ///< [IN] INT error code
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get ext error code
+ *
+ * @note Get ext error code
+ *
+ * @return
+ *  - le_exterr_result_t ext error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_exterr_result_t le_ftpClient_GetExtErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef      ///< [IN] Session reference
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ext error code
+ *
+ * @note Set ext error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_ftpClient_SetExtErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef,     ///< [IN] Session reference
+    le_exterr_result_t       err_code           ///< [IN] le_exterr_result_t error code
+);
+
 #endif /* end LE_FTP_CLIENT_H */

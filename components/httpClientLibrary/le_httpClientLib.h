@@ -748,7 +748,7 @@ LE_SHARED int le_httpClient_GetTlsErrorCode
 LE_SHARED void le_httpClient_SetTlsErrorCode
 (
     le_httpClient_Ref_t     ref,        ///< [IN] HTTP session context reference
-    int err_code                        ///< [IN] INT error code
+    int                     err_code    ///< [IN] INT error code
 );
 
 #endif  // LE_HTTP_CLIENT_LIB_H

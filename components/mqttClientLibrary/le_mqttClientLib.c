@@ -681,6 +681,7 @@ LE_SHARED le_result_t le_mqttClient_StartSession
 
     if (rc != SUCCESS)
     {
+        sessionRef->network.extError = EXT_MQTT_SEND_CNX_PACKAGE_ERR;
         // Stop the session to close and delete socket connection, and disconnect to MDC
         le_mqttClient_StopSession(sessionRef);
 
@@ -956,6 +957,100 @@ LE_SHARED le_result_t le_mqttClient_AddReceiveHandler
     sessionRef->contextPtr = contextPtr;
 
     return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_mqttClient_GetTlsErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef    ///< [IN] Session reference
+)
+{
+    if (sessionRef == NULL || sessionRef->network.socketRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return 0;
+    }
+
+    return le_socket_GetTlsErrorCode(sessionRef->network.socketRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_mqttClient_SetTlsErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef,    ///< [IN] Session reference
+    int                          err_code       ///< [IN] INT error code
+)
+{
+    if (sessionRef == NULL || sessionRef->network.socketRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return;
+    }
+
+    le_socket_SetTlsErrorCode(sessionRef->network.socketRef, err_code);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get ext error code
+ *
+ * @note Get ext error code
+ *
+ * @return
+ *  - le_exterr_result_t ext error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_exterr_result_t le_mqttClient_GetExtErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef    ///< [IN] Session reference
+)
+{
+    if (sessionRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return EXT_NO_ERR;
+    }
+
+    return sessionRef->network.extError;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ext error code
+ *
+ * @note Set ext error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_mqttClient_SetExtErrorCode
+(
+    le_mqttClient_SessionRef_t   sessionRef,    ///< [IN] Session reference
+    le_exterr_result_t           err_code       ///< [IN] le_exterr_result_t error code
+)
+{
+    if (sessionRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return;
+    }
+
+    sessionRef->network.extError = err_code;
 }
 
 //--------------------------------------------------------------------------------------------------

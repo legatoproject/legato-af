@@ -288,6 +288,7 @@ le_result_t secSocket_Init
     mbedtls_x509_crt_init(&(contextPtr->ownCert));
     mbedtls_pk_init(&(contextPtr->ownPkey));
     contextPtr->auth = AUTH_SERVER;
+    contextPtr->mbedtls_errcode = 0;
 
 #if defined(MBEDTLS_DEBUG_C)
     mbedtls_ssl_conf_dbg(&(contextPtr->sslConf), OutputMbedtlsDebugInfo, stdout);
@@ -336,7 +337,7 @@ le_result_t secSocket_AddCertificate
     if ((mbedtls_x509_time_is_past(&contextPtr->caCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->caCert.valid_from)))
     {
-        contextPtr->mbedtls_errcode = MBEDTLS_X509_BADCERT_EXPIRED;
+        contextPtr->mbedtls_errcode = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
         LE_ERROR("Current root CA certificates expired, please add valid certificates");
         return LE_FORMAT_ERROR;
     }
@@ -381,7 +382,7 @@ le_result_t secSocket_AddOwnCertificate
     if ((mbedtls_x509_time_is_past(&contextPtr->ownCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->ownCert.valid_from)))
     {
-        contextPtr->mbedtls_errcode = MBEDTLS_X509_BADCERT_EXPIRED;
+        contextPtr->mbedtls_errcode = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
         LE_ERROR("Current client certificates expired, please add valid certificates");
         return LE_FORMAT_ERROR;
     }
@@ -601,10 +602,10 @@ le_result_t secSocket_PerformHandshake
     LE_INFO("Performing the SSL/TLS handshake...");
     while ((ret = mbedtls_ssl_handshake(&(contextPtr->sslCtx))) != 0)
     {
-        contextPtr->mbedtls_errcode = ret;
         LE_ERROR("Failed! mbedtls_ssl_handshake returned -0x%x", -ret);
         if ((ret != MBEDTLS_ERR_SSL_WANT_READ) && (ret != MBEDTLS_ERR_SSL_WANT_WRITE))
         {
+            contextPtr->mbedtls_errcode = ret;
             if (ret == MBEDTLS_ERR_NET_RECV_FAILED)
             {
                 return LE_TIMEOUT;
@@ -866,8 +867,7 @@ int secSocket_GetTlsErrorCode
 )
 {
     MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
-
-    if (!contextPtr)
+    if (contextPtr == NULL)
     {
         LE_INFO("Non secure case, will just return no error (0)");
         return 0;
@@ -886,13 +886,17 @@ int secSocket_GetTlsErrorCode
 //--------------------------------------------------------------------------------------------------
 void secSocket_SetTlsErrorCode
 (
-    secSocket_Ctx_t *ctxPtr,    ///< [IN] Secure socket context pointer
-    int err_code                ///< [IN] INT error code
+    secSocket_Ctx_t        *ctxPtr,   ///< [IN] Secure socket context pointer
+    int                    err_code   ///< [IN] INT error code
 )
 {
     MbedtlsCtx_t *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+    if (contextPtr == NULL)
+    {
+        LE_INFO("Non secure case, will just return");
+        return;
+    }
 
-    LE_ASSERT(contextPtr != NULL);
     contextPtr->mbedtls_errcode = err_code;
 }
 

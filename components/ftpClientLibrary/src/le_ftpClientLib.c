@@ -170,6 +170,7 @@ struct le_ftpClient_Session
     int                          response;                  ///< Response code of last request.
     FtpSessionState_t            controlState;              ///< FTP client current state.
     FtpSessionState_t            targetState;               ///< FTP client next state.
+    le_exterr_result_t           extError;                  ///< FTP client ext error code.
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -219,6 +220,12 @@ static void FtpClientClose
 
     if (sessionRef->ctrlSocketRef != NULL)
     {
+        /* Keep client tls err before delete client. */
+        int tls_err = le_socket_GetTlsErrorCode(sessionRef->ctrlSocketRef);
+        if(tls_err != 0)
+        {
+            sessionRef->extError = (le_exterr_result_t)tls_err;
+        }
         le_socket_Disconnect(sessionRef->ctrlSocketRef);
         le_socket_Delete(sessionRef->ctrlSocketRef);
         sessionRef->ctrlSocketRef = NULL;
@@ -1768,7 +1775,7 @@ static le_result_t FtpServerDnsQuery
 //--------------------------------------------------------------------------------------------------
 static le_result_t FtpClientConnectServer
 (
-    le_ftpClient_SessionRef_t sessionRef  ///< [IN] ftp client session ref
+    le_ftpClient_SessionRef_t sessionRef   ///< [IN] ftp client session ref
 )
 {
     LE_FATAL_IF(sessionRef == NULL, "FTP client session is NULL.");
@@ -1786,6 +1793,9 @@ static le_result_t FtpClientConnectServer
     // Create the connection timer.
     if ( LE_OK != FtpClientCreateTimer(sessionRef))
     {
+        LE_ERROR("Failed to create the connection timer");
+        sessionRef->extError = EXT_SOC_SET_CNX_TIMER_ERR;
+
         return LE_FAULT;
     }
 
@@ -1793,6 +1803,8 @@ static le_result_t FtpClientConnectServer
     if (FtpServerDnsQuery(sessionRef, serverIpAddr, sizeof(serverIpAddr)) != LE_OK)
     {
         LE_ERROR("Failed to query the IP address of server %s", sessionRef->serverStr);
+        sessionRef->extError = EXT_SOC_GET_DNS_QUERY_ERR;
+
         le_timer_Delete(sessionRef->timerRef);
         sessionRef->timerRef = NULL;
         return LE_UNAVAILABLE;
@@ -1806,6 +1818,8 @@ static le_result_t FtpClientConnectServer
     {
         LE_ERROR("Failed to create control socket for server %s:%u.", sessionRef->serverStr,
                  sessionRef->serverPort);
+        sessionRef->extError = EXT_SOC_SET_CLI_SOCKET_ERR;
+
         le_timer_Delete(sessionRef->timerRef);
         sessionRef->timerRef = NULL;
         return LE_FAULT;
@@ -1814,8 +1828,10 @@ static le_result_t FtpClientConnectServer
     // Set socket timeout (1s).
     if (LE_OK != le_socket_SetTimeout(sessionRef->ctrlSocketRef, FTP_TIMEOUT_MS))
     {
-       LE_ERROR("Failed to set response timeout.");
-       goto freeSocket;
+        LE_ERROR("Failed to set response timeout.");
+        sessionRef->extError = EXT_SOC_SET_CNX_TIMEOUT_ERR;
+
+        goto freeSocket;
     }
 
     if (sessionRef->securityMode == LE_FTP_CLIENT_SECURE)
@@ -1823,6 +1839,7 @@ static le_result_t FtpClientConnectServer
         if (le_socket_SetCipherSuites(sessionRef->ctrlSocketRef, sessionRef->cipherIdx) != LE_OK)
         {
             LE_ERROR("Failed to set cipher suites.");
+            sessionRef->extError = EXT_TLS_SET_CIPHER_SUITE_ERR;
             goto freeSocket;
         }
     }
@@ -1832,6 +1849,7 @@ static le_result_t FtpClientConnectServer
     {
         LE_ERROR("Failed to connect FTP server %s:%u.", sessionRef->serverStr,
                  sessionRef->serverPort);
+        sessionRef->extError = EXT_SOC_CNX_REMOTE_SERVER_ERR;
         goto freeSocket;
     }
 
@@ -1841,7 +1859,7 @@ static le_result_t FtpClientConnectServer
                                      sessionRef->certPtr,
                                      sessionRef->certSize) != LE_OK)
         {
-            LE_ERROR("Failed to add root CA certificates.");
+            LE_ERROR("Failed to add root CA certificates into tls.");
             goto freeSocket;
         }
     }
@@ -1861,6 +1879,8 @@ static le_result_t FtpClientConnectServer
                                                FtpClientStateMachine,sessionRef))
         {
             LE_ERROR("Failed to add socket event handler.");
+            sessionRef->extError = EXT_SOC_SET_EVENT_HANDLER_ERR;
+
             goto freeSocket;
         }
 
@@ -1868,6 +1888,8 @@ static le_result_t FtpClientConnectServer
         if (LE_OK != le_socket_SetMonitoring(sessionRef->ctrlSocketRef, true))
         {
             LE_ERROR("Failed to enable socket monitor.");
+            sessionRef->extError = EXT_SOC_SET_ASYNC_ERR;
+
             goto freeSocket;
         }
 
@@ -1888,6 +1910,13 @@ static le_result_t FtpClientConnectServer
 freeSocket:
     if (sessionRef->ctrlSocketRef != NULL)
     {
+        /* FtpClientConnectServer failed.
+           Keep client tls err before delete client. */
+        int tls_err = le_socket_GetTlsErrorCode(sessionRef->ctrlSocketRef);
+        if(tls_err != 0)
+        {
+            sessionRef->extError = (le_exterr_result_t)tls_err;
+        }
         le_socket_Delete(sessionRef->ctrlSocketRef);
         sessionRef->ctrlSocketRef = NULL;
     }
@@ -2000,6 +2029,7 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
     sessionRef->timerRef = NULL;
     sessionRef->certPtr = NULL;
     sessionRef->certSize = 0;
+    sessionRef->extError = EXT_NO_ERR;
 
     LE_INFO("Created FTP client session (%p).", sessionRef);
     return sessionRef;
@@ -2568,4 +2598,98 @@ le_result_t le_ftpClient_Size
     }
 
     return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get tls error code
+ *
+ * @note Get tls error code
+ *
+ * @return
+ *  - INT tls error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED int le_ftpClient_GetTlsErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef      ///< [IN] Session reference
+)
+{
+    if (sessionRef == NULL || sessionRef->ctrlSocketRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return 0;
+    }
+
+    return le_socket_GetTlsErrorCode(sessionRef->ctrlSocketRef);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set tls error code
+ *
+ * @note Set tls error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_ftpClient_SetTlsErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef,     ///< [IN] Session reference
+    int                         err_code        ///< [IN] INT error code
+)
+{
+    if (sessionRef == NULL || sessionRef->ctrlSocketRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return;
+    }
+
+    le_socket_SetTlsErrorCode(sessionRef->ctrlSocketRef, err_code);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get ext error code
+ *
+ * @note Get ext error code
+ *
+ * @return
+ *  - le_exterr_result_t ext error code
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_exterr_result_t le_ftpClient_GetExtErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef      ///< [IN] Session reference
+)
+{
+    if (sessionRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return EXT_NO_ERR;
+    }
+
+    return sessionRef->extError;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ext error code
+ *
+ * @note Set ext error code
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_ftpClient_SetExtErrorCode
+(
+    le_ftpClient_SessionRef_t   sessionRef,     ///< [IN] Session reference
+    le_exterr_result_t          err_code        ///< [IN] le_exterr_result_t error code
+)
+{
+    if (sessionRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return;
+    }
+
+    sessionRef->extError = err_code;
 }

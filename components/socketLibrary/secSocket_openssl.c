@@ -168,6 +168,7 @@ le_result_t secSocket_Init
 #endif
 
     contextPtr->isInit = true;
+    contextPtr->openssl_errcode = 0;
     *ctxPtr = (secSocket_Ctx_t*)contextPtr;
 
     return LE_OK;
@@ -786,8 +787,8 @@ int secSocket_GetTlsErrorCode
 //--------------------------------------------------------------------------------------------------
 void secSocket_SetTlsErrorCode
 (
-    secSocket_Ctx_t *ctxPtr,    ///< [IN] Secure socket context pointer
-    int err_code                ///< [IN] INT error code
+    secSocket_Ctx_t *ctxPtr,         ///< [IN] Secure socket context pointer
+    int              err_code        ///< [IN] INT error code
 )
 {
     OpensslCtx_t* contextPtr = GetContext(ctxPtr);

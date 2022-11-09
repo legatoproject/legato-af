@@ -224,6 +224,7 @@ extern "C" {
 #include "le_timer.h"
 #include "le_tty.h"
 #include "le_utf8.h"
+#include "le_exterr.h"
 
 #ifdef __cplusplus
 }
