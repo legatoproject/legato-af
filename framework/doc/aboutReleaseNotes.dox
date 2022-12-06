@@ -1,13 +1,47 @@
 /** @page aboutReleaseNotes Release Notes
 
-Version: <b>Legato 21.05.0</b><br>
-Date: <b>September 2, 2021</b><br>
+Version: <b>Legato 21.05.1</b><br>
+Date: <b>December 7, 2022</b><br>
 @ref aboutLicenses "Legato Application Framework Licensing Information"
 
 Visit the <a href="https://legato.io/releases">release page</a> to @b download the tarball,
 @b clone the repositories from GitHub, or view <b>previous released versions</b>.
 
-@section rn2105_Features New Features
+Get started with the 21.05.1 version of Legato by installing the SDK through [Leaf](https://docs.legato.io/21_05_1/confLeaf.html).
+
+Search for the 21.05.1 version for your target (using wp76xx as an example):
+
+@verbatim
+$ leaf search 21.05.1 -t wp76xx
+leaf setup <profile name> -p <package identifier>
+
+OR 
+
+leaf search 21.05.1 -t wp77xx
+leaf setup <profile name> -p <package identifier>
+@endverbatim
+
+@note The 21.05 release branch is the long term supported version for Sierra Wireless modules. 
+Future Sierra Wireless module releases will be using the 21.05 release. The 21.05 branch is the 
+first version that will support the Linux 4.14 kernel.
+
+@section rn21051_21_05_1_Patch 21.05.1 Patch
+
+@section rn21051_Features 21.05.1 New Features
+
+List of new features in the 21.05.1 Release:
+
+@subsection rn21051_WP76_R17_Anti-rollback New WP76xx Release 17 Anti-rollback Feature
+
+- WP76xx Release 17 will introduce an anti-rollback feature which will prevent customers from downgrading to previous releases once they've updated to R17.
+
+@subsection rn21051_Features_TrustZone4_IoTKeyStore New TrustZone 4 and IoT KeyStore Features
+
+- TrustZone 4.0 and IotKeystore will be enabled in release 21.05.1 if it is supported by the module.
+- AVC Keys migrated to IoT Keystore.
+- IoTKeystore documentation: [le_iks API Reference](http://docs.legato.io/21_05_1/group__le__iks.html)
+
+@section rn2105_Features 21.05.0 New Features
 
 List of new features in the 21.05.0 Release:
 
@@ -150,13 +184,25 @@ repositories on GitHub.
 @warning Legato image has to be upgraded or downgraded via a bundle across an image incompatibility
 boundary described below.
 
+In the Legato upgrade from pre-21.05.0 versions (e.g. 20.08.0) to 21.05.0+, an image
+incompatibility boundary has been introduced. This is due to the included Kernel update from version
+3.18 to 4.14.
+
 In the Legato upgrade from pre-20.08.0 versions (e.g. 20.04.0) to 20.08.0+, an image
 incompatibility boundary has been introduced. This is due to the included Yocto update from version
-2.5 to 3.0 in which are different libssl versions.
+2.5 to 3.0/3.1 in which are different libssl versions.
 
 Whenever the Legato image is upgraded or downgraded across this boundary line, it has to be done
 together with its corresponding LXSWI image in a bundle. Otherwise, Legato would not run and not
 take any image update to recover.
+
+On top of Legato & Yocto considerations above, a TrustZone4 and IoT Keystore incompatibility boundary
+has been introduced. Updating to WP76xx Release 17 requires special instructions because customer will
+need to perform a multi-step upgrade to enable TZ4. For WP76xx firmware update process:
+- FDT2: User can directly update the firmware to R17.
+- AVMS/FOTA: There are two-steps for AVMS/FOTA:
+  - If user device is lower than or equal to R16, it needs to upgrade to R16.1/R16.2/R16.3 for Legato supporting TZ4 format first
+  - If user device is R16.1/R16.2/R16.3, then it can directly upgrade to R17
 
 @subsubsection rn2105_ConstraintsLinuxSupport Dev Machine Linux Version
 
