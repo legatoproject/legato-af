@@ -51,8 +51,7 @@ buildVars:
 
 cflags:
 {
-    -DSIERRA_MDM9X28
-    -DSIERRA_WP76XX
+    -DSIERRA
 
     // Audio HW settings
     -DPCM_IF=SEC_AUX
