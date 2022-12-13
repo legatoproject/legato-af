@@ -168,7 +168,7 @@ void GenerateCLangExeMain
         auto componentPtr = componentInstancePtr->componentPtr;
 
         // If the component contains shared libraries, load them.
-        for (const auto fileSystemObjectPtr : componentPtr->bundledFiles)
+        for (const auto &fileSystemObjectPtr : componentPtr->bundledFiles)
         {
             std::string filePath = path::GetLastNode(fileSystemObjectPtr->destPath);
 
