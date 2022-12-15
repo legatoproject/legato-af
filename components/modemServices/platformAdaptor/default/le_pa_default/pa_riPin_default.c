@@ -119,3 +119,23 @@ void pa_riPin_Set
 {
     LE_ERROR("Unsupported function called");
 }
+
+#ifdef MK_CONFIG_KRIC_RI_ON_LWM2M
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set LWM2M events handler. Pass NULL for Unset the handler
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_riPin_SetLwm2mEventHandler
+(
+    pa_riPin_EventHandler_t riEventHandler     ///< [IN] Handler for LWM2M events
+)
+{
+    return LE_UNSUPPORTED;
+}
+#endif
