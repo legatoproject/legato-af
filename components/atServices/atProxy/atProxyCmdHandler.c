@@ -528,7 +528,6 @@ static void ProcessAtCmd
         if (atCmdRegistryPtr[atCmdPtr->registryIndex].commandHandlerPtr != NULL)
         {
             atCmdPtr->active = true;
-            pa_port_Write(atCmdPtr->port, "\r\n", strlen("\r\n"));
             pa_port_Disable(atCmdPtr->port);
 
             // Trigger the AT Command Handler callback registered for this "local"
