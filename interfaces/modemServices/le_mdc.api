@@ -843,7 +843,8 @@ FUNCTION le_result_t GetDataBearerTechnology
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get number of bytes received/transmitted without error since the last reset.
+ * Get total number of bytes received/transmitted without error since the last counter reset
+ * even though rebooted.
  *
  * @return
  *      - LE_OK on success
@@ -855,8 +856,28 @@ FUNCTION le_result_t GetDataBearerTechnology
 //--------------------------------------------------------------------------------------------------
 FUNCTION le_result_t GetBytesCounters
 (
-    uint64 rxBytes OUT,     ///< bytes amount received since the last counter reset
-    uint64 txBytes OUT      ///< bytes amount transmitted since the last counter reset
+    uint64 rxBytes OUT,     ///< total bytes amount received since the last counter reset
+                            ///< even though rebooted
+    uint64 txBytes OUT      ///< total bytes amount transmitted since the last counter reset
+                            ///< even though rebooted
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get last number of bytes received/transmitted return from mdc.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ *
+ * @note
+ *      - The process exits, if an invalid pointer is given
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetLastBytes
+(
+    uint64 rxBytes OUT,     ///< last bytes amount received return from mdc
+    uint64 txBytes OUT      ///< last bytes amount transmitted return from mdc
 );
 
 //--------------------------------------------------------------------------------------------------

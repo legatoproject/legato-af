@@ -605,6 +605,20 @@ LE_SHARED le_result_t pa_mdc_GetDataFlowStatistics
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get data flow since the last reset without data counter statistics.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_mdc_GetDataFlow_without_Statistics
+(
+    pa_mdc_PktStatistics_t* dataPtr   ///< [OUT] data
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reset data flow statistics
  *
  * * @return

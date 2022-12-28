@@ -445,6 +445,24 @@ __attribute__((weak)) le_result_t pa_mdc_GetDataFlowStatistics
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get data flow since the last reset without data counter statistics.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ */
+//--------------------------------------------------------------------------------------------------
+__attribute__((weak)) le_result_t pa_mdc_GetDataFlow_without_Statistics
+(
+    pa_mdc_PktStatistics_t *dataPtr ///< [OUT] data
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_FAULT;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reset data flow statistics
  *
  * * @return

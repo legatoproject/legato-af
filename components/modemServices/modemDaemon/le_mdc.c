@@ -2087,7 +2087,8 @@ bool le_mdc_IsIPv6
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Get number of bytes received/transmitted without error since the last reset.
+ * Get total number of bytes received/transmitted without error since the last counter reset
+ * even though rebooted.
  *
  * @return
  *      - LE_OK on success
@@ -2099,8 +2100,10 @@ bool le_mdc_IsIPv6
 //--------------------------------------------------------------------------------------------------
 le_result_t le_mdc_GetBytesCounters
 (
-    uint64_t *rxBytes,  ///< [OUT] bytes amount received since the last counter reset
-    uint64_t *txBytes   ///< [OUT] bytes amount transmitted since the last counter reset
+    uint64_t *rxBytes,  ///< [OUT] total bytes amount received since the last counter reset
+                        ///< even though rebooted
+    uint64_t *txBytes   ///< [OUT] total bytes amount transmitted since the last counter reset
+                        ///< even though rebooted
 )
 {
     if (!rxBytes)
@@ -2130,6 +2133,43 @@ le_result_t le_mdc_GetBytesCounters
     return LE_OK;
 }
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get last number of bytes received/transmitted return from mdc.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for all other errors
+ *
+ * @note
+ *      - The process exits, if an invalid pointer is given
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_mdc_GetLastBytes
+(
+    uint64_t *rxBytes,  ///< [OUT] last bytes amount received return from mdc
+    uint64_t *txBytes   ///< [OUT] last bytes amount transmitted return from mdc
+)
+{
+    pa_mdc_PktStatistics_t data;
+
+    if (!rxBytes || !txBytes)
+    {
+        LE_KILL_CLIENT("rxBytes or txBytes is NULL !");
+        return LE_FAULT;
+    }
+
+    if (LE_OK != pa_mdc_GetDataFlow_without_Statistics(&data))
+    {
+        LE_WARN("Failed to get current data flow statistics");
+        return LE_FAULT;
+    }
+
+    *rxBytes = data.receivedBytesCount;
+    *txBytes = data.transmittedBytesCount;
+
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
