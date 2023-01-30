@@ -394,6 +394,11 @@ LE_SHARED void atProxy_SendFinalResultCode
                 break;
             }
 
+            // Avoid +CME ERROR response overwrites input AT command
+            pa_port_Write(portRef,
+                          "\r\n",
+                          strlen("\r\n"));
+
             // Compose the pattern part for the response
             strncpy(buffer, pattern, LE_ATDEFS_RESPONSE_MAX_LEN);
             buffer[LE_ATDEFS_RESPONSE_MAX_LEN] = '\0';
