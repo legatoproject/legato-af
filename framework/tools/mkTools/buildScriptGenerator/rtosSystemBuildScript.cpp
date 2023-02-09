@@ -119,6 +119,8 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
                                                        "$target.o"));
     auto tasksOutputFile = "$builddir/obj/tasks.c.o";
     auto rpcServicesOutputFile = "$builddir/obj/rpcServices.c.o";
+    std::string archiveStr = tasksOutputFile, spaceStr = " ";
+    auto outputArFile = path::MakeAbsolute(path::Combine(buildParams.outputDir, "$target.a"));
 
     // Build task list file
     script << "build " << tasksOutputFile << ":"
@@ -218,6 +220,7 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     if (envVars::GetConfigBool("LE_CONFIG_RPC"))
     {
         script << " " << rpcServicesOutputFile;
+        archiveStr += spaceStr + rpcServicesOutputFile;
     }
 
     // For each app built by the mk tools for this system,
@@ -231,6 +234,8 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
             auto exePtr = exeEntry.second;
 
             script << " $builddir/" << exePtr->path;
+
+            archiveStr += " $builddir/" + exePtr->path;
         }
     }
 
@@ -246,6 +251,7 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
         if (componentPtr->HasCOrCppCode())
         {
             script << " " << componentPtr->GetTargetInfo<target::RtosComponentInfo_t>()->staticlib;
+            archiveStr += spaceStr + componentPtr->GetTargetInfo<target::RtosComponentInfo_t>()->staticlib;
         }
 
         // Also includes all the object files for the auto-generated IPC API client
@@ -257,11 +263,15 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     for (auto const &commonClientObject : commonClientObjects)
     {
         script << " $builddir/" << commonClientObject;
+        archiveStr += " $builddir/" + commonClientObject;
     }
 
     script << " | $builddir/src/legato.ld";
 
     GenerateLdFlags();
+
+    // Output the rule for archiving legato system objective files
+    script << "build " << outputArFile << ": ArchiveOBJ " << archiveStr << "\n\n";
 
     // Pack each app in the system into the RFS image.  On RTOS RFS only includes
     // bundled files, not libraries or executables

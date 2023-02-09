@@ -26,6 +26,7 @@ namespace ninja
 class RtosBuildScriptGenerator_t : public BuildScriptGenerator_t
 {
     public:
+        void GenerateArchiveRules(void);
         virtual void GenerateBuildRules(void) override;
         virtual void GenerateCFlags(void) override;
         virtual void GenerateIfgenFlags(void) override;

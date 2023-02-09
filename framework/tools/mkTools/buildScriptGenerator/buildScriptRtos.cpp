@@ -38,6 +38,34 @@ void RtosBuildScriptGenerator_t::GenerateIfgenFlags
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Rtos-specific build rules for generating archive
+ **/
+//--------------------------------------------------------------------------------------------------
+void RtosBuildScriptGenerator_t::GenerateArchiveRules
+(
+    void
+)
+{
+    const std::string& cArchiverPath = buildParams.archiverPath;
+
+    // Generate rules for archiving built object code files.
+    script << "rule ArchiveOBJ\n"
+              "  description = Archive objective files\n"
+              "  command = " << cArchiverPath;
+
+    if (buildParams.compilerType == mk::BuildParams_t::COMPILER_ARM_RVCT)
+    {
+        script << " --create -r $out $in\n\n";
+    }
+    else // GCC
+    {
+        script << " cru $out $in\n\n";
+    }
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Rtos-specific build rules.
  **/
 //--------------------------------------------------------------------------------------------------
@@ -91,6 +119,9 @@ void RtosBuildScriptGenerator_t::GenerateBuildRules
     }
     script << " $pplFlags $out\n"
               "\n";
+
+    // Generate archive file for legato system files (*.xdef files/tasks)
+    GenerateArchiveRules();
 }
 
 
