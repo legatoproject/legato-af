@@ -1,0 +1,17 @@
+sources:
+{
+    mbedtls_test.c
+}
+
+requires:
+{
+
+}
+
+cflags:
+{
+    -I${LEGATO_ROOT}/3rdParty/mbedtls/include/
+    '-DMBEDTLS_CONFIG_FILE=<mbedtls_port.h>'
+    -I${LEGATO_ROOT}/../mcu/frameworkAdaptor/mbedtls/
+    -I${LEGATO_ROOT}/../mcu/frameworkAdaptor/mbedtls/include
+}

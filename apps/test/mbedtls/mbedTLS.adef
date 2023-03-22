@@ -1,0 +1,17 @@
+executables:
+{
+    mbedTLStest = ( mbedTLSComponent )
+}
+
+processes:
+{
+    envVars:
+    {
+        LE_LOG_LEVEL = DEBUG
+    }
+
+    run:
+    {
+        ( mbedTLStest )
+    }
+}
