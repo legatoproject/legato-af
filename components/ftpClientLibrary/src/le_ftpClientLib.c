@@ -171,6 +171,9 @@ struct le_ftpClient_Session
     FtpSessionState_t            controlState;              ///< FTP client current state.
     FtpSessionState_t            targetState;               ///< FTP client next state.
     le_exterr_result_t           extError;                  ///< FTP client ext error code.
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+    bool                         isLguFormat;               ///< USE LGU user/password format.
+#endif
 };
 
 //--------------------------------------------------------------------------------------------------
@@ -1006,8 +1009,21 @@ static void FtpClientStateMachine
                 {
                     if (contextPtr->securityMode == LE_FTP_CLIENT_NONSECURE)
                     {
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+                        if (contextPtr->isLguFormat)
+                        {
+                            msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                              "CTN %s\r\n", contextPtr->userStr);
+                        }
+                        else
+                        {
+                            msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                              "USER %s\r\n", contextPtr->userStr);
+                        }
+#else
                         msgLen = snprintf(msgBuf, sizeof(msgBuf),
                                           "USER %s\r\n", contextPtr->userStr);
+#endif
                         LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build USER command.");
                         status = SendRequestMessage(contextPtr, msgBuf, msgLen);
                         if (LE_OK == status)
@@ -1064,9 +1080,21 @@ static void FtpClientStateMachine
                 break;
 
             case FTP_TLS_HSHAKE:
-
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+                if (contextPtr->isLguFormat)
+                {
+                    msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                      "CTN %s\r\n", contextPtr->userStr);
+                }
+                else
+                {
+                    msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                      "USER %s\r\n", contextPtr->userStr);
+                }
+#else
                 msgLen = snprintf(msgBuf, sizeof(msgBuf),
                                   "USER %s\r\n", contextPtr->userStr);
+#endif
                 LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build USER command.");
                 status = SendRequestMessage(contextPtr, msgBuf, msgLen);
                 if (LE_OK == status)
@@ -1090,8 +1118,21 @@ static void FtpClientStateMachine
                 {
                     if (response == RESP_USER_OK)
                     {
-                        msgLen = snprintf(msgBuf, sizeof(msgBuf), "PASS %s\r\n",
-                                        contextPtr->passwordStr);
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+                        if (contextPtr->isLguFormat)
+                        {
+                            msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                              "IPA %s\r\n", contextPtr->passwordStr);
+                        }
+                        else
+                        {
+                            msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                              "PASS %s\r\n", contextPtr->passwordStr);
+                        }
+#else
+                        msgLen = snprintf(msgBuf, sizeof(msgBuf),
+                                          "PASS %s\r\n", contextPtr->passwordStr);
+#endif
                         LE_FATAL_IF(msgLen >= sizeof(msgBuf), "Failed to build PASS command.");
                         status = SendRequestMessage(contextPtr, msgBuf, msgLen);
                         if (LE_OK == status)
@@ -2030,6 +2071,9 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
     sessionRef->certPtr = NULL;
     sessionRef->certSize = 0;
     sessionRef->extError = EXT_NO_ERR;
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+    sessionRef->isLguFormat = false;
+#endif
 
     LE_INFO("Created FTP client session (%p).", sessionRef);
     return sessionRef;
@@ -2693,3 +2737,28 @@ LE_SHARED void le_ftpClient_SetExtErrorCode
 
     sessionRef->extError = err_code;
 }
+
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ftp format for LGU+ RASS
+ *
+ * @note Set ftp format for LGU+ RASS
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_ftpClient_SetLguFormat
+(
+    le_ftpClient_SessionRef_t   sessionRef,     ///< [IN] Session reference
+    bool                        state           ///< [IN] state enable/ disable
+)
+{
+    if (sessionRef == NULL)
+    {
+        LE_ERROR("Reference is NULL !!");
+        return;
+    }
+
+    sessionRef->isLguFormat = state;
+}
+#endif

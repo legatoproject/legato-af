@@ -574,4 +574,20 @@ LE_SHARED void le_ftpClient_SetExtErrorCode
     le_exterr_result_t       err_code           ///< [IN] le_exterr_result_t error code
 );
 
+#ifdef MK_CONFIG_AT_IP_LGTRASS
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set ftp format for LGU+ RASS
+ *
+ * @note Set ftp format for LGU+ RASS
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED void le_ftpClient_SetLguFormat
+(
+    le_ftpClient_SessionRef_t   sessionRef,     ///< [IN] Session reference
+    bool                        state           ///< [IN] state enable/ disable
+);
+#endif
+
 #endif /* end LE_FTP_CLIENT_H */
