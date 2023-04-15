@@ -5018,6 +5018,48 @@ le_result_t le_sms_GetTpSt
 
     return LE_OK;
 }
+#else
+//--------------------------------------------------------------------------------------------------
+/**
+ * Send a text message.
+ *
+ * @return
+ *  - N/A
+ *
+ * @note If telephone destination number is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN
+ *       digits), it is a fatal error, the function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_sms_MsgRef_t le_sms_SendText
+(
+    const char* destStr,
+    ///< [IN]
+    ///< Telephone number string.
+
+    const char* textStr,
+    ///< [IN]
+    ///< SMS text.
+
+    le_sms_CallbackResultFunc_t handlerPtr,
+    ///< [IN]
+    ///< UNUSED
+
+    void* contextPtr
+    ///< [IN]
+    ///< UNUSED
+)
+{
+    LE_UNUSED(handlerPtr);
+    LE_UNUSED(contextPtr);
+    le_result_t res = pa_sms_SendText(destStr, textStr);
+
+    if (LE_OK != res)
+    {
+        LE_ERROR("SMS send text failed !");
+    }
+
+    return NULL;
+}
 #endif // MK_CONFIG_SMS_LIGHT
 
 

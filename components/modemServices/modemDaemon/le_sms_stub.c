@@ -331,40 +331,6 @@ le_result_t le_sms_GetUCS2
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Create and asynchronously send a text message.
- *
- * @return
- *  - le_sms_Msg Reference to the new Message object pooled.
- *  - NULL Not possible to pool a new message.
- *
- * @note If telephone destination number is too long is too long (max LE_MDMDEFS_PHONE_NUM_MAX_LEN
- *       digits), it is a fatal error, the function will not return.
- * @note If message is too long (max LE_SMS_TEXT_MAX_LEN digits), it is a fatal error, the
- *       function will not return.
- */
-//--------------------------------------------------------------------------------------------------
-le_sms_MsgRef_t le_sms_SendText
-(
-    const char* destStr,
-    ///< [IN]
-    ///< Telephone number string.
-
-    const char* textStr,
-    ///< [IN]
-    ///< SMS text.
-
-    le_sms_CallbackResultFunc_t handlerPtr,
-    ///< [IN]
-
-    void* contextPtr
-    ///< [IN]
-)
-{
-    return NULL;
-}
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Create and asynchronously send a PDU message.
  *
  * @return

@@ -373,6 +373,22 @@ LE_SHARED le_result_t pa_sms_ClearNewMsgHandler
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * This function send a text message
+ *
+ * @return LE_FAULT         The function failed to send a text message.
+ * @return LE_BAD_PARAMETER Bad parameter, one is NULL.
+ * @return LE_TIMEOUT       No response was received from the Modem.
+ * @return LE_OK            The function succeeded.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sms_SendText
+(
+    const char* destStr,        ///< [IN] Indicate the phone number to send SMS
+    const char* textStr         ///< [IN] Indicate the text of SMS
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function is called to unregister a storage message notification handler.
  */
 //--------------------------------------------------------------------------------------------------
