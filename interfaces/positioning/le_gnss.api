@@ -563,7 +563,7 @@ DEFINE SV_INFO_MAX_LEN = 80;
  * @note This maximal value should be coherent with @ref le_gnss_NmeaBitMask_t
  */
 //--------------------------------------------------------------------------------------------------
-DEFINE NMEA_SENTENCES_MAX = 0x01EFFFFF;
+DEFINE NMEA_SENTENCES_MAX = 0x03EFFFFF;
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -784,7 +784,9 @@ BITMASK NmeaBitMask
     NMEA_MASK_GPGNS,    ///< GPGNS type enabled: Fix data for GPS.
     NMEA_MASK_GPGST,    ///< GPGST type enabled: Position Error statistics for GPS.
     NMEA_MASK_GPZDA,    ///< GPZDA type enabled: UTC day, month, year, and local time zone offset.
-    NMEA_MASK_PSIDX     ///< PSIDX type enabled: SSI Proprietary data for accuracy
+    NMEA_MASK_PSIDX,    ///< PSIDX type enabled: SSI Proprietary data for accuracy
+    NMEA_MASK_PSEPU     ///< PSEPU type enabled: SSI Proprietary data for position
+                        ///< velocity accuracy index
 };
 
 //--------------------------------------------------------------------------------------------------
