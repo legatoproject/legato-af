@@ -11,6 +11,16 @@
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Prototype for handler functions used to control RI indication.
+ */
+//--------------------------------------------------------------------------------------------------
+typedef void (*pa_riPin_EventHandler_t)
+(
+    void
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * This function must be called to initialize the PA Ring Indicator signal module.
  *
  * @return
@@ -125,17 +135,7 @@ LE_SHARED void pa_riPin_SetRiPpp
 #ifdef MK_CONFIG_KRIC_RI_ON_LWM2M
 //--------------------------------------------------------------------------------------------------
 /**
- * Prototype for handler functions used to control RI indication.
- */
-//--------------------------------------------------------------------------------------------------
-typedef void (*pa_riPin_EventHandler_t)
-(
-    void
-);
-
-//--------------------------------------------------------------------------------------------------
-/**
- * Set LWM2M events handler. Pass NULL for Unset the handler
+ * Set LWM2M events handler. Pass NULL for unsetting the handler
  *
  * @return
  *      - LE_OK             The function succeeded.
@@ -147,7 +147,23 @@ LE_SHARED le_result_t pa_riPin_SetLwm2mEventHandler
 (
     pa_riPin_EventHandler_t riEventHandler     ///< [IN] Handler for LWM2M events
 );
+#endif
 
+#ifdef MK_CONFIG_KRIC_RI_ON_BOOTUP
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set bootup event handler. Pass NULL for unsetting the handler
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_riPin_SetBootupEventHandler
+(
+    pa_riPin_EventHandler_t riEventHandler     ///< [IN] Handler for bootup event
+);
 #endif
 
 #endif // LEGATO_PARIPIN_INCLUDE_GUARD

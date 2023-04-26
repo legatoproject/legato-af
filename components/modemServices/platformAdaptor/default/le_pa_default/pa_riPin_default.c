@@ -123,7 +123,7 @@ void pa_riPin_Set
 #ifdef MK_CONFIG_KRIC_RI_ON_LWM2M
 //--------------------------------------------------------------------------------------------------
 /**
- * Set LWM2M events handler. Pass NULL for Unset the handler
+ * Set LWM2M events handler. Pass NULL for unsetting the handler
  *
  * @return
  *      - LE_OK             The function succeeded.
@@ -134,6 +134,26 @@ void pa_riPin_Set
 LE_SHARED le_result_t pa_riPin_SetLwm2mEventHandler
 (
     pa_riPin_EventHandler_t riEventHandler     ///< [IN] Handler for LWM2M events
+)
+{
+    return LE_UNSUPPORTED;
+}
+#endif
+
+#ifdef MK_CONFIG_KRIC_RI_ON_BOOTUP
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set bootup event handler. Pass NULL for unsetting the handler
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_riPin_SetBootupEventHandler
+(
+    pa_riPin_EventHandler_t riEventHandler     ///< [IN] Handler for bootup event
 )
 {
     return LE_UNSUPPORTED;

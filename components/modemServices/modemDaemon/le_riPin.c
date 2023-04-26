@@ -87,16 +87,26 @@ static void PulseSignal
     }
     else
     {
-        if (le_timer_SetMsInterval(RiDurationTimerRef, PulseDuration) != LE_OK)
+        /* Here when the PulseDuration is 0 will disable the timer for pulse behavior, RI pin
+           will be from high voltage level to low voltage level and keep in low voltage level. */
+        if( 0 != PulseDuration)
         {
-            LE_WARN("Cannot set Interval timer!");
+            if (le_timer_SetMsInterval(RiDurationTimerRef, PulseDuration) != LE_OK)
+            {
+                LE_WARN("Cannot set Interval timer!");
+            }
+            else
+            {
+                // Pull up GPIO RI
+                pa_riPin_Set(1);
+
+                le_timer_Start(RiDurationTimerRef);
+            }
         }
         else
         {
             // Pull up GPIO RI
             pa_riPin_Set(1);
-
-            le_timer_Start(RiDurationTimerRef);
         }
     }
     le_sem_Post(SemRef);
