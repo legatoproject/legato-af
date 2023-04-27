@@ -235,6 +235,7 @@ void le_atServer_OpenBridge
     le_atServer_OpenBridgeRespond(cmdRef, bridgeRef);
 #else
     // Do something to open bridge
+    LE_UNUSED(cmdRef);
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
 }
 
@@ -254,12 +255,14 @@ void le_atServer_CloseBridge
     le_atServer_BridgeRef_t bridgeRef   ///< [IN] Bridge refence
 )
 {
-#if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_UNUSED(bridgeRef);
+
+#if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_WARN("Not implemented!");
     le_atServer_CloseBridgeRespond(cmdRef, LE_FAULT);
 #else
     // Do something to close bridge
+    LE_UNUSED(cmdRef);
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
 }
 
@@ -280,13 +283,15 @@ void le_atServer_AddDeviceToBridge
     le_atServer_BridgeRef_t bridgeRef   ///< [IN] Bridge refence
 )
 {
-#if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_UNUSED(deviceRef);
     LE_UNUSED(bridgeRef);
+
+#if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_WARN("Not implemented!");
     le_atServer_AddDeviceToBridgeRespond(cmdRef, LE_FAULT);
 #else
     // Do something to add device to bridge
+    LE_UNUSED(cmdRef);
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
 }
 
@@ -307,13 +312,15 @@ void le_atServer_RemoveDeviceFromBridge
     le_atServer_BridgeRef_t bridgeRef   ///< [IN] Bridge refence
 )
 {
-#if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_UNUSED(deviceRef);
     LE_UNUSED(bridgeRef);
+
+#if MK_CONFIG_DISABLE_AT_BRIDGE
     LE_WARN("Not implemented!");
     le_atServer_RemoveDeviceFromBridgeRespond(cmdRef, LE_FAULT);
 #else
     // Do something to remove device from bridge
+    LE_UNUSED(cmdRef);
 #endif // MK_CONFIG_DISABLE_AT_BRIDGE
 }
 
@@ -350,11 +357,12 @@ void le_atServer_CreateErrorCode
     const char* patternPtr              ///< [IN] Prefix of the final response string
 )
 {
-#if LE_CONFIG_ATSERVER_USER_ERRORS
-    // Do something
-#else
     LE_UNUSED(errorCode);
     LE_UNUSED(patternPtr);
+#if LE_CONFIG_ATSERVER_USER_ERRORS
+    // Do something
+    LE_UNUSED(cmdRef);
+#else
     LE_WARN("Not implemented!");
     le_atServer_CreateErrorCodeRespond(cmdRef, NULL);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS
@@ -375,10 +383,12 @@ void le_atServer_DeleteErrorCode
     le_atServer_ErrorCodeRef_t errorCodeRef ///< [IN] Reference to a custom error code
 )
 {
+    LE_UNUSED(errorCodeRef);
+
 #if LE_CONFIG_ATSERVER_USER_ERRORS
     // Do something
+    LE_UNUSED(cmdRef);
 #else
-    LE_UNUSED(errorCodeRef);
     LE_WARN("Not implemented!");
     le_atServer_DeleteErrorCodeRespond(cmdRef, LE_FAULT);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS
@@ -400,11 +410,13 @@ void le_atServer_SetVerboseErrorCode
     const char*  messagePtr                     ///< [IN] Verbose string
 )
 {
-#if LE_CONFIG_ATSERVER_USER_ERRORS
-    // Do something
-#else
     LE_UNUSED(errorCodeRef);
     LE_UNUSED(messagePtr);
+
+#if LE_CONFIG_ATSERVER_USER_ERRORS
+    // Do something
+    LE_UNUSED(cmdRef);
+#else
     LE_WARN("Not implemented!");
     le_atServer_SetVerboseErrorCodeRespond(cmdRef, LE_FAULT);
 #endif // LE_CONFIG_ATSERVER_USER_ERRORS

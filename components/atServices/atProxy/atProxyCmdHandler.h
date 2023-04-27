@@ -76,6 +76,7 @@ typedef struct le_atProxy_AtCommandSession
     bool active;              ///< Indicates if this session is active (i.e., in processing)
     bool dataMode;            ///< Indicates if current session is in data mode
     le_dls_List_t unsolicitedList;           ///< unsolicited list to be sent
+    le_atServer_FinalRsp_t finalResult;      ///< Last final response result
 } le_atProxy_AtCommandSession_t;
 
 

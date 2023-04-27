@@ -1,0 +1,21 @@
+start: auto
+
+executables:
+{
+    atHelloWorldTest = ( atHelloWorldComponent )
+}
+
+processes:
+{
+    run:
+    {
+        ( atHelloWorldTest )
+    }
+
+    maxStackBytes: 6000
+}
+
+bindings:
+{
+    atHelloWorldTest.atHelloWorldComponent.le_atServer -> atProxy.le_atServer
+}

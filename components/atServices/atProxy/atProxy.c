@@ -759,6 +759,9 @@ void le_atServer_SendFinalResultCode
 
     le_atServer_SendFinalResultCodeRespond(cmdRef, result);
 
+    // Set the final result code to the session, as PA may need it for post processing
+    atCmdSessionPtr->finalResult = finalResult;
+
     // After sending out final response, set current AT session to complete
     atProxyCmdHandler_Complete(atCmdSessionPtr);
 }
