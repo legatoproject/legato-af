@@ -328,6 +328,20 @@ LE_MEM_DEFINE_STATIC_POOL(TimerRecPool, 1, sizeof(timer_ThreadRec_t));
 static le_mem_PoolRef_t IteratorPool;
 static le_mem_PoolRef_t TimerRecPool;
 
+// Maximum number of column of any table
+#define MAX_NUM_COLUMN              11
+
+// Maximumn length of a column
+#if LE_CONFIG_LINUX
+#   define MAX_COLUMN_LENGTH        LIMIT_MAX_PROTOCOL_ID_BYTES
+#else
+#   define MAX_COLUMN_LENGTH        LIMIT_MAX_SAFE_REF_NAME_BYTES
+#endif
+
+LE_MEM_DEFINE_STATIC_POOL(TableColumnStringPool, MAX_NUM_COLUMN, MAX_COLUMN_LENGTH);
+
+static le_mem_PoolRef_t TableColumnStringPool;
+
 //--------------------------------------------------------------------------------------------------
 /**
  * ASCII code for the escape character.
@@ -1975,7 +1989,10 @@ static char ColumnSpacers[] = " | ";
 //--------------------------------------------------------------------------------------------------
 static size_t TableLineLen = 0;
 #define TableLineBytes (TableLineLen + 1)
-static char* TableLineBuffer;
+
+// Maximum line length
+#define MAX_TABLE_LINE_LEN          256
+static char TableLineBuffer[MAX_TABLE_LINE_LEN];
 
 
 //--------------------------------------------------------------------------------------------------
@@ -2350,6 +2367,8 @@ static void InitDisplayTable
     }
 #endif
 
+    LE_ASSERT(tableSize <= MAX_NUM_COLUMN);
+
     int i;
     for (i = 0; i < tableSize; i++)
     {
@@ -2368,24 +2387,15 @@ static void InitDisplayTable
                                  table[i].maxDataSize : headerTextWidth;
         }
 
-        // Now that column width is figured out, we can use that to allocate buffer for colField.
-        #define colBytes table[i].colWidth + 1
-        table[i].colField = (char*)malloc(colBytes);
+        table[i].colField = le_mem_ForceAlloc(TableColumnStringPool);
         // Initialize the buffer
-        memset(table[i].colField, 0, colBytes);
-        #undef colBytes
+        memset(table[i].colField, 0, table[i].colWidth + 1);
 
         // Add the column width and column spacer length to the overall line length.
         TableLineLen += table[i].colWidth + strlen(ColumnSpacers);
     }
 
-    // allocate and init the line buffer
-    TableLineBuffer = (char*)malloc(TableLineBytes);
-    if (!TableLineBuffer)
-    {
-       INTERNAL_ERR("TableLineBuffer is NULL.");
-       return;
-    }
+    LE_ASSERT(TableLineBytes <= MAX_TABLE_LINE_LEN);
     memset(TableLineBuffer, 0, TableLineBytes);
 }
 
@@ -4404,6 +4414,94 @@ static void InspectFunc
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Clean up the memory pool data after inspection
+ */
+//--------------------------------------------------------------------------------------------------
+static void CleanUp
+(
+    InspType_t inspectType          ///< [IN] inspect type
+)
+{
+
+    ColumnInfo_t* table = NULL;
+    size_t tableSize = 0;
+
+    // assigns the variables according to the inspection type.
+    switch (inspectType)
+    {
+        case INSPECT_INSP_TYPE_MEM_POOL:
+            table = MemPoolTableInfo;
+            tableSize = MemPoolTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_THREAD_OBJ:
+            table = ThreadObjTableInfo;
+            tableSize = ThreadObjTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_TIMER:
+            table = TimerTableInfo;
+            tableSize = TimerTableInfoSize;
+            break;
+
+#if LE_CONFIG_LINUX_TARGET_TOOLS
+        case INSPECT_INSP_TYPE_MUTEX:
+            table = MutexTableInfo;
+            tableSize = MutexTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_SEMAPHORE:
+            table = SemaphoreTableInfo;
+            tableSize = SemaphoreTableInfoSize;
+            break;
+#endif
+
+        case INSPECT_INSP_TYPE_SAFE_REF:
+            table = RefMapTableInfo;
+            tableSize = RefMapTableInfoSize;
+            break;
+
+#if LE_CONFIG_LINUX
+        case INSPECT_INSP_TYPE_IPC_SERVERS:
+            table = ServiceObjTableInfo;
+            tableSize = ServiceObjTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_CLIENTS:
+            table = ClientObjTableInfo;
+            tableSize = ClientObjTableInfoSize;
+            break;
+
+        case INSPECT_INSP_TYPE_IPC_SERVERS_SESSIONS:
+        case INSPECT_INSP_TYPE_IPC_CLIENTS_SESSIONS:
+            table = SessionObjTableInfo;
+            tableSize = SessionObjTableInfoSize;
+            break;
+#endif
+
+        default:
+            INTERNAL_ERR("unexpected inspect type %d.", inspectType);
+    }
+
+    // Free allocated column memory in table
+    if (table)
+    {
+        for (int i = 0; i < tableSize; i++)
+        {
+            if (table[i].colField)
+            {
+                le_mem_Release(table[i].colField);
+                table[i].colField = NULL;
+            }
+        }
+    }
+
+    // Reset colunm length to 0
+    TableLineLen = 0;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Refresh timer handler.
  */
 //--------------------------------------------------------------------------------------------------
@@ -4412,6 +4510,8 @@ static void RefreshTimerHandler
     le_timer_Ref_t timerRef
 )
 {
+    LE_UNUSED(timerRef);
+
     target_Stop(PidToInspect);
 
     // Perform the inspection.
@@ -4679,6 +4779,13 @@ COMPONENT_INIT
         TimerRecPool = le_mem_InitStaticPool(TimerRecPool, 1, sizeof(timer_ThreadRec_t));
     }
 
+    if (!TableColumnStringPool)
+    {
+        TableColumnStringPool = le_mem_InitStaticPool(TableColumnStringPool,
+                                                      MAX_NUM_COLUMN,
+                                                      MAX_COLUMN_LENGTH);
+    }
+
     target_Attach(PidToInspect);
 
     InitDisplay(InspectType);
@@ -4687,6 +4794,8 @@ COMPONENT_INIT
 
     // Start the inspection.
     InspectFunc(InspectType);
+
+    CleanUp(InspectType);
 
     if (!IsFollowing)
     {

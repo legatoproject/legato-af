@@ -36,6 +36,8 @@ uintptr_t target_GetRemoteAddress
     void* localAddrPtr      ///< [IN] Local address to get the offset with.
 )
 {
+    LE_UNUSED(pid);
+
     /* RTOSes have no address space translation -- address in == address out */
     return (uintptr_t)localAddrPtr;
 }
@@ -52,6 +54,8 @@ void target_Attach
     pid_t pid              ///< [IN] Remote process to attach to
 )
 {
+    LE_UNUSED(pid);
+
     // Nothing required, same address space
 }
 
@@ -65,6 +69,8 @@ void target_DetachAndExit
     pid_t pid              ///< [IN] Remote process to detach from
 )
 {
+    LE_UNUSED(pid);
+
     le_thread_Exit(NULL);
 
 #ifdef __GNUC__
@@ -82,6 +88,8 @@ void target_Stop
     pid_t pid              ///< [IN] Remote process to stop.
 )
 {
+    LE_UNUSED(pid);
+
     // Temporarily suspend scheduler to stop all Legato tasks
     // Do this by setting priority to max to avoid asserting when taking mutexes.
     NormalPriority = uxTaskPriorityGet(NULL);
@@ -98,6 +106,8 @@ void target_Start
     pid_t pid              ///< [IN] Remote process to restart
 )
 {
+    LE_UNUSED(pid);
+
     // Resume normal priority
     vTaskPrioritySet(NULL, NormalPriority);
 }
@@ -115,6 +125,8 @@ le_result_t target_ReadAddress
     size_t size             ///< [IN] Number of bytes to read
 )
 {
+    LE_UNUSED(pid);
+
     // Same address space, just memcpy.
     memcpy(buffer, (void *)remoteAddr, size);
 
