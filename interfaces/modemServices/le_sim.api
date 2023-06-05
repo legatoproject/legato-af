@@ -590,10 +590,11 @@ ENUM States
 //--------------------------------------------------------------------------------------------------
 ENUM SimMode
 {
-    FORCE_EXTERNAL,    ///< Force to select external SIM
-    FORCE_INTERNAL,    ///< Select internal SIM if present.
-    FORCE_REMOTE,      ///< Select remote SIM
-    PREF_EXTERNAL,     ///< Select external SIM if present, else select internal SIM
+    FORCE_EXTERNAL,      ///< Force to select external SIM
+    FORCE_INTERNAL,      ///< Select internal SIM (eSIM) if present.
+    FORCE_REMOTE,        ///< Select remote SIM
+    PREF_EXTERNAL,       ///< Select external SIM if present, else select internal SIM
+    FORCE_INTEGRATED,    ///< Select integrated SIM (iSIM)
     SIMMODE_MAX
 };
 
@@ -606,12 +607,13 @@ ENUM SimMode
 //--------------------------------------------------------------------------------------------------
 ENUM Id
 {
-    EMBEDDED,           ///< Embedded SIM.
+    EMBEDDED,           ///< Embedded SIM (eSIM)
     EXTERNAL_SLOT_1,    ///< SIM inserted in external slot 1.
     EXTERNAL_SLOT_2,    ///< SIM inserted in external slot 2.
     REMOTE,             ///< Remote SIM.
     UNSPECIFIED,        ///< le_sim APIs are executed on the currently selected SIM. Use this
                         ///< identifier when automatic SIM selection is enabled.
+    INTEGRATED,         ///< Integrated SIM (iSIM)
     ID_MAX
 };
 
