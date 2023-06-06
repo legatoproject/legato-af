@@ -711,3 +711,26 @@ le_result_t pa_sim_GetAutomaticSelection
     LE_ERROR("Unsupported function called");
     return LE_UNSUPPORTED;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable SIM detection
+ *
+ * @note SIM detection is hardware specific.
+ *       Please check return value to make sure this is functional.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed to execute.
+ *      - LE_UNSUPPORTED    SIM detection is not supported on this device
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_SetDetection
+(
+    bool    enable    ///< [IN] True if the feature needs to be enabled. False otherwise.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
