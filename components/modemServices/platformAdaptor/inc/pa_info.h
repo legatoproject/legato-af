@@ -522,4 +522,34 @@ LE_SHARED le_result_t pa_info_GetRfDeviceStatus
     size_t* statusNumElementsPtr
         ///< [INOUT]
 );
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the BuildTime string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_info_GetBuildTime
+(
+    char*  buildTime,    ///< [OUT] Build time buffer string.
+    size_t size          ///< [IN]  Size of buildTime buffer.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the Product name string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for any other errors
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_info_GetProductName
+(
+    char*  prodName,    ///< [OUT] Buffer to retrieve/store product name.
+    size_t size         ///< [IN]  Buffer size.
+);
+
 #endif // LEGATO_PAINFO_INCLUDE_GUARD

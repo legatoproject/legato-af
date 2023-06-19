@@ -796,3 +796,31 @@ FUNCTION le_result_t GetUnexpectedResetsCount
 (
     uint64 resetsCountPtr OUT   ///< Number of expected resets
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the BuildTime string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetBuildTime
+(
+    string buildTime[MAX_VERS_LEN] OUT    ///< Build time string.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ProductName string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetProductName
+(
+    string prodName[MAX_VERS_LEN] OUT    ///< Buffer to retrieve/store product name.
+);

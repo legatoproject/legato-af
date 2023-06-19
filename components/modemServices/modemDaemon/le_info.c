@@ -847,3 +847,65 @@ le_result_t le_info_GetUnexpectedResetsCount
     return LE_UNSUPPORTED;
 #endif
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the BuildTime string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for any other errors
+ *      - LE_UNSUPPORTED    If not supported by the platform
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetBuildTime
+(
+    char*  buildTime,    ///< [OUT] Build time buffer string.
+    size_t size          ///< [IN]  Size of buildTime buffer.
+)
+{
+    le_result_t res;
+    if (NULL == buildTime)
+    {
+        LE_KILL_CLIENT("Pointer is NULL.");
+        return LE_FAULT;
+    }
+    res = pa_info_GetBuildTime(buildTime,size);
+    if (LE_OK != res)
+    {
+        LE_ERROR("Failed to get buildTime");
+        return res;
+    }
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the ProductName string.
+ *
+ * @return
+ *      - LE_OK on success
+ *      - LE_FAULT for any other errors
+ *      - LE_UNSUPPORTED    If not supported by the platform
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_info_GetProductName
+(
+    char*  prodName,    ///< [OUT] Buffer to retrieve/store product name.
+    size_t size         ///< [IN]  Buffer size.
+)
+{
+    le_result_t res;
+    if (NULL == prodName )
+    {
+        LE_KILL_CLIENT("Pointer is NULL.");
+        return LE_FAULT;
+    }
+    res = pa_info_GetProductName(prodName, size);
+    if (LE_OK != res)
+    {
+        LE_ERROR("Failed to get ProductName");
+        return res;
+    }
+    return LE_OK;
+}

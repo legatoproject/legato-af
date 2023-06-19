@@ -469,3 +469,44 @@ le_result_t pa_info_GetResetInformation
     LE_ERROR("Unsupported function called");
     return LE_UNSUPPORTED;
 }
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get Build time string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_UNSUPPORTED   If it is not supported by the platform.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetBuildTime
+(
+    char*  buildTime,    ///< [OUT] Build time buffer string.
+    size_t size          ///< [IN]  size of buildTime buffer.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_NOT_IMPLEMENTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get Product Name string in ASCII text.
+ *
+ * @return
+ *      - LE_OK            The function succeeded.
+ *      - LE_FAULT         The function failed to get the value.
+ *      - LE_UNSUPPORTED   If it is not supported by the platform.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_info_GetProductName
+(
+    char*  prodName,    ///< [OUT] Buffer to retrieve/store product name.
+    size_t size         ///< [IN]  Buffer size.
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_NOT_IMPLEMENTED;
+}
