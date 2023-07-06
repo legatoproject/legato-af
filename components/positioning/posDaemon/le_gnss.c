@@ -3449,6 +3449,105 @@ le_result_t le_gnss_SetConstellationArea
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Get the GNSS static filter setting
+ *
+ * @return
+ *  - LE_OK            On success
+ *  - LE_FAULT         On failure
+ *  - LE_UNSUPPORTED   Request not supported
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_GetStaticFilter
+(
+    le_gnss_StaticFilter_t* staticFilterVal  ///< [OUT] 0: disabled, 1: enabled.
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_READY:
+        {
+            result = pa_gnss_GetStaticFilter(staticFilterVal);
+        }
+        break;
+
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the area for the GNSS constellation
+ *
+ * @return
+ *  - LE_OK            The function succeeded.
+ *  - LE_FAULT         The function failed.
+ *  - LE_UNSUPPORTED   If the request is not supported.
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *  - LE_BAD_PARAMETER Invalid constellation area.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_gnss_SetStaticFilter
+(
+    le_gnss_StaticFilter_t staticFilterVal  ///< [IN] 0: disabled, 1: enabled.
+)
+{
+    le_result_t result = LE_FAULT;
+
+    // Check the GNSS device state
+    switch (GnssState)
+    {
+        case LE_GNSS_STATE_READY:
+        {
+            result = pa_gnss_SetStaticFilter(staticFilterVal);
+        }
+        break;
+
+        case LE_GNSS_STATE_UNINITIALIZED:
+        case LE_GNSS_STATE_DISABLED:
+        case LE_GNSS_STATE_ACTIVE:
+        {
+            LE_ERROR("Bad state for that request [%d]", GnssState);
+            result = LE_NOT_PERMITTED;
+        }
+        break;
+        default:
+        {
+            LE_ERROR("Unknown GNSS state %d", GnssState);
+            result = LE_FAULT;
+        }
+        break;
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the area for the GNSS constellation
  *
  * @return

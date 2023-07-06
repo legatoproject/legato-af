@@ -311,6 +311,41 @@ LE_SHARED le_result_t pa_gnss_GetConstellation
                                                          ///< in solution
 );
 
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the GNSS static filter setting
+ *
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_GetStaticFilter
+(
+    le_gnss_StaticFilter_t* staticFilterVal  ///< [OUT] enum type of the disabled/enabled status
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the GNSS static filter
+ *
+ * @return
+ *  - LE_OK on success
+ *  - LE_FAULT on failure
+ *  - LE_UNSUPPORTED request not supported
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_gnss_SetStaticFilter
+(
+    le_gnss_StaticFilter_t staticFilterVal  ///< [IN] enum type to disable/enable the filter
+);
+
+
 //--------------------------------------------------------------------------------------------------
 /**
  * This function must be called to start the GNSS acquisition.

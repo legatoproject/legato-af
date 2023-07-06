@@ -830,6 +830,17 @@ ENUM StartMode
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Static filter setting.
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM StaticFilter
+{
+    STATIC_FILTER_DISABLED,    ///< Static filter disabled.
+    STATIC_FILTER_ENABLED      ///< Static filter enabled.
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set the GNSS constellation bit mask
  *
  * @return
@@ -906,6 +917,44 @@ FUNCTION le_result_t GetConstellationArea
 (
     Constellation satConstellation        IN,   ///< GNSS constellation type.
     ConstellationArea constellationArea   OUT   ///< GNSS constellation area.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the GNSS static filter setting
+ *
+ * @return
+ *  - LE_OK            On success
+ *  - LE_FAULT         On failure
+ *  - LE_UNSUPPORTED   Request not supported
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *
+ * @note If the caller is passing a null pointer into this function, it is a fatal error, the
+ *       function will not return.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetStaticFilter
+(
+    StaticFilter staticFilterVal OUT  ///< GNSS static filter setting
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the GNSS static filter setting
+ *
+ * @return
+ *  - LE_OK            On success
+ *  - LE_FAULT         On failure
+ *  - LE_UNSUPPORTED   Request not supported
+ *  - LE_NOT_PERMITTED If the GNSS device is not initialized, disabled or active.
+ *
+ * @warning The settings are platform dependent. Please refer to
+ *          @ref platformConstraintsGnss_SettingConfiguration section for full details.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetStaticFilter
+(
+    StaticFilter staticFilterVal IN  ///< GNSS static filter setting
 );
 
 //--------------------------------------------------------------------------------------------------
