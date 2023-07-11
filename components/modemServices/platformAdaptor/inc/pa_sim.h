@@ -788,4 +788,23 @@ LE_SHARED le_result_t pa_sim_GetAutomaticSelection
     bool*    enablePtr    ///< [OUT] True if the feature is enabled. False otherwise.
 );
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable SIM detection
+ *
+ * @note SIM detection is hardware specific.
+ *       Please check return value to make sure this is functional.
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed to execute.
+ *      - LE_UNSUPPORTED    SIM detection is not supported on this device
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_SetDetection
+(
+    bool    enable    ///< [IN] True if the feature needs to be enabled. False otherwise.
+);
+
 #endif // LEGATO_PASIM_INCLUDE_GUARD
