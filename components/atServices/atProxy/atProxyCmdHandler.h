@@ -177,8 +177,9 @@ struct le_atProxy_AtCommandSession*  atProxyCmdHandler_GetAtCommandSession
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_SendUnsolicitedResponse
 (
-    const char* responseStr,                       ///< [IN] Unsolicited Response String
-    struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
+    const char* responseStr,                        ///< [IN] Unsolicited Response String
+    struct le_atProxy_AtCommandSession* atCmdPtr,   ///< [IN] AT Command Session Pointer
+    bool allowDiscard                               ///< [IN] Allow discard if device is not ready
 );
 
 //--------------------------------------------------------------------------------------------------

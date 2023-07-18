@@ -351,8 +351,10 @@ ENUM FinalRsp
 //--------------------------------------------------------------------------------------------------
 ENUM AvailableDevice
 {
-    ALL_DEVICES,      ///< action will be done on all bound devices
-    SPECIFIC_DEVICE   ///< action will be done on a specified device
+    ALL_DEVICES,            ///< action will be done on all bound devices
+    SPECIFIC_DEVICE,        ///< action will be done on a specified device
+    TRY_ALL_DEVICES,        ///< action will be tried to be done on all bound devices
+    TRY_SPECIFIC_DEVICE     ///< action will be tried to be done on a specified device
 };
 
 //--------------------------------------------------------------------------------------------------

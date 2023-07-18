@@ -1009,8 +1009,9 @@ LE_SHARED bool atProxyCmdHandler_IsActive
 //--------------------------------------------------------------------------------------------------
 void atProxyCmdHandler_SendUnsolicitedResponse
 (
-    const char* responseStr,                       ///< [IN] Unsolicited Response String
-    struct le_atProxy_AtCommandSession* atCmdPtr   ///< [IN] AT Command Session Pointer
+    const char* responseStr,                        ///< [IN] Unsolicited Response String
+    struct le_atProxy_AtCommandSession* atCmdPtr,   ///< [IN] AT Command Session Pointer
+    bool allowDiscard                               ///< [IN] Allow discard if device is not ready
 )
 {
     if (!responseStr || !atCmdPtr)
@@ -1022,7 +1023,14 @@ void atProxyCmdHandler_SendUnsolicitedResponse
     // Queue the response and defer outputting it if current AT session is active (in process)
     if (atProxyCmdHandler_IsActive(atCmdPtr))
     {
-        StoreUnsolicitedResponse(responseStr, atCmdPtr);
+        if (!allowDiscard)
+        {
+            StoreUnsolicitedResponse(responseStr, atCmdPtr);
+        }
+        else
+        {
+            LE_DEBUG("AT port %p is not ready for sending URC \"%s\"", atCmdPtr->port, responseStr);
+        }
         return;
     }
 

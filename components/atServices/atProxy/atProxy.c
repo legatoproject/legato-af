@@ -787,8 +787,16 @@ void le_atServer_SendUnsolicitedResponse
 {
     struct le_atProxy_AtCommandSession* atSessionPtr = NULL;
     le_result_t result = LE_OK;
+    bool allowDiscard = false;
 
-    if (LE_ATSERVER_SPECIFIC_DEVICE == availableDevice)
+    if (LE_ATSERVER_TRY_SPECIFIC_DEVICE == availableDevice ||
+        LE_ATSERVER_TRY_ALL_DEVICES == availableDevice )
+    {
+        allowDiscard = true;
+    }
+
+    if (LE_ATSERVER_SPECIFIC_DEVICE == availableDevice ||
+        LE_ATSERVER_TRY_SPECIFIC_DEVICE == availableDevice)
     {
         // Make sure that device is a reference of AT session
         // atProxy doesn't have device (DeviceContext_t), instead it uses AT session.
@@ -801,7 +809,7 @@ void le_atServer_SendUnsolicitedResponse
             return;
         }
 
-        atProxyCmdHandler_SendUnsolicitedResponse(responseStr, atSessionPtr);
+        atProxyCmdHandler_SendUnsolicitedResponse(responseStr, atSessionPtr, allowDiscard);
     }
     else
     {
@@ -810,7 +818,7 @@ void le_atServer_SendUnsolicitedResponse
         {
             atSessionPtr = (struct le_atProxy_AtCommandSession*) le_ref_GetValue(iterRef);
 
-            atProxyCmdHandler_SendUnsolicitedResponse(responseStr, atSessionPtr);
+            atProxyCmdHandler_SendUnsolicitedResponse(responseStr, atSessionPtr, allowDiscard);
         }
     }
 
