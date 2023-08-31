@@ -1,11 +1,3 @@
-requires:
-{
-    api:
-    {
-        atServices/le_atServer.api
-    }
-}
-
 sources:
 {
     atHelloWorld.c

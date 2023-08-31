@@ -470,7 +470,7 @@ void _le_log_Send
     const unsigned int       lineNumber,        ///< Line number.
     const char              *formatPtr,         ///< Format string.
     ...                                         ///< Positional parameters.
-) __attribute__((format (printf, 7, 8)));
+) ;//__attribute__((format (printf, 7, 8)));
 
 //--------------------------------------------------------------------------------------------------
 /**

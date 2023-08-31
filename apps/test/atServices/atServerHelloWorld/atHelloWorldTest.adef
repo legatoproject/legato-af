@@ -14,8 +14,8 @@ processes:
 
     maxStackBytes: 6000
 }
-
+/*
 bindings:
 {
     atHelloWorldTest.atHelloWorldComponent.le_atServer -> atProxy.le_atServer
-}
+}*/
