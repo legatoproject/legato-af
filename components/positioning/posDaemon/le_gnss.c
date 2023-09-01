@@ -777,10 +777,23 @@ static void PaNmeaHandler
 
     if (NULL != CurrentNmeaStringPtr)
     {
-        // The last frame (CurrentNmeaStringPtr) was not sent completely, discard the new one
-        LE_WARN("Lost Frame");
-        le_mem_Release(nmeaPtr);
-        return;
+        // The last frame (CurrentNmeaStringPtr) was not sent completely, write the remained frame
+        LE_WARN("Write the remained frame");
+        size_t stringSize = strlen(CurrentNmeaStringPtr)+1;
+        size_t sizeToWrite = stringSize - CurrentNmeaWritePosition;
+        ssize_t writeSize = le_fd_Write(NmeaPipeFd,
+                    CurrentNmeaStringPtr + CurrentNmeaWritePosition,
+                    sizeToWrite);
+        if (writeSize == sizeToWrite)
+        {
+            LE_DEBUG("Frame completely writen");
+        }
+        else
+        {
+            LE_DEBUG("Frame is not completely writen");
+        }
+        le_mem_Release(CurrentNmeaStringPtr);
+        CurrentNmeaStringPtr = NULL;
     }
 
     CurrentNmeaWritePosition = 0;
