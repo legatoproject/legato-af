@@ -250,9 +250,10 @@ static void NetworkAsyncRecvHandler
         //
         // Data waiting to be read or written
         //
-#if !defined(MQTT_TASK)
+
+        // As this is POLLIN event, we should avoid calling to blocking function
         /* Execute the yield function for the specified MQTT client session */
-        int result = MQTTYield(&sessionRef->client, sessionRef->readTimeoutMs);
+        int result = MQTTYield(&sessionRef->client, 0);
 
         if (result != SUCCESS)
         {
@@ -263,7 +264,6 @@ static void NetworkAsyncRecvHandler
                 goto discon;
             }
         }
-#endif
     }
     // If events = (POLLIN + POLLRDHUP ) means remote/peer socket closed TCP connection
     else if(((POLLIN | POLLRDHUP) == events) || (POLLRDHUP == events))
