@@ -459,7 +459,7 @@ menuconfig_$(TARGET): menuconfig
 # Use HOST_CC and HOST_CXX when building the tools.
 tools: export CC := $(HOST_CC)
 tools: export CXX := $(HOST_CXX)
-tools: version $(HEADER_CONFIG)
+tools: version le_config
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.hostTools
 
@@ -525,6 +525,9 @@ package.properties: version sources.md5
 	$(L) GEN $@
 	$(Q)echo "version=`cat version`" > $@
 	$(Q)echo "md5=`cat sources.md5`" >> $@
+
+.PHONY: le_config
+le_config: $(HEADER_CONFIG)
 
 # Header containing all of the KConfig parameters
 $(HEADER_CONFIG): $(LEGATO_BUILD_KCONFIG) Makefile
