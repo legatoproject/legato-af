@@ -10,12 +10,19 @@ requires:
     #if ${MK_CONFIG_MODEMSERVICE_NO_POWERMANAGER} = ""
         le_pm.api
     #endif
+
+    #if ${MK_CONFIG_THIN_MODEM} = y
+    #else
         le_appInfo.api
+    #endif
     }
 
     component:
     {
+        #if ${MK_CONFIG_THIN_MODEM} = y
+        #else
         ${LEGATO_ROOT}/components/watchdogChain
+        #endif
     }
 }
 
@@ -23,15 +30,20 @@ provides:
 {
     api:
     {
-        modemServices/le_info.api
-        modemServices/le_sms.api
         modemServices/le_mrc.api
         modemServices/le_sim.api
         modemServices/le_mdc.api
+        modemServices/le_info.api
+
+    #if ${MK_CONFIG_THIN_MODEM} = y
+    #else
+        modemServices/le_sms.api
         modemServices/le_ips.api
         modemServices/le_temp.api
         modemServices/le_riPin.api
         modemServices/le_adc.api
+    #endif
+
     #if ${MK_CONFIG_MODEMSERVICE_NO_LPT} = ""
         modemServices/le_lpt.api
     #endif
@@ -47,27 +59,33 @@ provides:
 
 sources:
 {
-    le_info.c
     le_mdc.c
     le_mrc.c
     le_ms.c
     le_sim.c
+    le_info.c
+#if ${MK_CONFIG_THIN_MODEM} = y
+#else
     le_sms.c
     le_ips.c
     le_temp.c
     le_adc.c
     le_riPin.c
     sysResets.c
+#endif
 
 #if ${MK_CONFIG_MODEMSERVICE_NO_LPT} = ""
     le_lpt.c
 #endif
 
+#if ${MK_CONFIG_THIN_MODEM} = y
+#else
 #if ${MK_CONFIG_SMS_LIGHT} = y
     le_sms_stub.c
 #else
     smsPdu.c
     cdmaPdu.c
+#endif
 #endif
 
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
@@ -104,7 +122,6 @@ requires:
         $LEGATO_MODEM_PA_DEFAULT
 #endif
         $LEGATO_MODEM_PA
-
 #if ${MK_CONFIG_MODEMSERVICE_SIMPLE} = ""
         $LEGATO_MODEM_PA_ECALL_DEFAULT
         $LEGATO_MODEM_PA_ECALL

@@ -232,7 +232,7 @@ static le_mdc_Profile_t* SearchProfileInList
         {
             if ( IS_TRACE_ENABLED )
             {
-                LE_PRINT_VALUE("%d", index);
+                LE_PRINT_VALUE("%lu", index);
             }
 
             return profilePtr;
@@ -275,7 +275,7 @@ static void NewSessionStateHandler
 {
     if ( IS_TRACE_ENABLED )
     {
-        LE_PRINT_VALUE("%i", sessionStatePtr->profileIndex);
+        LE_PRINT_VALUE("%lu", sessionStatePtr->profileIndex);
         LE_PRINT_VALUE("%i", sessionStatePtr->newState);
     }
 
@@ -311,7 +311,7 @@ static void NewSessionStateHandler
             }
             else
             {
-                LE_WARN("Reference not created for profile %d",
+                LE_WARN("Reference not created for profile %lu",
                         sessionStatePtr->profileIndex);
             }
         }
@@ -460,6 +460,11 @@ static le_result_t FindApnWithMccMncFromFile
 {
     // Currently no jansson support for RTOS
 #ifdef MK_CONFIG_MODEMSERVICE_NO_JANSSON
+    LE_UNUSED(apnFilePtr);
+    LE_UNUSED(mccPtr);
+    LE_UNUSED(mncPtr);
+    LE_UNUSED(mccMncApnPtr);
+    LE_UNUSED(mccMncApnSize);
     return LE_NOT_FOUND;
 #else
     le_result_t result = LE_FAULT;
@@ -571,6 +576,10 @@ static le_result_t FindApnWithIccidFromFile
 {
     // Currently no jansson support for RTOS
 #ifdef MK_CONFIG_MODEMSERVICE_NO_JANSSON
+    LE_UNUSED(apnFilePtr);
+    LE_UNUSED(iccidPtr);
+    LE_UNUSED(iccidApnPtr);
+    LE_UNUSED(iccidApnSize);
     return LE_NOT_FOUND;
 #else
     le_result_t result = LE_FAULT;
@@ -730,21 +739,24 @@ static void AddAsyncHandlerDb
 )
 {
     AsyncHandlerDb_t *asyncHandlerDb;
+
+#if !MK_CONFIG_THIN_MODEM
     char appName[LE_LIMIT_APP_NAME_LEN] = {0};
     pid_t pid = 0;
     uid_t uid = 0;
+#endif
 
     if (!sessionRef || !asyncHandler)
     {
         return;
     }
-
+#if !MK_CONFIG_THIN_MODEM
     if ((LE_OK == le_msg_GetClientUserCreds(sessionRef, &uid, &pid)) &&
         (LE_OK == le_appInfo_GetName(pid, appName, sizeof(appName)-1)))
     {
         LE_DEBUG("Async API called by client app %s", appName);
     }
-
+#endif
     asyncHandlerDb = le_mem_ForceAlloc(AsyncHandlerDbPool);
     if (!asyncHandlerDb)
     {
@@ -855,7 +867,9 @@ static void ProcessCommandEventHandler
 
     if (LE_ATOMIC_SUB_FETCH(&CommandThreadStarts, 1, LE_ATOMIC_ORDER_RELAXED) == 0)
     {
+#if LE_CONFIG_SERVICES_WATCHDOG
         le_wdogChain_Stop(MS_WDOG_MDC_LOOP);
+#endif
         le_thread_Exit(NULL);
     }
 }
@@ -883,10 +897,12 @@ static void* CommandThread
 
     le_sem_Post(initSemaphore);
 
+#if LE_CONFIG_SERVICES_WATCHDOG
     // Monitor event loop
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MDC_LOOP, watchdogInterval);
+#endif
 
     // Run the event loop
     le_event_RunLoop();
@@ -1008,6 +1024,8 @@ static void CloseSessionEventHandler
     void* contextPtr                ///< [IN] Context pointer got from ServiceCloseHandler.
 )
 {
+    LE_UNUSED(contextPtr);
+
     if (!sessionRef)
     {
         LE_ERROR("ERROR sessionRef is NULL");
@@ -1595,7 +1613,7 @@ le_mdc_SessionStateHandlerRef_t le_mdc_AddSessionStateHandler
                                     le_event_AddLayeredHandler("le_NewSessionStateHandler",
                                     profilePtr->sessionStateEvent,
                                     FirstLayerSessionStateChangeHandler,
-                                    (le_event_HandlerFunc_t)handler);
+                                    handler);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -1636,7 +1654,7 @@ le_mdc_MtPdpSessionStateHandlerRef_t le_mdc_AddMtPdpSessionStateHandler
                                 le_event_AddLayeredHandler( "le_NewMtPdpSessionStateHandler",
                                 MtPdpEventId,
                                 FirstLayerSessionStateChangeHandler,
-                                (le_event_HandlerFunc_t)handler);
+                                handler);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -2286,7 +2304,7 @@ le_result_t le_mdc_SetPDP
     if ((result != LE_OK) && (result != LE_NOT_FOUND))
     {
         // LE_OK and LE_NOT_FOUND are the normal results, and any other isn't
-        LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
+        LE_ERROR("Error in reading profile at index %lu; error %d", profilePtr->profileIndex,
                  result);
         return result;
     }
@@ -2300,13 +2318,13 @@ le_result_t le_mdc_SetPDP
     result = le_mdc_GetSessionState(profileRef, &state);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to get session state of profile at index %d", profilePtr->profileIndex);
+        LE_ERROR("Failed to get session state of profile at index %ld", profilePtr->profileIndex);
         return LE_FAULT;
 
     }
     if (state == LE_MDC_CONNECTED)
     {
-        LE_ERROR("Failed to set PDP on profile at index %d with a connected session",
+        LE_ERROR("Failed to set PDP on profile at index %ld with a connected session",
                  profilePtr->profileIndex);
         return LE_FAULT;
     }
@@ -2317,7 +2335,7 @@ le_result_t le_mdc_SetPDP
     result = pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to write PDP data into modem for profile at index %d",
+        LE_ERROR("Failed to write PDP data into modem for profile at index %ld",
                  profilePtr->profileIndex);
         // Revert back to original setting
         profilePtr->modemData.pdp = originalPdp;
@@ -2416,7 +2434,7 @@ le_result_t le_mdc_SetAPN
     if ((result != LE_OK) && (result != LE_NOT_FOUND))
     {
         // LE_OK and LE_NOT_FOUND are the normal results, and any other isn't
-        LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
+        LE_ERROR("Error in reading profile at index %ld; error %d", profilePtr->profileIndex,
                  result);
         return result;
     }
@@ -2430,13 +2448,13 @@ le_result_t le_mdc_SetAPN
     result = le_mdc_GetSessionState(profileRef, &state);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to get session state of profile at index %d", profilePtr->profileIndex);
+        LE_ERROR("Failed to get session state of profile at index %ld", profilePtr->profileIndex);
         return LE_FAULT;
 
     }
     if (state == LE_MDC_CONNECTED)
     {
-        LE_ERROR("Failed to set APN on profile at index %d with a connected session",
+        LE_ERROR("Failed to set APN on profile at index %ld with a connected session",
                  profilePtr->profileIndex);
         return LE_FAULT;
     }
@@ -2449,7 +2467,7 @@ le_result_t le_mdc_SetAPN
     result = pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to write APN data into modem for profile at index %d",
+        LE_ERROR("Failed to write APN data into modem for profile at index %ld",
                  profilePtr->profileIndex);
         // Revert back to original setting
         LE_ASSERT(le_utf8_Copy(profilePtr->modemData.apn, originalApn, PA_MDC_APN_MAX_BYTES, NULL)
@@ -2530,6 +2548,7 @@ le_result_t le_mdc_SetDefaultAPN
     // Save the APN value into the modem
     return le_mdc_SetAPN(profileRef, defaultApn);
 #else
+    LE_UNUSED(profileRef);
     return LE_UNSUPPORTED;
 #endif
 }
@@ -2578,7 +2597,7 @@ le_result_t le_mdc_GetAPN
     }
     else if (status != LE_OK)
     {
-        LE_ERROR("Failed to read profile at index %d; error %d", profilePtr->profileIndex, status);
+        LE_ERROR("Failed to read profile at index %ld; error %d", profilePtr->profileIndex, status);
         return status;
     }
 
@@ -2641,7 +2660,7 @@ le_result_t le_mdc_SetAuthentication
     if ((result != LE_OK) && (result != LE_NOT_FOUND))
     {
         // LE_OK and LE_NOT_FOUND are the normal results, and any other isn't
-        LE_ERROR("Error in reading profile at index %d; error %d", profilePtr->profileIndex,
+        LE_ERROR("Error in reading profile at index %ld; error %d", profilePtr->profileIndex,
                  result);
         return result;
     }
@@ -2657,13 +2676,13 @@ le_result_t le_mdc_SetAuthentication
     result = le_mdc_GetSessionState(profileRef, &state);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to get session state of profile at index %d", profilePtr->profileIndex);
+        LE_ERROR("Failed to get session state of profile at index %ld", profilePtr->profileIndex);
         return LE_FAULT;
 
     }
     if (state == LE_MDC_CONNECTED)
     {
-        LE_ERROR("Failed to set authentication on profile at index %d with a connected session",
+        LE_ERROR("Failed to set authentication on profile at index %ld with a connected session",
                  profilePtr->profileIndex);
         return LE_FAULT;
     }
@@ -2684,7 +2703,7 @@ le_result_t le_mdc_SetAuthentication
     result = pa_mdc_WriteProfile(profilePtr->profileIndex, &profilePtr->modemData);
     if (result != LE_OK)
     {
-        LE_ERROR("Failed to write authentication data into modem for profile at index %d",
+        LE_ERROR("Failed to write authentication data into modem for profile at index %ld",
                  profilePtr->profileIndex);
         // Revert back to original setting
         profilePtr->modemData.authentication.type = originalType;

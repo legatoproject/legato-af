@@ -1292,6 +1292,7 @@ void EventTimerHandler
     le_timer_Ref_t timerRef    ///< [IN] This timer has expired
 )
 {
+    LE_UNUSED(timerRef);
     LE_INFO("Disabling last ICCID change forwarding");
     ForwardLastIccidChange = false;
 }
@@ -1309,6 +1310,8 @@ static void CloseSessionEventHandler
     void*               contextPtr   ///< [IN] Context pointer of CloseSessionEventHandler
 )
 {
+    LE_UNUSED(contextPtr);
+
     if (!sessionRef)
     {
         LE_ERROR("ERROR sessionRef is NULL");
@@ -2300,7 +2303,7 @@ le_sim_NewStateHandlerRef_t le_sim_AddNewStateHandler
     handlerRef = le_event_AddLayeredHandler("NewSimStateHandler",
                                             NewSimStateEventId,
                                             FirstLayerNewSimStateHandler,
-                                            (le_event_HandlerFunc_t)handlerPtr);
+                                            handlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -2627,7 +2630,7 @@ le_sim_IccidChangeHandlerRef_t le_sim_AddIccidChangeHandler
     handlerRef = le_event_AddLayeredHandler("IccidChangeHandler",
                                             IccidChangeEventId,
                                             FirstLayerIccidChangeHandler,
-                                            (le_event_HandlerFunc_t)handlerPtr);
+                                            handlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -2692,7 +2695,7 @@ le_sim_SimToolkitEventHandlerRef_t le_sim_AddSimToolkitEventHandler
     handlerRef = le_event_AddLayeredHandler("SimToolkitHandler",
                                             SimToolkitEventId,
                                             FirstLayerSimToolkitHandler,
-                                            (le_event_HandlerFunc_t)handlerPtr);
+                                            handlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
     SimToolkitHandlerCount++;
@@ -2751,7 +2754,7 @@ le_sim_ProfileUpdateHandlerRef_t le_sim_AddProfileUpdateHandler
     handlerRef = le_event_AddLayeredHandler("ProfileUpdateHandler",
                                             SimProfileEventId,
                                             FirstLayerProfileUpdateHandler,
-                                            (le_event_HandlerFunc_t)handlerPtr);
+                                            handlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
     SimProfileHandlerCount++;
@@ -3205,6 +3208,7 @@ le_sim_FPLMNListRef_t le_sim_ReadFPLMNList
     le_sim_Id_t simId                       ///< [IN] The SIM identifier
 )
 {
+    LE_UNUSED(simId);
     le_sim_FPLMNList_t* FPLMNListPtr = (le_sim_FPLMNList_t*)le_mem_ForceAlloc(FPLMNListPool);
 
     FPLMNListPtr->list = LE_DLS_LIST_INIT;

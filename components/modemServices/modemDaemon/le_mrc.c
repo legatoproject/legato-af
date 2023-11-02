@@ -1308,7 +1308,9 @@ static void ProcessMrcCommandEventHandler
 end:
     if (LE_ATOMIC_SUB_FETCH(&CommandThreadStarts, 1, LE_ATOMIC_ORDER_RELAXED) == 0)
     {
+#if LE_CONFIG_SERVICES_WATCHDOG
         le_wdogChain_Stop(MS_WDOG_MRC_LOOP);
+#endif
         le_thread_Exit(NULL);
     }
 }
@@ -1333,10 +1335,12 @@ static void* MrcCommandThread
 
     le_sem_Post(initSemaphore);
 
+#if LE_CONFIG_SERVICES_WATCHDOG
     // Watchdog MRC loop
     // Try to kick a couple of times before each timeout.
     le_clk_Time_t watchdogInterval = { .sec = MS_WDOG_INTERVAL };
     le_wdogChain_MonitorEventLoop(MS_WDOG_MRC_LOOP, watchdogInterval);
+#endif
 
     // Run the event loop
     le_event_RunLoop();
@@ -2814,6 +2818,9 @@ le_result_t le_mrc_AddPreferredOperator
     DeletePreferredOperatorsList(&preferredOperatorsList);
     return LE_OK;
 #else
+    LE_UNUSED(mccPtr);
+    LE_UNUSED(mncPtr);
+    LE_UNUSED(ratMask);
     return LE_UNSUPPORTED;
 #endif
 }
@@ -2884,6 +2891,8 @@ le_result_t le_mrc_RemovePreferredOperator
 
     return res;
 #else
+    LE_UNUSED(mccPtr);
+    LE_UNUSED(mncPtr);
     return LE_UNSUPPORTED;
 #endif
 }
@@ -2982,9 +2991,12 @@ le_mrc_PreferredOperatorRef_t le_mrc_GetFirstPreferredOperator
 
         return ((le_mrc_PreferredOperatorRef_t)newPrefOpsInfoPtr->safeRef);
     }
-#endif
 
     return NULL;
+#else
+    LE_UNUSED(preferredOperatorListRef);
+    return NULL;
+#endif
 }
 
 
@@ -3034,9 +3046,13 @@ le_mrc_PreferredOperatorRef_t le_mrc_GetNextPreferredOperator
 
         return ((le_mrc_PreferredOperatorRef_t)newPrefOpsInfoPtr->safeRef);
     }
+    return NULL;
+#else
+    LE_UNUSED(preferredOperatorListRef);
+    return NULL;
 #endif
 
-    return NULL;
+
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -3075,6 +3091,8 @@ void le_mrc_DeletePreferredOperatorsList
     le_ref_DeleteRef(PreferredOperatorsListRefMap, preferredOperatorListRef);
 
     le_mem_Release(prefOperatorsListPtr);
+#else
+    LE_UNUSED(preferredOperatorListRef);
 #endif
 }
 
@@ -3161,6 +3179,12 @@ le_result_t le_mrc_GetPreferredOperatorDetails
 
     return LE_OK;
 #else
+    LE_UNUSED(preferredOperatorRef);
+    LE_UNUSED(mccPtr);
+    LE_UNUSED(mccPtrNumElements);
+    LE_UNUSED(mncPtr);
+    LE_UNUSED(mncPtrNumElements);
+    LE_UNUSED(ratMaskPtr);
     return LE_UNSUPPORTED;
 #endif
 }
@@ -3192,7 +3216,7 @@ le_mrc_NetRegStateEventHandlerRef_t le_mrc_AddNetRegStateEventHandler
     handlerRef = le_event_AddLayeredHandler("NewNetRegStateHandler",
                                             NewNetRegStateId,
                                             FirstLayerNetRegStateChangeHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+                                            handlerFuncPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -3238,7 +3262,7 @@ le_mrc_RatChangeHandlerRef_t le_mrc_AddRatChangeHandler
     handlerRef = le_event_AddLayeredHandler("RatChangeHandler",
                                             RatChangeId,
                                             FirstLayerRatChangeHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+                                            handlerFuncPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -3284,7 +3308,7 @@ le_mrc_PacketSwitchedChangeHandlerRef_t le_mrc_AddPacketSwitchedChangeHandler
     handlerRef = le_event_AddLayeredHandler("PacketSwitchedChangeHandler",
         PSChangeId,
         FirstLayerPSChangeHandler,
-        (le_event_HandlerFunc_t)packetHandlerPtr);
+        packetHandlerPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -3330,7 +3354,7 @@ le_mrc_RankChangeHandlerRef_t le_mrc_AddRankChangeHandler
     handlerRef = le_event_AddLayeredHandler("RankChangeHandler",
                                             RankChangeId,
                                             FirstLayerRankChangeHandler,
-                                            (le_event_HandlerFunc_t)handlerFuncPtr);
+                                            handlerFuncPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -3773,6 +3797,7 @@ le_mrc_PciScanInformationListRef_t le_mrc_PerformPciNetworkScan
 
     return le_ref_CreateRef(PciScanInformationListRefMap, newScanInformationListPtr);
 #else
+    LE_UNUSED(ratMask);
     return NULL;
 #endif
 }
@@ -3883,6 +3908,10 @@ void le_mrc_PerformPciNetworkScanAsync
     // Sending Cellular Network scan command
     LE_DEBUG("Send asynchronous Cellular Network scan command");
     le_event_Report(MrcCommandEventId, &cmd, sizeof(cmd));
+#else
+    LE_UNUSED(ratMask);
+    LE_UNUSED(handler);
+    LE_UNUSED(contextPtr);
 #endif
 }
 
@@ -5174,35 +5203,35 @@ le_mrc_SignalStrengthChangeHandlerRef_t le_mrc_AddSignalStrengthChangeHandler
             handlerRef = le_event_AddLayeredHandler("GsmSsChangeHandler",
                                                     GsmSsChangeId,
                                                     FirstLayerSsChangeHandler,
-                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+                                                    handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_UMTS:
             handlerRef = le_event_AddLayeredHandler("UmtsSsChangeHandler",
                                                     UmtsSsChangeId,
                                                     FirstLayerSsChangeHandler,
-                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+                                                    handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_TDSCDMA:
             handlerRef = le_event_AddLayeredHandler("TdscdmaSsChangeHandler",
                                                     TdscdmaSsChangeId,
                                                     FirstLayerSsChangeHandler,
-                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+                                                    handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_LTE:
             handlerRef = le_event_AddLayeredHandler("LteSsChangeHandler",
                                                     LteSsChangeId,
                                                     FirstLayerSsChangeHandler,
-                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+                                                    handlerFuncPtr);
             break;
 
         case LE_MRC_RAT_CDMA:
             handlerRef = le_event_AddLayeredHandler("CdmaSsChangeHandler",
                                                     CdmaSsChangeId,
                                                     FirstLayerSsChangeHandler,
-                                                    (le_event_HandlerFunc_t)handlerFuncPtr);
+                                                    handlerFuncPtr);
             break;
         default:
             return NULL;
@@ -5432,7 +5461,7 @@ le_mrc_NetworkRejectHandlerRef_t le_mrc_AddNetworkRejectHandler
     handlerRef = le_event_AddLayeredHandler("NetworkRejectHandler",
                                              NetRegRejectIndId,
                                              FirstLayerNetworkRejectHandler,
-                                             (le_event_HandlerFunc_t)handlerFuncPtr);
+                                             handlerFuncPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -5466,7 +5495,7 @@ le_mrc_NetRegRejectHandlerRef_t le_mrc_AddNetRegRejectHandler
     handlerRef = le_event_AddLayeredHandler("NetRegRejectHandler",
                                              NetRegRejectId,
                                              FirstLayerNetRegRejectHandler,
-                                             (le_event_HandlerFunc_t)handlerFuncPtr);
+                                             handlerFuncPtr);
 
     le_event_SetContextPtr(handlerRef, contextPtr);
 
@@ -5652,7 +5681,7 @@ le_mrc_JammingDetectionEventHandlerRef_t le_mrc_AddJammingDetectionEventHandler
     handlerRef = le_event_AddLayeredHandler("JammingDetectionHandler",
                                             JammingDetectionIndId,
                                             FirstLayerJammingDetectionHandler,
-                                            (le_event_HandlerFunc_t)handlerPtr);
+                                            handlerPtr);
     le_event_SetContextPtr(handlerRef, contextPtr);
 
     return (le_mrc_JammingDetectionEventHandlerRef_t)handlerRef;
@@ -5907,6 +5936,11 @@ le_result_t le_mrc_GetPciScanMccMnc
 
     return LE_OK;
 #else
+    LE_UNUSED(mccPtr);
+    LE_UNUSED(mccPtrSize);
+    LE_UNUSED(mncPtr);
+    LE_UNUSED(mncPtrSize);
+    LE_UNUSED(plmnRef);
     return LE_UNSUPPORTED;
 #endif
 }
@@ -5940,6 +5974,7 @@ uint16_t le_mrc_GetPciScanCellId
 
     return scanInformationPtr->physicalCellId;
 #else
+    LE_UNUSED(pciScanInformationRef);
     LE_ERROR("Not supported!");
     return UINT16_MAX;
 #endif
@@ -5974,6 +6009,7 @@ uint32_t le_mrc_GetPciScanGlobalCellId
 
     return scanInformationPtr->globalCellId;
 #else
+    LE_UNUSED(pciScanInformationRef);
     LE_ERROR("Not supported!");
     return UINT32_MAX;
 #endif
@@ -6049,6 +6085,8 @@ void le_mrc_DeletePciNetworkScan
     // Release the Reference to the Scan Information List, and free the memory.
     le_ref_DeleteRef(PciScanInformationListRefMap, scanInformationListRef);
     le_mem_Release(scanInformationListPtr);
+#else
+    LE_UNUSED(scanInformationListRef);
 #endif
 }
 
@@ -6100,6 +6138,7 @@ le_mrc_PlmnInformationRef_t le_mrc_GetFirstPlmnInfo
         return NULL;
     }
 #else
+    LE_UNUSED(pciScanInformationRef);
     return NULL;
 #endif
 }
@@ -6152,6 +6191,7 @@ le_mrc_PlmnInformationRef_t le_mrc_GetNextPlmnInfo
         return NULL;
     }
 #else
+    LE_UNUSED(pciScanInformationRef);
     return NULL;
 #endif
 }
@@ -6208,6 +6248,7 @@ le_mrc_PciScanInformationRef_t le_mrc_GetFirstPciScanInfo
         return NULL;
     }
 #else
+    LE_UNUSED(PciscanInformationListRef);
     return NULL;
 #endif
 }
@@ -6265,6 +6306,7 @@ le_mrc_PciScanInformationRef_t le_mrc_GetNextPciScanInfo
         return NULL;
     }
 #else
+    LE_UNUSED(PciscanInformationListRef);
     return NULL;
 #endif
 }
