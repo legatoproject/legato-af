@@ -147,6 +147,7 @@ static void SetConfiguration
     // Check the configuration file
     FILE* configFilePtr = fopen("/tmp/config.txt","r");
     Configuration_t configuration;
+    char* endPtr;
 
     memset(&configuration, 0, sizeof(Configuration_t));
 
@@ -226,11 +227,11 @@ static void SetConfiguration
 
                 if (strncmp(cidPtr, Cid, strlen(Cid)) == 0)
                 {
-                    int cid = strtol((const char*) cidPtr+strlen(Cid), NULL, 10);
+                    int cid = strtol((const char*) cidPtr+strlen(Cid), &endPtr, 10);
 
-                    if (0 != errno)
+                    if (*endPtr != '\0')
                     {
-                        LE_ERROR("Bad cid %d %m", errno);
+                        LE_ERROR("Bad cid");
                         exit(EXIT_FAILURE);
                     }
 
@@ -240,11 +241,11 @@ static void SetConfiguration
 
                     if (0 == strncmp(rmnetPtr, Rmnet, strlen(Rmnet)))
                     {
-                        int rmnet = strtol(rmnetPtr+strlen(Rmnet), NULL, 10);
+                        int rmnet = strtol(rmnetPtr+strlen(Rmnet), &endPtr, 10);
 
-                        if (0 != errno)
+                        if (*endPtr != '\0')
                         {
-                            LE_ERROR("Bad rmnet %d %m", errno);
+                            LE_ERROR("Bad rmnet");
                             exit(EXIT_FAILURE);
                         }
 
@@ -272,11 +273,11 @@ static void SetConfiguration
     }
     else
     {
-        profile = strtol(configuration.cid, NULL, 10);
+        profile = strtol(configuration.cid, &endPtr, 10);
 
-        if (errno != 0)
+        if (*endPtr != '\0')
         {
-            LE_ERROR("Bad profile %d %m", errno);
+            LE_ERROR("Bad profile");
             exit(EXIT_FAILURE);
         }
     }
@@ -720,4 +721,3 @@ COMPONENT_INIT
 
     exit(EXIT_SUCCESS);
 }
-
