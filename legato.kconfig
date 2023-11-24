@@ -144,6 +144,13 @@ config TARGET_WP77XX
   ---help---
   Run on a Sierra Wireless WP77xx.
 
+config TARGET_EM92XX
+  bool "SWI EM92xx (em92xx)"
+  select QMI
+  select MDM9X07
+  ---help---
+  Run on a Sierra Wireless EM92xx.
+
 config TARGET_CUSTOM
   bool "Custom"
   ---help---
@@ -231,6 +238,7 @@ config SDEF
   default "modules/WiFi/wifi.sdef" if ENABLE_WIFI
   default "modules/Dualsys/ar758x.sdef" if TARGET_AR758X
   default "modules/Dualsys/ar759x.sdef" if TARGET_AR759X
+  default "modules/5G/em92xx.sdef" if TARGET_EM92XX
   default "modules/Raspi/raspi.sdef" if TARGET_RASPI
   default "localhost.sdef" if TARGET_LOCALHOST
   default "default_readonly.sdef" if READ_ONLY
@@ -264,7 +272,7 @@ config CCACHE
 
 config READ_ONLY
   bool "Read-only image"
-  default y if TARGET_AR758X || TARGET_AR759X
+  default y if TARGET_AR758X || TARGET_AR759X || TARGET_EM92XX
   default n
   ---help---
   Generate a read-only image for the target, in addition to the default

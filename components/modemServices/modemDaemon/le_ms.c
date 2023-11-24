@@ -57,7 +57,9 @@ COMPONENT_INIT
     // MS_WDOG_MDC_LOOP is started on demand.
     immediateWatchdogs |= (1 << MS_WDOG_SMS_LOOP);
     // MS_WDOG_MRC_LOOP is started on demand.
+#if !MK_CONFIG_MODEMSERVICE_NO_RIPIN
     immediateWatchdogs |= (1 << MS_WDOG_RIPIN_LOOP);
+#endif
 #if LE_CONFIG_ENABLE_ECALL
     immediateWatchdogs |= (1 << MS_WDOG_ECALL_LOOP);
 #endif
@@ -76,7 +78,9 @@ COMPONENT_INIT
 #endif
     le_ips_Init();
     le_temp_Init();
+#if !MK_CONFIG_MODEMSERVICE_NO_RIPIN
     le_riPin_Init();
+#endif
 
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
     le_antenna_Init();

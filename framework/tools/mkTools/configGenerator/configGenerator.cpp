@@ -780,7 +780,7 @@ static void GenerateBindingsConfig
     }
 
     // Add all the binds that were specified in the .adef file or .sdef file for this app.
-    for (const auto mapItem : appPtr->executables)
+    for (const auto& mapItem : appPtr->executables)
     {
         const auto exePtr = mapItem.second;
 

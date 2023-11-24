@@ -26,10 +26,13 @@ BUILD_PRODUCTS = 	config		\
 					xattr	\
 					appStopClient	\
 					app \
-					update \
 					sbtrace \
-					scripts \
-					devMode
+					scripts
+
+ifneq ($(LE_CONFIG_READ_ONLY),y)
+  BUILD_PRODUCTS += devMode \
+					update
+endif
 
 # Create a list of all proprietary apps, then add them as product to build
 ifneq ($(findstring $(TARGET), wp750x wp85 wp76xx wp77xx),)

@@ -162,6 +162,7 @@ menu "Modem Service"
 
 config ENABLE_ECALL
   bool "Enable eCall support"
+  default n if TARGET_EM92XX
   default y
   ---help---
   Enable PAN European eCall or Russian ERA GLONASS emergency calling support.

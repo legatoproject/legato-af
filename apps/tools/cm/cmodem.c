@@ -90,6 +90,7 @@ const cm_Service_t Services[] = {
         .helpHandler = cm_ips_PrintIpsHelp,
         .commandHandler = cm_ips_ProcessIpsCommand
     },
+#if !MK_CONFIG_MODEMSERVICE_SIMPLE
     /* RTC */
     {
         .serviceNamePtr = "rtc",
@@ -104,6 +105,7 @@ const cm_Service_t Services[] = {
         .helpHandler = cm_mdmCfg_PrintHelp,
         .commandHandler = cm_mdmCfg_ProcessCommand
     },
+#endif
 };
 
 //--------------------------------------------------------------------------------------------------

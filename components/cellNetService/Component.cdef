@@ -12,7 +12,12 @@ requires:
     {
         le_sim.api
         le_mrc.api
+
+#if ${MK_CONFIG_NO_SECSTORE} = y
+        le_secStore.api  [optional]
+#else
         le_secStore.api
+#endif
     }
 
     component:

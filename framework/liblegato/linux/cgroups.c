@@ -29,6 +29,8 @@ static const char* SubSysName[CGRP_NUM_SUBSYSTEMS] = {"cpu,cpuacct", "memory", "
 //--------------------------------------------------------------------------------------------------
 #define ROOT_PATH                   "/sys/fs/cgroup"
 #define ROOT_NAME                   "cgroupsRoot"
+#define ROOT_TYPE                   "tmpfs"
+#define CGROUP_FS_TYPE              "cgroup"
 
 
 //--------------------------------------------------------------------------------------------------
@@ -109,7 +111,9 @@ static bool IsAllSubSysMounted
 
         LE_ASSERT(le_path_Concat("/", dir, sizeof(dir), SubSysName[subSys], (char*)NULL) == LE_OK);
 
-        if (!fs_IsMounted(SubSysName[subSys], dir))
+        // Check if the subsystem is mounted. It could be mounted with susbsystem name or the
+        // fs type as name (eg. systemd).
+        if (!fs_IsMounted(SubSysName[subSys], dir) && !fs_IsMounted(CGROUP_FS_TYPE, dir))
         {
             return false;
         }
@@ -163,7 +167,8 @@ void cgrp_Init
 )
 {
     // Setup the cgroup root directory if it does not already exist.
-    if (!fs_IsMounted(ROOT_NAME, ROOT_PATH))
+    // It could be mounted with fs type as name (sytemd case).
+    if (!fs_IsMounted(ROOT_NAME, ROOT_PATH) && !fs_IsMounted(ROOT_TYPE, ROOT_PATH))
     {
         LE_FATAL_IF(mount(ROOT_NAME, ROOT_PATH, "tmpfs", 0, NULL) !=0,
                         "Could not mount cgroup root file system. %m.");
@@ -175,6 +180,8 @@ void cgrp_Init
         // Check whether all cgroup subsystems are mounted.
         if (!IsAllSubSysMounted())
         {
+            LE_INFO("Remounting cgroup hierarchy; The previous mounting will be lost");
+
             // Unmount everything in cgroup.
             LE_FATAL_IF(umount2(ROOT_PATH, MNT_DETACH) != 0,
                             "Could not unmount cgroup root file system. %m");
@@ -874,6 +881,31 @@ const char* cgrp_SubSysName
 )
 {
     return SubSysName[subsystem];
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Checks if a cgroup subsystem name matches those managed by Legato.
+ *
+ * @return
+ *      true if matches,
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool cgrp_isValidSubSysName
+(
+    char *name                      ///< [IN] Sub-system name.
+)
+{
+    cgrp_SubSys_t subSys = 0;
+
+    for (; subSys < CGRP_NUM_SUBSYSTEMS; subSys++)
+    {
+        if (strncmp(name, SubSysName[subSys], strlen(SubSysName[subSys])) == 0)
+            return true;
+    }
+    return false;
 }
 
 

@@ -2323,12 +2323,68 @@ le_result_t le_appInfo_GetName
         return LE_FAULT;
     }
 
-    // Other than the cgroup path which contains an app name, allocate another 20 bytes for
-    // hierarchy ID, controller list, and misc. separators.
-    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 20] = {0};
+    // Other than the cgroup path which contains an app name, allocate another 60 bytes for
+    // hierarchy ID, controller list, and misc. separators, and to accomodate cases where
+    // the cgroup path is not an app name, but a systemd slice path, which is longer.
+    // eg. "4:devices:/system.slice/start_legato.service".
+    char lineBuf[LIMIT_MAX_APP_NAME_LEN + 60] = {0};
 
-    // Read the first line.
-    LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
+    char* token = NULL;
+
+    while (1)
+    {
+        // Read each line.
+        memset(lineBuf, 0, sizeof(lineBuf));
+        LE_ASSERT(fgets(lineBuf, sizeof(lineBuf), cgroupFilePtr) != NULL);
+
+        // Remove the trailing newline char.
+        size_t len = strlen(lineBuf);
+
+        if (lineBuf[len - 1] == '\n')
+        {
+            lineBuf[len - 1] = '\0';
+        }
+
+        // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
+        // e.g. 4:freezer:/SomeApp
+        // We are trying to get the 3rd token for a known subsystem(controller), and remove the
+        // leading slash.
+        char *subSysName = NULL;
+        char delim[2] = ":";
+
+        strtok(lineBuf, delim); // hierarchy-ID; skip.
+        subSysName = strtok(NULL, delim); // controller-list=sybsystem name.
+
+        if ((subSysName != NULL) && (cgrp_isValidSubSysName(subSysName) == true))
+        {
+            token = strtok(NULL, delim); // cgroup-path.
+
+            if (NULL == token)
+            {
+                LE_CRIT("Unexpected format for '%s'", lineBuf);
+                return LE_FAULT;
+            }
+
+            // The pid doesn't belong to any cgroup, and hence not part of any app if,
+            // 1. the token has only one char (which is "/"), or
+            // 2. the token is a systemd accounting information in the form of
+            //     /system.slice/<systemd_unit_name> or
+            //     /user.slice/<systemd_unit_name>
+            const char *systemd_system_slice_str = "/system.slice/";
+            const char *systemd_user_slice_str = "/user.slice/";
+            if ((strlen(token) <= 1) || \
+                (strncmp(token, systemd_system_slice_str, \
+                         strlen(systemd_system_slice_str)) == 0) || \
+                (strncmp(token, systemd_user_slice_str, strlen(systemd_user_slice_str)) == 0))
+            {
+                LE_INFO("app name not found in '%s'", lineBuf);
+                return LE_NOT_FOUND;
+            }
+
+            // Valid token found; no need to futher read the file.
+            break;
+        }
+    }
 
     // Close the stream
     if (fclose(cgroupFilePtr) != 0)
@@ -2343,39 +2399,16 @@ le_result_t le_appInfo_GetName
         }
     }
 
-    // Remove the trailing newline char.
-    size_t len = strlen(lineBuf);
-
-    if (lineBuf[len - 1] == '\n')
+    if (token != NULL)
     {
-        lineBuf[len - 1] = '\0';
+        // Note that the leading slash of the token has to be removed.
+        return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
     }
-
-    // The line is expected to be in this format: "hierarchy-ID:controller-list:cgroup-path"
-    // e.g. 4:freezer:/SomeApp
-    // We are trying to get the 3rd token and remove the leading slash.
-    char* token;
-    char delim[2] = ":";
-
-    strtok(lineBuf, delim);
-    strtok(NULL, delim);
-    token = strtok(NULL, delim);
-
-    if (NULL == token)
+    else
     {
-        LE_CRIT("Unexpected format for '%s'", lineBuf);
+        LE_CRIT("Cannot get valid token from '%s'", cgroupFilePath);
         return LE_FAULT;
     }
-
-    // If the token has only one char (which is "/"), then the pid doesn't belong to any cgroup, and
-    // hence not part of any app.
-    if (strlen(token) <= 1)
-    {
-        return LE_NOT_FOUND;
-    }
-
-    // Note that the leading slash of the token has to be removed.
-    return le_utf8_Copy(appName, (token + 1), appNameNumElements, NULL);
 }
 
 

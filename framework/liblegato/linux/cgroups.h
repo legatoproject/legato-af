@@ -297,6 +297,21 @@ const char* cgrp_SubSysName
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Checks if a cgroup subsystem name matches those managed by Legato.
+ *
+ * @return
+ *      true if matches,
+ *      false otherwise.
+ */
+//--------------------------------------------------------------------------------------------------
+bool cgrp_isValidSubSysName
+(
+    char *name                      ///< [IN] Sub-system name.
+);
+
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Sets the cpu share of a cgroup.
  *
  * Cpu share is used to calculate the cpu percentage for a process relative to all other processes

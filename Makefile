@@ -36,7 +36,7 @@
 # --------------------------------------------------------------------------------------------------
 
 # List of target devices supported:
-TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx raspi virt virt-x86 virt-arm
+TARGETS := localhost ar7 ar758x ar759x ar86 wp85 wp750x wp76xx wp77xx em92xx raspi virt virt-x86 virt-arm
 
 # Define the LEGATO_ROOT environment variable.
 export LEGATO_ROOT := $(CURDIR)

@@ -33,6 +33,9 @@ apps:
         #elif ${LEGATO_TARGET} = wp77xx
             ${LEGATO_QMI_AT_LINKER}
             ${LEGATO_AT_AIRVANTAGE_APP}
+        #elif ${LEGATO_TARGET} = em92xx
+            ${LEGATO_QMI_AT_LINKER}
+            ${LEGATO_AT_AIRVANTAGE_APP}
         #endif
     #endif
 }

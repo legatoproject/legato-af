@@ -869,7 +869,7 @@ static void CheckForTool
         exit(1);
     }
     toolPathPtr = fgets( toolPath, sizeof(toolPath), fdPtr );
-    fclose( fdPtr );
+    pclose( fdPtr );
     if( !toolPathPtr )
     {
         fprintf(stderr,
