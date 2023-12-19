@@ -978,14 +978,24 @@ static le_result_t SetDataCounters
 #ifndef LE_CONFIG_ENABLE_CONFIG_TREE
     return LE_FAULT;
 #else
-    le_cfg_IteratorRef_t iteratorRef;
+    uint64_t rxBytesCurrent;
+    uint64_t txBytesCurrent;
+    GetDataCounters(&rxBytesCurrent, &txBytesCurrent);
+    if (rxBytesCurrent != rxBytes && txBytesCurrent != txBytes )
+    {
+      le_cfg_IteratorRef_t iteratorRef;
 
-    iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_MDC_PATH);
-    le_cfg_SetFloat(iteratorRef, CFG_NODE_RX_BYTES, rxBytes);
-    le_cfg_SetFloat(iteratorRef, CFG_NODE_TX_BYTES, txBytes);
-    le_cfg_CommitTxn(iteratorRef);
+      iteratorRef = le_cfg_CreateWriteTxn(CFG_MODEMSERVICE_MDC_PATH);
+      le_cfg_SetFloat(iteratorRef, CFG_NODE_RX_BYTES, rxBytes);
+      le_cfg_SetFloat(iteratorRef, CFG_NODE_TX_BYTES, txBytes);
+      le_cfg_CommitTxn(iteratorRef);
 
-    LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, rxBytes, txBytes);
+      LE_DEBUG("Saved rxBytes=%"PRIu64", txBytes=%"PRIu64, rxBytes, txBytes);
+    }
+    else
+    {
+        LE_DEBUG("No need to save same rxBytes=%"PRIu64", txBytes=%"PRIu64, rxBytes, txBytes);
+    }
 
     return LE_OK;
 #endif
