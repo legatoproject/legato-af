@@ -45,10 +45,6 @@ AtCmd_t;
 #define LE_FILE_STREAM_INVALID_FD                   -1
 
 
-// Legato thread reference in order to make le_fd (fdMonitor) work properly
-static le_thread_Ref_t LegatoATThreadRef;
-
-
 // fdMonitor reference for reading data from POLLIN event on data mode fd
 static le_fdMonitor_Ref_t DataModeFdMonitorRef = NULL;
 
@@ -260,62 +256,6 @@ error:
 
 //--------------------------------------------------------------------------------------------------
 /**
- * This function is to create fdMonitor for data mode
- *
- */
-//--------------------------------------------------------------------------------------------------
-static void CreateFdMonitor
-(
-    void *param1Ptr,
-    void *param2Ptr
-)
-{
-    FDMonitorInfo_t* fdInfo = (FDMonitorInfo_t*)param1Ptr;
-    osSemaphoreId_t* semPtr = (osSemaphoreId_t*)param2Ptr;
-
-    if (!fdInfo || !semPtr)
-    {
-        LE_ERROR("Wrong parameter!");
-        return;
-    }
-
-    // Create fdMonitor for detecting +++ in order to allow host to quit from data mode
-    fdInfo->ref = le_fdMonitor_Create(fdInfo->name, fdInfo->fd, fdInfo->handlerFunc, fdInfo->events);
-
-    osSemaphoreRelease(*semPtr);
-}
-
-
-le_fdMonitor_Ref_t le_fdMonitor_Create_Queued
-(
-    const char                  *name,
-    int                          fd,
-    le_fdMonitor_HandlerFunc_t   handlerFunc,
-    short                        events
-)
-{
-    static FDMonitorInfo_t fdInfo;
-
-    fdInfo.name = name;
-    fdInfo.fd = fd;
-    fdInfo.handlerFunc = handlerFunc;
-    fdInfo.events = events;
-
-    osSemaphoreId_t sem = osSemaphoreNew(1, 0, NULL);
-
-    // Queue command handler to Legato thread, as this handler is running in altair thread
-    le_event_QueueFunctionToThread(LegatoATThreadRef, CreateFdMonitor, &fdInfo, &sem);
-
-    osSemaphoreAcquire(sem, osWaitForever);
-
-    osSemaphoreDelete(sem);
-
-    return fdInfo.ref;
-}
-
-
-//--------------------------------------------------------------------------------------------------
-/**
  * Monitor data mode fd for incoming events (inputs)
  *
  * @return none
@@ -331,7 +271,7 @@ static void DataModeEventHandlerMonitor
     static int ind = 0;
     int readCount = 0;
 
-    LE_INFO("received EVENT: %d", events);
+//    LE_INFO("received EVENT: %d", events);
 
     if (events & POLLIN)
     {
@@ -344,7 +284,7 @@ static void DataModeEventHandlerMonitor
         else
         {
 
-            LE_INFO("Received %d bytes: '%c'\r\n", readCount, buf[ind]);
+//            LE_INFO("Received %d bytes: '%c'\r\n", readCount, buf[ind]);
 
             // echo the character
             le_fd_Write(fd, &buf[ind], readCount);
@@ -391,6 +331,12 @@ void HelloDataCmdHandler
         return;
     }
 
+    // Create fdMonitor in Legato thread by queuing it to the this atProxy client thread
+    DataModeFdMonitorRef = le_fdMonitor_Create("DataModeFDMon",
+                                               DataModeFD,
+                                               DataModeEventHandlerMonitor,
+                                               POLLIN | POLLHUP);
+
     CommandRef = atSessionPtr;
 
 #define NUM_OUTPUT          3
@@ -408,12 +354,6 @@ void HelloDataCmdHandler
 
         le_thread_Sleep(1);
     }
-
-    // Create fdMonitor in Legato thread by queuing it to the this atProxy client thread
-    DataModeFdMonitorRef = le_fdMonitor_Create_Queued("DataModeFDMon",
-                                                      DataModeFD,
-                                                      DataModeEventHandlerMonitor,
-                                                      POLLIN | POLLHUP);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -553,9 +493,6 @@ COMPONENT_INIT
 
     size_t i = 0;
     le_result_t result = LE_OK;
-
-    LegatoATThreadRef = le_thread_GetCurrent();
-    LE_INFO(">> atHelloWorld.c legato thread ref = %p<<\r\n", LegatoATThreadRef);
 
     while (i < NUM_ARRAY_MEMBERS(AtCmdCreation))
     {
