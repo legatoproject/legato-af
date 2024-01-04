@@ -289,13 +289,51 @@ static void DataModeEventHandlerMonitor
             // echo the character
             le_fd_Write(fd, &buf[ind], readCount);
         }
+
+        int32_t _readCount = 1;
+        int32_t _writeLength;
+        static uint8_t _patternLength;
+        static char _buffer[32]; // make sure the size is larger than the length of EOF Pattern.
+        static int _ind = 0;
+        int _nbPrependData;
+
+        _buffer[_ind] = buf[ind];
+
+        if (LE_OK == le_atProxy_SearchEOFPatternInData((int8_t *)(_buffer + _ind),
+                                                       _readCount,
+                                                       &_writeLength,
+                                                       &_patternLength,
+                                                       NULL,
+                                                       &_nbPrependData))
+        {
+            // EOF pattern received
+            LE_INFO("EOF Pattern received, exit data mode...\r\n");
+
+            //le_atProxy_SwitchToCommandMode(CommandRef, LE_ATSERVER_OK, -1, DataModeFD);
+            // Also can call the following function, the old way instead
+            atServerUtil_SwitchToCommandMode(CommandRef, (int32_t)LE_ATSERVER_OK, -1, DataModeFD);
+
+            if (DataModeFdMonitorRef)
+            {
+                le_fdMonitor_Delete(DataModeFdMonitorRef);
+                DataModeFdMonitorRef = NULL;
+            }
+        }
+        else if (_patternLength > 0)
+        {
+            _ind++;
+        }
+        else
+        {
+            _ind = 0;
+        }
     }
 
     if (events & POLLHUP)
     {
-        le_atProxy_SwitchToCommandMode(CommandRef, LE_ATSERVER_OK, -1, DataModeFD);
+        //le_atProxy_SwitchToCommandMode(CommandRef, LE_ATSERVER_OK, -1, DataModeFD);
         // Also can call the following function, the old way instead
-        //atServerUtil_SwitchToCommandMode(CommandRef, (int32_t)LE_ATSERVER_OK, -1, DataModeFD);
+        atServerUtil_SwitchToCommandMode(CommandRef, (int32_t)LE_ATSERVER_OK, -1, DataModeFD);
 
         if (DataModeFdMonitorRef)
         {
@@ -322,14 +360,16 @@ void HelloDataCmdHandler
 
     le_result_t res;
 
-    res = le_atProxy_SwitchToDataMode(atSessionPtr, &DataModeFD);
+    //res = le_atProxy_SwitchToDataMode(atSessionPtr, &DataModeFD);
     // Also can call the following function, the old way instead
-    //res = atServerUtil_SwitchToDataMode(atSessionPtr, &DataModeFD);
+    res = atServerUtil_SwitchToDataMode(atSessionPtr, &DataModeFD);
     if (LE_OK != res)
     {
         LE_ERROR("Failed to switch to data mode");
         return;
     }
+
+//    le_fd_Write(DataModeFD, LE_AT_PROXY_CONNECT, strlen(LE_AT_PROXY_CONNECT));
 
     // Create fdMonitor in Legato thread by queuing it to the this atProxy client thread
     DataModeFdMonitorRef = le_fdMonitor_Create("DataModeFDMon",
