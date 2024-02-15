@@ -1883,6 +1883,7 @@ le_result_t le_httpClient_Resume
     return le_socket_TrigMonitoring(contextPtr->socketRef);
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Get tls error code
@@ -1931,6 +1932,7 @@ LE_SHARED void le_httpClient_SetTlsErrorCode
 
     le_socket_SetTlsErrorCode(contextPtr->socketRef, err_code);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**

@@ -15,6 +15,10 @@
 #include "interfaces.h"
 #include "common.h"
 
+#ifdef MK_CONFIG_THIN_MODEM
+#include "lwip/sockets.h"
+#include "lwip/netdb.h"
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Symbol and Enum definitions

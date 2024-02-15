@@ -173,7 +173,7 @@ le_result_t netSocket_Connect
     // Resolve name
     if ((retcode = getaddrinfo(hostPtr, portStr, &hints, &addrList)) != 0)
     {
-        LE_ERROR("Failed to resolve hostname and service - %s", gai_strerror(retcode));
+        LE_ERROR("Failed to resolve hostname and service - %s", strerror(retcode));
         return LE_UNAVAILABLE;
     }
 

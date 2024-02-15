@@ -78,6 +78,7 @@ static le_mem_PoolRef_t SocketPoolRef = NULL;
 //--------------------------------------------------------------------------------------------------
 static le_ref_MapRef_t SocketRefMap;
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Retrigger socket event handler in case more data needs to be read from secure socket
@@ -88,6 +89,7 @@ static void ReadMoreAsyncData
     void*                   param1Ptr,  ///< [IN] Socket context pointer
     void*                   param2Ptr   ///< [IN] Unused parameter
 );
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Internal functions
@@ -228,7 +230,7 @@ static void SocketEventsHandler
     if (contextPtr->eventHandler)
     {
         contextPtr->eventHandler(contextPtr->reference, events, contextPtr->userPtr);
-
+#ifndef MK_CONFIG_NO_SSL
         // In secure context, low-level layers may read more data from socket than the data size
         // requested by client application. In this case, we need to notify again until all
         // the data is consumed
@@ -247,9 +249,11 @@ static void SocketEventsHandler
                 }
             }
         }
+#endif
     }
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Re-trigger socket event handler in case more data needs to be read from secure socket
@@ -277,6 +281,7 @@ static void ReadMoreAsyncData
     le_fdMonitor_Enable(contextPtr->monitorRef, POLLIN);
     SocketEventsHandler(contextPtr->fd, contextPtr->events);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 // Public functions
@@ -379,23 +384,25 @@ le_result_t le_socket_Delete
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         secSocket_Disconnect(contextPtr->secureCtxPtr);
+        // Check if the secure context needs to be deleted.
+        // A secure context will be allocated prior to establishing a secure connection
+        // whenever a user configures the Cipher Suite, Certificate, Private Key,
+        // and/or Auth Type.  Must call secure socket delete to free the context
+        // even if a secure socket connection has not yet been established (indicated by
+        // contextPtr->isSecure).
+        if (contextPtr->secureCtxPtr)
+        {
+            secSocket_Delete(contextPtr->secureCtxPtr);
+        }
+#endif
     }
     else
     {
         netSocket_Disconnect(contextPtr->fd);
     }
 
-    // Check if the secure context needs to be deleted.
-    // A secure context will be allocated prior to establishing a secure connection
-    // whenever a user configures the Cipher Suite, Certificate, Private Key,
-    // and/or Auth Type.  Must call secure socket delete to free the context
-    // even if a secure socket connection has not yet been established (indicated by
-    // contextPtr->isSecure).
-    if (contextPtr->secureCtxPtr)
-    {
-        secSocket_Delete(contextPtr->secureCtxPtr);
-    }
     FreeSocketContext(contextPtr);
 
     return LE_OK;
@@ -711,7 +718,7 @@ le_result_t le_socket_Connect
     le_socket_Ref_t    ref   ///< [IN] Socket context reference
 )
 {
-    le_result_t status;
+    le_result_t status = LE_FAULT;
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
 
     if (contextPtr == NULL)
@@ -722,10 +729,12 @@ le_result_t le_socket_Connect
 
     if (contextPtr->hasCert)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Connect(contextPtr->secureCtxPtr, contextPtr->host,
                                    contextPtr->port, contextPtr->srcAddr,
                                    contextPtr->type, &(contextPtr->fd));
         contextPtr->isSecure = (status == LE_OK);
+#endif
     }
     else
     {
@@ -777,7 +786,7 @@ le_result_t le_socket_SecureConnection
     le_socket_Ref_t   ref              ///< [IN] Socket context reference
 )
 {
-    le_result_t status;
+    le_result_t status = LE_FAULT;
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
 
     if (contextPtr == NULL)
@@ -826,7 +835,7 @@ le_result_t le_socket_Disconnect
     le_socket_Ref_t    ref   ///< [IN] Socket context reference
 )
 {
-    le_result_t status;
+    le_result_t status = LE_FAULT;
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
     if (contextPtr == NULL)
     {
@@ -836,7 +845,9 @@ le_result_t le_socket_Disconnect
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Disconnect(contextPtr->secureCtxPtr);
+#endif
     }
     else
     {
@@ -870,7 +881,7 @@ le_result_t le_socket_Send
     size_t           dataLen     ///< [IN] Data length
 )
 {
-    le_result_t status;
+    le_result_t status = LE_FAULT;
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
     if (contextPtr == NULL)
     {
@@ -899,7 +910,9 @@ le_result_t le_socket_Send
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Write(contextPtr->secureCtxPtr, dataPtr, dataLen);
+#endif
     }
     else
     {
@@ -929,7 +942,7 @@ le_result_t le_socket_Read
     size_t*          dataLenPtr  ///< [INOUT] Input: size of the buffer. Output: data size read
 )
 {
-    le_result_t status;
+    le_result_t status = LE_FAULT;
     SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
     if (contextPtr == NULL)
     {
@@ -958,7 +971,9 @@ le_result_t le_socket_Read
 
     if (contextPtr->isSecure)
     {
+#ifndef MK_CONFIG_NO_SSL
         status = secSocket_Read(contextPtr->secureCtxPtr, dataPtr, dataLenPtr, contextPtr->timeout);
+#endif
     }
     else
     {
@@ -1303,6 +1318,7 @@ le_result_t le_socket_TrigMonitoring
     return LE_OK;
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Get tls error code
@@ -1351,6 +1367,7 @@ void le_socket_SetTlsErrorCode
 
     secSocket_SetTlsErrorCode(contextPtr->secureCtxPtr, err_code);
 }
+#endif
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1363,8 +1380,10 @@ COMPONENT_INIT_ONCE
     SocketPoolRef = le_mem_InitStaticPool(SocketPool, MAX_SOCKET_NB, sizeof(SocketCtx_t));
     SocketRefMap = le_ref_CreateMap("le_socketLibMap", MAX_SOCKET_NB);
 
+#ifndef MK_CONFIG_NO_SSL
     // Initialize the secure socket memory pools
     secSocket_InitializeOnce();
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
