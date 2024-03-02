@@ -75,6 +75,7 @@ struct le_mqttClient_Configuration
     char            *passwordStr;           ///< Password to use when logging iN
                                             ///  to the server.
     unsigned int     readTimeoutMs;         ///< Read timeout in milliseconds.
+#ifndef MK_CONFIG_NO_SSL
     bool             secure;                ///< Secure session
     uint32_t         cipherIndex;           ///< Cipher Suite profile index
     uint8_t          auth;                  ///< Authentication mode
@@ -85,6 +86,7 @@ struct le_mqttClient_Configuration
     const uint8_t   *ownPrivateKeyPtr;      ///< Security own private key pointer
     size_t           ownPrivateKeyLen;      ///< Length in byte of own private key
     const char      *alpnList;              ///< ALPN Protocol name
+#endif
 };
 
 

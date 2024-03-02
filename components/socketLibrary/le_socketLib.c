@@ -408,6 +408,7 @@ le_result_t le_socket_Delete
     return LE_OK;
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Add root CA certificates to the socket in order to make the connection secure.
@@ -696,7 +697,7 @@ LE_SHARED le_result_t le_socket_SetAlpnProtocolList
     secSocket_SetAlpnProtocolList(contextPtr->secureCtxPtr, alpnList);
     return LE_OK;
 }
-
+#endif //MK_CONFIG_NO_SSL
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -762,6 +763,7 @@ le_result_t le_socket_Connect
     return status;
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Secures an existing connection by performing TLS negotiation.
@@ -819,6 +821,7 @@ le_result_t le_socket_SecureConnection
     contextPtr->isSecure = true;
     return LE_OK;
 }
+#endif // MK_CONFIG_NO_SSL
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1367,7 +1370,7 @@ void le_socket_SetTlsErrorCode
 
     secSocket_SetTlsErrorCode(contextPtr->secureCtxPtr, err_code);
 }
-#endif
+#endif //MK_CONFIG_NO_SSL
 
 //--------------------------------------------------------------------------------------------------
 /**

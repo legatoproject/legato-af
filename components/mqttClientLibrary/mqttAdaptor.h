@@ -108,7 +108,9 @@ int ThreadStart
 //--------------------------------------------------------------------------------------------------
 void NetworkInit
 (
-    struct Network* net,               /// [IN] Network structure
+    struct Network* net                /// [IN] Network structure
+#ifndef MK_CONFIG_NO_SSL
+    ,
     int secure,                        /// [IN] Secure connection flag
     uint8_t auth,                      /// [IN] Authentication mode
     uint32_t cipherIdx,                /// [IN] Cipher Suite profile index
@@ -119,6 +121,7 @@ void NetworkInit
     const uint8_t* ownPrivateKeyPtr,   /// [IN] Own private key pointer
     size_t ownPrivateKeyLen,           /// [IN] Length in byte of own private key
     const char* alpnList               /// [IN] ALPN Protocol name
+#endif
 );
 
 //--------------------------------------------------------------------------------------------------

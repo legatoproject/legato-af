@@ -575,7 +575,9 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
     sessionRef->networkStatus = LE_MQTT_NETWORK_STATUS_UNKNOWN;
 
     /* Allocate the MQTT Network resources */
-    NetworkInit(&sessionRef->network,
+    NetworkInit(&sessionRef->network
+#ifndef MK_CONFIG_NO_SSL
+                ,
                 configPtr->secure,
                 configPtr->auth,
                 configPtr->cipherIndex,
@@ -585,7 +587,9 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
                 configPtr->ownCertLen,
                 configPtr->ownPrivateKeyPtr,
                 configPtr->ownPrivateKeyLen,
-                configPtr->alpnList);
+                configPtr->alpnList
+#endif
+                );
 
     /* Initialize the MQTT Client */
     MQTTClientInit(&sessionRef->client,
@@ -960,6 +964,7 @@ LE_SHARED le_result_t le_mqttClient_AddReceiveHandler
     return LE_OK;
 }
 
+#ifndef MK_CONFIG_NO_SSL
 //--------------------------------------------------------------------------------------------------
 /**
  * Get tls error code
@@ -1006,6 +1011,7 @@ LE_SHARED void le_mqttClient_SetTlsErrorCode
 
     le_socket_SetTlsErrorCode(sessionRef->network.socketRef, err_code);
 }
+#endif //MK_CONFIG_NO_SSL
 
 //--------------------------------------------------------------------------------------------------
 /**

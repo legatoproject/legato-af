@@ -172,7 +172,9 @@ int ThreadStart
 //--------------------------------------------------------------------------------------------------
 void NetworkInit
 (
-    struct Network* net,               /// [IN] Network structure
+    struct Network* net                /// [IN] Network structure
+#ifndef MK_CONFIG_NO_SSL
+    ,
     int secure,                        /// [IN] Secure connection flag
     uint8_t auth,                      /// [IN] Authentication mode
     uint32_t cipherIndex,              /// [IN] Cipher Suite profile index
@@ -183,11 +185,13 @@ void NetworkInit
     const uint8_t* ownPrivateKeyPtr,   /// [IN] Own private key pointer
     size_t ownPrivateKeyLen,           /// [IN] Length in byte of own private key
     const char *alpnList               /// [IN] ALPN Protocol name
+#endif
 )
 {
     net->socketRef = NULL;
     net->handlerFunc = NULL;
     net->contextPtr = NULL;
+#ifndef MK_CONFIG_NO_SSL
     net->secure = secure;
     net->auth = auth;
     net->cipherIdx = cipherIndex;
@@ -199,6 +203,7 @@ void NetworkInit
     net->ownPrivateKeyLen = ownPrivateKeyLen;
     net->alpnList[0] = alpnList;       // Only a single ALPN name supported currently
     net->alpnList[1] = NULL;           // Needed to terminate the ALPN with NULL
+#endif
     net->mqttread = MqttRead;
     net->mqttwrite = MqttWrite;
 }
@@ -266,6 +271,7 @@ le_result_t NetworkConnect
         return LE_FAULT;
     }
 
+#ifndef MK_CONFIG_NO_SSL
     if (net->secure)
     {
         LE_INFO("Adding security certificate...");
@@ -320,6 +326,7 @@ le_result_t NetworkConnect
             }
         }
     } // End of secure
+#endif //MK_CONFIG_NO_SSL
 
     // Set response timeout.
     if (LE_OK != le_socket_SetTimeout(net->socketRef, timeoutMs))
@@ -365,6 +372,7 @@ le_result_t NetworkConnect
 freeSocket:
     if(net->socketRef != NULL)
     {
+#ifndef MK_CONFIG_NO_SSL
         /* NetworkConnect failed.
            Keep client tls err before delete client. */
         int tls_err = le_socket_GetTlsErrorCode(net->socketRef);
@@ -372,6 +380,7 @@ freeSocket:
         {
             net->extError = (le_exterr_result_t)tls_err;
         }
+#endif
         le_socket_Delete(net->socketRef);
         net->socketRef = NULL;
         net->handlerFunc = NULL;
@@ -394,12 +403,14 @@ void NetworkDisconnect
 {
     if (net->socketRef != NULL)
     {
+#ifndef MK_CONFIG_NO_SSL
         /* Keep client tls err before delete client. */
         int tls_err = le_socket_GetTlsErrorCode(net->socketRef);
         if(tls_err != 0)
         {
             net->extError = (le_exterr_result_t)tls_err;
         }
+#endif
         le_socket_Disconnect(net->socketRef);
         le_socket_Delete(net->socketRef);
         net->socketRef = NULL;

@@ -7,6 +7,13 @@ sources:
     mqttTimer.c
 
     ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTClient-C/src/MQTTClient.c
+
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/MQTTPacket.c
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/MQTTConnectClient.c
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/MQTTSerializePublish.c
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/MQTTUnsubscribeClient.c
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/MQTTDeserializePublish.c
+    ${LEGATO_ROOT}/3rdParty/paho.mqtt.embedded-c/MQTTPacket/src/MQTTSubscribeClient.c
 }
 
 cflags:
@@ -17,9 +24,9 @@ cflags:
     -I${CURDIR}
 
     -DMQTTCLIENT_PLATFORM_HEADER=mqttAdaptor.h
-    -DREVERSED
     -DMQTT_TASK
     -DMAX_MESSAGE_HANDLERS=MK_CONFIG_MQTT_SUBSCRIB_TOPIC_MAX
+    -Wno-address-of-packed-member
 }
 
 requires:
@@ -32,13 +39,7 @@ requires:
 
     component:
     {
-        ${LEGATO_ROOT}/components/3rdParty/paho.mqtt.embedded-c
         ${LEGATO_ROOT}/components/socketLibrary
-    }
-
-    lib:
-    {
-        mqttpacketclient
     }
 }
 
