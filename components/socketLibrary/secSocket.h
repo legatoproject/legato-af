@@ -132,6 +132,8 @@ void secSocket_SetAlpnProtocolList
 /**
  * Performs TLS Handshake
  *
+ * Warning: Deprecated function. Use secSocket_Connect() to connect remote host and doing handshake.
+ *
  * @return
  *  - LE_OK                 The function succeeded
  *  - LE_NOT_IMPLEMENTED    Not implemented for device

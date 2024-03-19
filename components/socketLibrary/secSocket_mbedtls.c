@@ -21,6 +21,15 @@
 #include "mbedtls/net_sockets.h"
 #include "mbedtls/ssl.h"
 
+#ifdef MK_CONFIG_THIN_MODEM
+#include "mbedtls/ctr_drbg.h"
+#include "mbedtls/entropy.h"
+#endif
+
+#if !LE_CONFIG_RTOS
+#include <arpa/inet.h>
+#endif
+
 #if defined(MBEDTLS_DEBUG_C)
 #include "mbedtls/debug.h"
 #define DEBUG_LEVEL                 (0)
@@ -57,6 +66,12 @@
 #define SSL_MIN_PROFILE_ID          (0)
 #define SSL_MAX_PROFILE_ID          (7)
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Port maximum length
+ */
+//--------------------------------------------------------------------------------------------------
+#define PORT_STR_LEN      6
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -71,6 +86,12 @@ typedef struct
     mbedtls_x509_crt      caCert;                           ///< Root CA X.509 certificate.
     mbedtls_x509_crt      ownCert;                          ///< Module's X.509 certificate.
     mbedtls_pk_context    ownPkey;                          ///< Module's private key container.
+
+#ifdef MK_CONFIG_THIN_MODEM
+    mbedtls_entropy_context entropy;                        ///< Entropy for random number generator.
+    mbedtls_ctr_drbg_context ctrDrbg;                       ///< Random number generator context
+#endif
+
     uint8_t               auth;                             ///< Authentication type.
     const char          **alpn_list;                        ///< ALPN Protocol Name list
     int                   ciphersuite[2];                   ///< Cipher suite(s) to use.
@@ -253,6 +274,277 @@ static int ReadFromStream
     count = 0;
     return r;
 }
+//-----------------------------------------------------------------------------------------------
+/**
+ * Function to populate a socket structure from IP address in string format
+ *
+ * @note
+ *  - srcIpAddress can be a Null string. In this case, the default PDP profile will be used
+ *    and the address family will be selected in the following order: Try IPv4 first, then
+ *    try IPv6
+ *
+ * @return
+ *        - LE_OK if success
+ *        - LE_FAULT in case of failure
+ */
+//-----------------------------------------------------------------------------------------------
+static le_result_t GetSocketInfo
+(
+    char*                    ipAddress,        ///< [IN] IP address in string format
+    int*                     addrFamilyPtr,    ///< [OUT] Address family
+    struct sockaddr_storage* socketPtr         ///< [OUT] Socket pointer for binding info
+)
+{
+    char tmpIpAddress[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
+    char* tmpIpAddressPtr = ipAddress;
+    le_result_t result = LE_FAULT;
+
+    if (!strlen(ipAddress))
+    {
+        // No source IP address given - use default profile source address
+        le_mdc_ProfileRef_t profileRef = le_mdc_GetProfile((uint32_t)LE_MDC_DEFAULT_PROFILE);
+        if(!profileRef)
+        {
+             LE_ERROR("le_mdc_GetProfile cannot get default profile");
+             return result;
+        }
+        // Try IPv4, then Ipv6
+        if (LE_OK == le_mdc_GetIPv4Address(profileRef, tmpIpAddress, sizeof(tmpIpAddress)))
+        {
+            LE_INFO("GetSocketInfo using default IPv4");
+        }
+        else if (LE_OK == le_mdc_GetIPv6Address(profileRef, tmpIpAddress,
+                                                            sizeof(tmpIpAddress)))
+        {
+            LE_INFO("GetSocketInfo using default IPv6");
+        }
+        else
+        {
+            LE_ERROR("GetSocketInfo No IPv4 or IPv6 address");
+            return result;
+        }
+        tmpIpAddressPtr = tmpIpAddress;
+        memcpy(ipAddress, tmpIpAddress, LE_MDC_IPV6_ADDR_MAX_BYTES);
+    }
+
+    // Get socket address and family from source IP string
+    if (inet_pton(AF_INET, tmpIpAddressPtr,
+                  &(((struct sockaddr_in *)socketPtr)->sin_addr)) == 1)
+    {
+        LE_INFO("GetSocketInfo address is IPv4 %s", tmpIpAddressPtr);
+        ((struct sockaddr_in *)socketPtr)->sin_family = AF_INET;
+        *addrFamilyPtr = AF_INET;
+        result = LE_OK;
+    }
+    else if (inet_pton(AF_INET6, tmpIpAddressPtr,
+                       &(((struct sockaddr_in6 *)socketPtr)->sin6_addr)) == 1)
+    {
+        LE_INFO("GetSocketInfo address is IPv6 %s", tmpIpAddressPtr);
+        ((struct sockaddr_in *)socketPtr)->sin_family = AF_INET6;
+        *addrFamilyPtr = AF_INET6;
+        result = LE_OK;
+    }
+    else
+    {
+        LE_ERROR("GetSocketInfo cannot convert address %s", tmpIpAddressPtr);
+    }
+
+    return result;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Setup TLS parameters
+ *
+ * @return
+ *  - LE_OK                 The function succeeded
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ *  - LE_CLOSED             In case of end of file error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t SetupTLSParams
+(
+    secSocket_Ctx_t*    ctxPtr,    ///< [INOUT] Secure socket context pointer
+    char*               hostPtr    ///< [IN] Host to connect on
+)
+{
+    int              ret;
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_ASSERT(hostPtr != NULL);
+
+    LE_INFO("Setting up TLS parameters");
+    // Setup
+    LE_INFO("Set up the default SSL/TLS configuration");
+    if ((ret = mbedtls_ssl_config_defaults(&(contextPtr->sslConf),
+                                           MBEDTLS_SSL_IS_CLIENT,
+                                           MBEDTLS_SSL_TRANSPORT_STREAM,
+                                           MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
+    {
+        contextPtr->mbedtls_errcode = ret;
+        LE_ERROR("Failed! mbedtls_ssl_config_defaults returned %d", ret);
+        // Only possible error is linked to memory allocation issue
+        return LE_NO_MEMORY;
+    }
+
+    if (contextPtr->ciphersuite[0] == 0)
+    {
+        LE_INFO("Add all approved cipher suites to SSL/TLS configuration");
+        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, ciphersuites);
+    }
+    else
+    {
+        LE_INFO("Add cipher suite '%d' to SSL/TLS configuration", contextPtr->ciphersuite[0]);
+        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, contextPtr->ciphersuite);
+    }
+
+    mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
+    mbedtls_ssl_conf_ca_chain(&(contextPtr->sslConf), &(contextPtr->caCert), NULL);
+
+    // Apply local certificate and key bindings if the authentication type is mutual
+    if (contextPtr->auth == AUTH_MUTUAL)
+    {
+        LE_INFO("Configuring Mutual Authentication");
+        if ((ret = mbedtls_ssl_conf_own_cert(&(contextPtr->sslConf),
+                                             &(contextPtr->ownCert),
+                                             &(contextPtr->ownPkey))) != 0)
+        {
+            contextPtr->mbedtls_errcode = ret;
+            LE_ERROR("Failed! mbedtls_ssl_conf_own_cert returned %d", ret);
+            return LE_FAULT;
+        }
+    }
+
+    // Apply ALPN protocol list if configured
+    if ((contextPtr->alpn_list != NULL) &&
+        (contextPtr->alpn_list[0] != NULL) &&
+        (contextPtr->alpn_list[0][0] != '\0'))
+    {
+        LE_INFO("Configuring ALPN list %s", *contextPtr->alpn_list);
+
+        if ((ret = mbedtls_ssl_conf_alpn_protocols(&(contextPtr->sslConf), contextPtr->alpn_list)) != 0)
+        {
+            LE_ERROR("Failed! mbedtls_ssl_conf_alpn_protocols returned -0x%0x", -ret);
+            return LE_FAULT;
+        }
+    }
+
+    if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
+    {
+        contextPtr->mbedtls_errcode = ret;
+        LE_ERROR("Failed! mbedtls_ssl_setup returned %d", ret);
+        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
+        {
+            return LE_NO_MEMORY;
+        }
+        return LE_FAULT;
+    }
+
+    if ((ret = mbedtls_ssl_set_hostname(&(contextPtr->sslCtx), hostPtr)) != 0)
+    {
+        contextPtr->mbedtls_errcode = ret;
+        LE_ERROR("Failed! mbedtls_ssl_set_hostname returned %d", ret);
+        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
+        {
+            return LE_NO_MEMORY;
+        }
+        return LE_FAULT;
+    }
+
+#ifdef MK_CONFIG_THIN_MODEM
+    //Set the minimum accepted SSL/TLS protocol version
+    mbedtls_ssl_conf_min_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_2);
+    //Set the maximum supported SSL/TLS version
+    mbedtls_ssl_conf_max_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_2 );
+
+    // Set the RNG function
+    mbedtls_ssl_conf_rng(&(contextPtr->sslConf), mbedtls_ctr_drbg_random, &(contextPtr->ctrDrbg));
+    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
+                        mbedtls_net_send, mbedtls_net_recv, NULL);
+#else
+    //Set the minimum accepted SSL/TLS protocol version
+    mbedtls_ssl_conf_min_version( &(contextPtr->sslConf), MBEDTLS_SSL_MAJOR_VERSION_3,
+                                                       MBEDTLS_SSL_MINOR_VERSION_3);
+    //Set the maximum supported SSL/TLS version
+    mbedtls_ssl_conf_max_version( &(contextPtr->sslConf), MBEDTLS_SSL_MAJOR_VERSION_3,
+                                                       MBEDTLS_SSL_MINOR_VERSION_3);
+    // Set the RNG function
+    mbedtls_port_SSLSetRNG(&contextPtr->sslConf);
+    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
+                        mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
+#endif
+
+    // Set the timeout for the initial handshake.
+    mbedtls_ssl_conf_read_timeout(&(contextPtr->sslConf), MBEDTLS_SSL_CONNECT_TIMEOUT);
+
+    LE_INFO("Setup TLS param done");
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Performs TLS Handshake
+ *
+ * Note: All the TLS parameters must be set and connection should be made before calling this
+ * function
+ *
+ * @return
+ *  - LE_OK                 The function succeeded
+ *  - LE_NOT_IMPLEMENTED    Not implemented for device
+ *  - LE_TIMEOUT            Timeout during execution
+ *  - LE_FAULT              Internal error
+ *  - LE_NO_MEMORY          Memory allocation issue
+ *  - LE_CLOSED             In case of end of file error
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t PerformHandshake
+(
+    secSocket_Ctx_t*    ctxPtr    ///< [INOUT] Secure socket context pointer
+)
+{
+    int              ret;
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+
+    // Handshake
+    LE_INFO("Performing the SSL/TLS handshake...");
+    while ((ret = mbedtls_ssl_handshake(&(contextPtr->sslCtx))) != 0)
+    {
+        LE_ERROR("Failed! mbedtls_ssl_handshake returned -0x%x", -ret);
+        if ((ret != MBEDTLS_ERR_SSL_WANT_READ) && (ret != MBEDTLS_ERR_SSL_WANT_WRITE))
+        {
+            contextPtr->mbedtls_errcode = ret;
+            if (ret == MBEDTLS_ERR_NET_RECV_FAILED)
+            {
+                return LE_TIMEOUT;
+            }
+            else if (ret == MBEDTLS_ERR_NET_SEND_FAILED)
+            {
+                return LE_FAULT;
+            }
+            else if (ret == MBEDTLS_ERR_SSL_ALLOC_FAILED)
+            {
+                return LE_NO_MEMORY;
+            }
+            else if (ret == MBEDTLS_ERR_SSL_CONN_EOF)
+            {
+                return LE_CLOSED;
+            }
+            else
+            {
+                return LE_FAULT;
+            }
+        }
+    }
+    LE_INFO("SSL/TLS handshake done...");
+    return LE_OK;
+}
 
 //--------------------------------------------------------------------------------------------------
 // Public functions
@@ -276,7 +568,7 @@ le_result_t secSocket_Init
     MbedtlsCtx_t *contextPtr;
 
     LE_ASSERT(ctxPtr != NULL);
-
+    LE_DEBUG("start secSocket_Init");
     // Alloc memory from pool
     contextPtr = le_mem_Alloc(SocketCtxPoolRef);
 
@@ -294,6 +586,18 @@ le_result_t secSocket_Init
     mbedtls_ssl_conf_dbg(&(contextPtr->sslConf), OutputMbedtlsDebugInfo, stdout);
     mbedtls_debug_set_threshold(SSL_DEBUG_LEVEL);
 #endif
+
+#ifdef MK_CONFIG_THIN_MODEM
+    int ret = 0;
+    mbedtls_entropy_init(&(contextPtr->entropy));
+    mbedtls_ctr_drbg_init(&(contextPtr->ctrDrbg));
+    if ((ret = mbedtls_ctr_drbg_seed(&(contextPtr->ctrDrbg), mbedtls_entropy_func,
+            &(contextPtr->entropy), NULL, 0)) != 0) {
+        LE_ERROR("mbedtls_ctr_drbg_seed returned 0x%4x", ret);
+        return LE_FAULT;
+    }
+#endif
+    LE_DEBUG("secSocket_Init done");
 
     *ctxPtr = (secSocket_Ctx_t *) contextPtr;
 
@@ -326,6 +630,7 @@ le_result_t secSocket_AddCertificate
 
     LE_DEBUG("Add root CA certificates: %p Len:%"PRIuS, certificatePtr, certificateLen);
     ret = mbedtls_x509_crt_parse(&(contextPtr->caCert), certificatePtr, certificateLen);
+
     if (ret < 0)
     {
         contextPtr->mbedtls_errcode = ret;
@@ -334,8 +639,13 @@ le_result_t secSocket_AddCertificate
     }
 
     // Check certificate validity
+#ifdef MK_CONFIG_THIN_MODEM
+    if ((mbedtls_x509_time_is_past(GET_X509_TIME_TO(&contextPtr->caCert))) ||
+        (mbedtls_x509_time_is_future(GET_X509_TIME_FROM(&contextPtr->caCert))))
+#else
     if ((mbedtls_x509_time_is_past(&contextPtr->caCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->caCert.valid_from)))
+#endif
     {
         contextPtr->mbedtls_errcode = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
         LE_ERROR("Current root CA certificates expired, please add valid certificates");
@@ -379,8 +689,13 @@ le_result_t secSocket_AddOwnCertificate
     }
 
     // Check certificate validity
+#ifdef MK_CONFIG_THIN_MODEM
+    if ((mbedtls_x509_time_is_past(GET_X509_TIME_TO(&contextPtr->caCert))) ||
+        (mbedtls_x509_time_is_future(GET_X509_TIME_FROM(&contextPtr->caCert))))
+#else
     if ((mbedtls_x509_time_is_past(&contextPtr->ownCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->ownCert.valid_from)))
+#endif
     {
         contextPtr->mbedtls_errcode = MBEDTLS_ERR_X509_CERT_VERIFY_FAILED;
         LE_ERROR("Current client certificates expired, please add valid certificates");
@@ -406,7 +721,7 @@ le_result_t secSocket_AddOwnPrivateKey
     size_t            pkeyLen           ///< [IN] Private key length
 )
 {
-    int              ret;
+    int              ret = -1;
     MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
     LE_ASSERT(contextPtr != NULL);
@@ -414,7 +729,14 @@ le_result_t secSocket_AddOwnPrivateKey
     LE_ASSERT(pkeyLen > 0);
 
     LE_DEBUG("Add client private key: %p Len:%"PRIuS, pkeyPtr, pkeyLen);
+
+#ifdef MK_CONFIG_THIN_MODEM
+    ret = mbedtls_pk_parse_key(&(contextPtr->ownPkey), pkeyPtr, pkeyLen, NULL, 0,
+                                mbedtls_ctr_drbg_random, &(contextPtr->ctrDrbg));
+#else
     ret = mbedtls_pk_parse_key(&(contextPtr->ownPkey), pkeyPtr, pkeyLen, NULL, 0);
+#endif
+
     if (ret < 0)
     {
         contextPtr->mbedtls_errcode = ret;
@@ -494,6 +816,8 @@ void secSocket_SetAlpnProtocolList
 /**
  * Performs TLS Handshake
  *
+ * Warning: Deprecated function. Use secSocket_Connect() to connect remote host and doing handshake.
+ *
  * @return
  *  - LE_OK                 The function succeeded
  *  - LE_NOT_IMPLEMENTED    Not implemented for device
@@ -510,7 +834,7 @@ le_result_t secSocket_PerformHandshake
     int                 fd         ///< [IN] File descriptor
 )
 {
-    int              ret;
+    le_result_t result = LE_OK;
     MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
 
     LE_ASSERT(contextPtr != NULL);
@@ -520,116 +844,15 @@ le_result_t secSocket_PerformHandshake
     // Set the secure socket fd to the original netsocket fd
     contextPtr->sock.fd = fd;
 
-    // Setup
-    LE_INFO("Set up the default SSL/TLS configuration");
-    if ((ret = mbedtls_ssl_config_defaults(&(contextPtr->sslConf),
-                                           MBEDTLS_SSL_IS_CLIENT,
-                                           MBEDTLS_SSL_TRANSPORT_STREAM,
-                                           MBEDTLS_SSL_PRESET_DEFAULT)) != 0)
+    // Setup TLS parameters
+    result = SetupTLSParams(ctxPtr, hostPtr);
+    if (LE_OK != result)
     {
-        contextPtr->mbedtls_errcode = ret;
-        LE_ERROR("Failed! mbedtls_ssl_config_defaults returned %d", ret);
-        // Only possible error is linked to memory allocation issue
-        return LE_NO_MEMORY;
-    }
-
-    if (contextPtr->ciphersuite[0] == 0)
-    {
-        LE_INFO("Add all approved cipher suites to SSL/TLS configuration");
-        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, ciphersuites);
-    }
-    else
-    {
-        LE_INFO("Add cipher suite '%d' to SSL/TLS configuration", contextPtr->ciphersuite[0]);
-        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, contextPtr->ciphersuite);
-    }
-
-    mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
-    mbedtls_ssl_conf_ca_chain(&(contextPtr->sslConf), &(contextPtr->caCert), NULL);
-
-    // Apply local certificate and key bindings if the authentication type is mutual
-    if (contextPtr->auth == AUTH_MUTUAL)
-    {
-        LE_INFO("Configuring Mutual Authentication");
-        if ((ret = mbedtls_ssl_conf_own_cert(&(contextPtr->sslConf),
-                                             &(contextPtr->ownCert),
-                                             &(contextPtr->ownPkey))) != 0)
-        {
-            contextPtr->mbedtls_errcode = ret;
-            LE_ERROR("Failed! mbedtls_ssl_conf_own_cert returned %d", ret);
-            return LE_FAULT;
-        }
-    }
-
-    // Apply ALPN protocol list if configured
-    if (contextPtr->alpn_list)
-    {
-        LE_INFO("Configuring ALPN list %s", *contextPtr->alpn_list);
-        mbedtls_ssl_conf_alpn_protocols(&(contextPtr->sslConf), contextPtr->alpn_list);
-    }
-
-    mbedtls_port_SSLSetRNG(&contextPtr->sslConf);
-
-    if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
-    {
-        contextPtr->mbedtls_errcode = ret;
-        LE_ERROR("Failed! mbedtls_ssl_setup returned %d", ret);
-        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
-        {
-            return LE_NO_MEMORY;
-        }
+        LE_ERROR("Failed! setting up TLS parameters: %s", LE_RESULT_TXT(result));
         return LE_FAULT;
     }
 
-    if ((ret = mbedtls_ssl_set_hostname(&(contextPtr->sslCtx), hostPtr)) != 0)
-    {
-        contextPtr->mbedtls_errcode = ret;
-        LE_ERROR("Failed! mbedtls_ssl_set_hostname returned %d", ret);
-        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
-        {
-            return LE_NO_MEMORY;
-        }
-        return LE_FAULT;
-    }
-
-    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
-                        mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
-
-    // Set the timeout for the initial handshake.
-    mbedtls_ssl_conf_read_timeout(&(contextPtr->sslConf), MBEDTLS_SSL_CONNECT_TIMEOUT);
-
-    // Handshake
-    LE_INFO("Performing the SSL/TLS handshake...");
-    while ((ret = mbedtls_ssl_handshake(&(contextPtr->sslCtx))) != 0)
-    {
-        LE_ERROR("Failed! mbedtls_ssl_handshake returned -0x%x", -ret);
-        if ((ret != MBEDTLS_ERR_SSL_WANT_READ) && (ret != MBEDTLS_ERR_SSL_WANT_WRITE))
-        {
-            contextPtr->mbedtls_errcode = ret;
-            if (ret == MBEDTLS_ERR_NET_RECV_FAILED)
-            {
-                return LE_TIMEOUT;
-            }
-            else if (ret == MBEDTLS_ERR_NET_SEND_FAILED)
-            {
-                return LE_FAULT;
-            }
-            else if (ret == MBEDTLS_ERR_SSL_ALLOC_FAILED)
-            {
-                return LE_NO_MEMORY;
-            }
-            else if (ret == MBEDTLS_ERR_SSL_CONN_EOF)
-            {
-                return LE_CLOSED;
-            }
-            else
-            {
-                return LE_FAULT;
-            }
-        }
-    }
-
-    return LE_OK;
+    return PerformHandshake(ctxPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -669,23 +892,50 @@ le_result_t secSocket_Connect
     LE_ASSERT(hostPtr != NULL);
     LE_ASSERT(fdPtr != NULL);
 
+    char portStr[PORT_STR_LEN] = {0};
+    int ret = 0;
+    struct addrinfo hints;
+    struct sockaddr_storage srcSocket = {0};
+
+    // Setup TLS parameters
+    le_result_t result = SetupTLSParams(ctxPtr, hostPtr);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Failed! setting up TLS parameters: %s", LE_RESULT_TXT(result));
+        return LE_FAULT;
+    }
+
     // Start the connection
     snprintf(portBuffer, sizeof(portBuffer), "%d", port);
     LE_INFO("Connecting to %d/%s:%d - %s:%s...", type, hostPtr, port, hostPtr, portBuffer);
 
-    le_result_t result = netSocket_Connect(hostPtr, port, srcAddrPtr, TCP_TYPE,
-                                           (int *)&(contextPtr->sock));
-    if ( result != LE_OK)
+    // Convert port to string
+    snprintf(portStr, PORT_STR_LEN, "%hu", port);
+
+    // Do name resolution with both IPv6 and IPv4
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = (type == UDP_TYPE) ? SOCK_DGRAM : SOCK_STREAM;
+    hints.ai_protocol = (type == UDP_TYPE) ? IPPROTO_UDP : IPPROTO_TCP;
+
+    // Initialize socket structure from source IP string
+    if (GetSocketInfo(srcAddrPtr, &(hints.ai_family), &srcSocket) != LE_OK)
     {
-        LE_ERROR("Failed! mbedtls_net_connect returned %d", result);
-        return result;
+        LE_ERROR("Error on function: GetSocketInfo");
+        return LE_UNAVAILABLE;
+    }
+
+    if ((ret = mbedtls_net_connect_swi(&(contextPtr->sock), hostPtr, portStr, &srcSocket, sizeof(srcSocket), MBEDTLS_NET_PROTO_TCP)) != 0)
+    {
+        LE_ERROR("mbedtls_net_connect failed to address: %s. error: -0x%04x", hostPtr, -ret);
+        return LE_FAULT;
     }
 
     //Get the file descriptor
     *fdPtr = contextPtr->sock.fd;
     LE_DEBUG("File descriptor: %d", *fdPtr);
 
-    return secSocket_PerformHandshake(ctxPtr, hostPtr, contextPtr->sock.fd);
+    return PerformHandshake(ctxPtr);
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -747,7 +997,10 @@ le_result_t secSocket_Delete
     mbedtls_x509_crt_free(&(contextPtr->caCert));
     mbedtls_x509_crt_free(&(contextPtr->ownCert));
     mbedtls_pk_free(&(contextPtr->ownPkey));
-
+#ifdef MK_CONFIG_THIN_MODEM
+    mbedtls_entropy_free(&(contextPtr->entropy));
+    mbedtls_ctr_drbg_free(&(contextPtr->ctrDrbg));
+#endif
     le_mem_Release(contextPtr);
     return LE_OK;
 }
