@@ -33,7 +33,11 @@ requires:
 {
     api:
     {
+#if ${MK_CONFIG_MODEMSERVICE_COMPONENT} = y
+        modemServices/le_mdc.api [types-only]
+#else
         modemServices/le_mdc.api
+#endif
         le_atDefs.api [types-only]
     }
 
@@ -41,9 +45,4 @@ requires:
     {
         ${LEGATO_ROOT}/components/socketLibrary
     }
-}
-
-ldflags:
-{
-    -L${LEGATO_BUILD}/3rdParty/paho.mqtt.embedded-c/lib
 }

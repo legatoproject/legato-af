@@ -42,7 +42,6 @@
 #include "legato.h"
 #include "interfaces.h"
 
-
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum number of profile objects supported

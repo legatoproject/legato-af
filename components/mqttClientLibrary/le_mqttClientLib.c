@@ -657,8 +657,9 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     le_mqttClient_SessionRef_t sessionRef    ///< [IN] Session reference.
 )
 {
+#ifndef MK_CONFIG_MODEMSERVICE_COMPONENT
     le_mdc_ConnectService();
-
+#endif
     /* Connect the MQTT Client Session's to the broker server */
     le_result_t result =
         NetworkConnect(&sessionRef->network,
@@ -672,10 +673,10 @@ LE_SHARED le_result_t le_mqttClient_StartSession
     if (result != LE_OK)
     {
         LE_ERROR("NetworkConnect() failed, result %d", result);
-
+#ifndef MK_CONFIG_MODEMSERVICE_COMPONENT
         // Disconnect to MDC
         le_mdc_DisconnectService();
-
+#endif
         return LE_FAULT;
     }
 
@@ -740,9 +741,9 @@ LE_SHARED le_result_t le_mqttClient_StopSession
 
     /* Disconnect from the MQTT Client Session's broker server */
     NetworkDisconnect(&sessionRef->network);
-
+#ifndef MK_CONFIG_MODEMSERVICE_COMPONENT
     le_mdc_DisconnectService();
-
+#endif
     LE_INFO("Disconnected client session, sessionRef [%p], result [%d]", sessionRef, rc);
 
     // Release resources associated with the session

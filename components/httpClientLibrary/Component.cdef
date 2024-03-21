@@ -23,6 +23,10 @@ requires:
 
     api:
     {
+#if ${MK_CONFIG_MODEMSERVICE_COMPONENT} = y
+        modemServices/le_mdc.api [types-only]
+#else
         modemServices/le_mdc.api
+#endif
     }
 }
