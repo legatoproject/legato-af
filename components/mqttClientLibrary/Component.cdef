@@ -26,7 +26,10 @@ cflags:
     -DMQTTCLIENT_PLATFORM_HEADER=mqttAdaptor.h
     -DMQTT_TASK
     -DMAX_MESSAGE_HANDLERS=MK_CONFIG_MQTT_SUBSCRIB_TOPIC_MAX
+#if ${LE_CONFIG_QMI} = y
+#else
     -Wno-address-of-packed-member
+#endif
 }
 
 requires:
