@@ -47,7 +47,9 @@ char TimerIsExpired
     struct timeval now, res;
     gettimeofday(&now, NULL);
     timersub(&timer->end_time, &now, &res);
-    return res.tv_sec < 0 || (res.tv_sec == 0 && res.tv_usec <= 0);
+
+    int t_res = res.tv_sec * 1000 + res.tv_usec / 1000;
+    return (t_res <= 0) ? 1 : 0;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -104,5 +106,6 @@ int TimerLeftMS
     gettimeofday(&now, NULL);
     timersub(&timer->end_time, &now, &res);
 
-    return (res.tv_sec < 0) ? 0 : res.tv_sec * 1000 + res.tv_usec / 1000;
+    int t_res = res.tv_sec * 1000 + res.tv_usec / 1000;
+    return (t_res < 0) ? 0 : t_res;
 }

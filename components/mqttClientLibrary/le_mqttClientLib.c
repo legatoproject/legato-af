@@ -253,7 +253,7 @@ static void NetworkAsyncRecvHandler
 
         // As this is POLLIN event, we should avoid calling to blocking function
         /* Execute the yield function for the specified MQTT client session */
-        int result = MQTTYield(&sessionRef->client, 0);
+        int result = MQTTYield(&sessionRef->client, sessionRef->readTimeoutMs);
 
         if (result != SUCCESS)
         {
