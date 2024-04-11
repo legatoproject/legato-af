@@ -15,11 +15,10 @@
 #include "le_mrc_local.h"
 #include "le_sim_local.h"
 #include "le_mdc_local.h"
-
-#if !MK_CONFIG_THIN_MODEM
 #include "le_sms_local.h"
-#include "le_temp_local.h"
 #include "le_riPin_local.h"
+#if !MK_CONFIG_THIN_MODEM
+#include "le_temp_local.h"
 #include "le_ips_local.h"
 #include "sysResets.h"
 #endif
@@ -75,11 +74,8 @@ COMPONENT_INIT
 
     pa_Init();
     le_mrc_Init();
-#if !MK_CONFIG_THIN_MODEM
     le_sim_Init();
     le_sms_Init();
-#endif
-
     le_mdc_Init();
 
 #if !MK_CONFIG_MODEMSERVICE_NO_LPT
@@ -92,8 +88,8 @@ COMPONENT_INIT
 #if !MK_CONFIG_THIN_MODEM
     le_ips_Init();
     le_temp_Init();
-    le_riPin_Init();
 #endif
+    le_riPin_Init();
 
 #if !MK_CONFIG_MODEMSERVICE_SIMPLE
     le_antenna_Init();

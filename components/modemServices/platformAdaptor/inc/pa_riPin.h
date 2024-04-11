@@ -166,4 +166,21 @@ LE_SHARED le_result_t pa_riPin_SetBootupEventHandler
 );
 #endif
 
+#ifdef MK_CONFIG_KRIC_RI_ON_PPP
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set PPP events handler. Pass NULL for unsetting the handler
+ *
+ * @return
+ *      - LE_OK             The function succeeded.
+ *      - LE_FAULT          The function failed.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_riPin_SetPppEventHandler
+(
+    pa_riPin_EventHandler_t riEventHandler     ///< [IN] Handler for PPP events
+);
+#endif
+
 #endif // LEGATO_PARIPIN_INCLUDE_GUARD
