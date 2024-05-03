@@ -856,6 +856,15 @@ LE_SHARED le_result_t le_mqttClient_Subscribe
 
     if (!mqttSubInfoPtr)
     {
+        // We restrictly allow the number of subscriptions, no more than that
+        le_mem_PoolStats_t stats;
+        le_mem_GetStats(MqttSubPoolRef, &stats);
+        if (stats.numFree == 0)
+        {
+            LE_ERROR("Reached the upper bound of the number of subscriptions!");
+            return LE_NO_MEMORY;
+        }
+
         // Allocate subscribe information from pool
         mqttSubInfoPtr = le_mem_Alloc(MqttSubPoolRef);
 
@@ -889,15 +898,20 @@ LE_SHARED le_result_t le_mqttClient_Subscribe
                            MessageAsyncRecvHandler,
                            sessionRef);
 
-    LE_INFO("Subscribed client session to topic [%s], sessionRef [%p], result [%d]",
-            topic,
-            sessionRef,
-            rc);
-
     if (SUCCESS != rc)
     {
-        LE_ERROR("Subscribe to broker failed, release resource!");
+        LE_ERROR("Subscribe to topic [%s], sessionRef [%p] failed, result [%d], release resource!",
+                 topic,
+                 sessionRef,
+                 rc);
         ReleaseTopic(sessionRef->sessionId, topic);
+    }
+    else
+    {
+        LE_INFO("Subscribed client session to topic [%s], sessionRef [%p], result [%d]",
+                topic,
+                sessionRef,
+                rc);
     }
 
     return ConvertResultCode(rc);
