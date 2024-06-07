@@ -1759,26 +1759,40 @@ static le_result_t FtpServerDnsQuery
 
     memset(&hints, 0, sizeof(hints));
 
-    sessionRef->ipAddrFamily = AF_UNSPEC;
-
-    hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
     hints.ai_flags = 0;
 
-    if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
+    if (sessionRef->ipAddrFamily == AF_UNSPEC)
     {
-        hints.ai_family = AF_INET6;
+        // IPv4 higher priority
+        hints.ai_family = AF_INET;
+        if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
+        {
+            hints.ai_family = AF_INET6;
+            if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
+            {
+                LE_ERROR("Error on function: getaddrinfo");
+                return LE_UNAVAILABLE;
+            }
+            // AF_UNSPEC -> AF_INET6
+            sessionRef->ipAddrFamily = AF_INET6;
+        }
+        else
+        {
+            // AF_UNSPEC -> AF_INET
+            sessionRef->ipAddrFamily = AF_INET;
+        }
+    }
+    else
+    {
+        // Specified AF: AF_INET or AF_INET6
+        hints.ai_family = sessionRef->ipAddrFamily;
         if (getaddrinfo(sessionRef->serverStr, NULL, &hints, &servInfo) != 0)
         {
             LE_ERROR("Error on function: getaddrinfo");
             return LE_UNAVAILABLE;
         }
-        sessionRef->ipAddrFamily = AF_INET6;
-    }
-    else
-    {
-        sessionRef->ipAddrFamily = AF_INET;
     }
 
     if (AF_INET == sessionRef->ipAddrFamily)
@@ -2021,7 +2035,8 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
                                     ///  LE_FTP_CLIENT_DEFAULT_CTRL_PORT for the default.
     const char      *userStr,       ///< User name to log into the server under.
     const char      *passwordStr,   ///< Password to use when logging in to the server.
-    unsigned int     timeout        ///< Connection timeout in seconds.
+    unsigned int     timeout,       ///< Connection timeout in seconds.
+    int              addrFamily     ///< Address family AF_INET or AF_INET6
 )
 {
     le_ftpClient_SessionRef_t sessionRef;
@@ -2053,6 +2068,15 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
     }
     memset(sessionRef, 0, sizeof(struct le_ftpClient_Session));
 
+    if (addrFamily == AF_INET || addrFamily == AF_INET6)
+    {
+        sessionRef->ipAddrFamily = addrFamily;
+    }
+    else
+    {
+        sessionRef->ipAddrFamily = AF_UNSPEC;
+    }
+
     // Populate the session
     strlcpy(sessionRef->serverStr, serverStr, sizeof(sessionRef->serverStr));
     strlcpy(sessionRef->userStr, userStr, sizeof(sessionRef->userStr));
@@ -2060,7 +2084,6 @@ le_ftpClient_SessionRef_t le_ftpClient_CreateSession
     sessionRef->operation = OP_NONE;
     sessionRef->serverPort= port;
     sessionRef->timeout = timeout * 1000;
-    sessionRef->ipAddrFamily = AF_UNSPEC;
     sessionRef->isConnected = false;
     sessionRef->controlState = FTP_CLOSED;
     sessionRef->targetState = FTP_CLOSED;

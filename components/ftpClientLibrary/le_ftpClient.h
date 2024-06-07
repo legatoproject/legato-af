@@ -301,7 +301,8 @@ LE_SHARED le_ftpClient_SessionRef_t le_ftpClient_CreateSession
                                     ///  LE_FTP_CLIENT_DEFAULT_CTRL_PORT for the default.
     const char      *userStr,       ///< User name to log into the server under.
     const char      *passwordStr,   ///< Password to use when logging in to the server.
-    unsigned int     timeout        ///< Connection timeout in seconds.
+    unsigned int     timeout,       ///< Connection timeout in seconds.
+    int              addrFamily     ///< Address family AF_INET or AF_INET6
 );
 
 //--------------------------------------------------------------------------------------------------
