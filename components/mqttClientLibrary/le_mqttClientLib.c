@@ -729,6 +729,7 @@ LE_SHARED le_result_t le_mqttClient_StopSession
     le_mqttClient_SessionRef_t sessionRef    ///< [IN] Session reference.
 )
 {
+    le_mdc_ConState_t state = LE_MDC_CONNECTED;
     int rc = SUCCESS;
     // Stop the keep-alive service
     StopNetworkKeepAliveService(sessionRef);
@@ -741,13 +742,26 @@ LE_SHARED le_result_t le_mqttClient_StopSession
 
     /* Disconnect from the MQTT Client Session's broker server */
     NetworkDisconnect(&sessionRef->network);
-#ifndef MK_CONFIG_MODEMSERVICE_COMPONENT
-    le_mdc_DisconnectService();
-#endif
-    LE_INFO("Disconnected client session, sessionRef [%p], result [%d]", sessionRef, rc);
 
     // Release resources associated with the session
     MQTTReleaseSessionTopics(sessionRef->sessionId);
+
+    // If paho lib close connection failed then check if PDP connection is down
+    if (rc < 0)
+    {
+        le_mdc_GetSessionState(le_mdc_GetProfile(sessionRef->profileNum), &state);
+    }
+
+#ifndef MK_CONFIG_MODEMSERVICE_COMPONENT
+    LE_INFO("Disconnected client session, sessionRef [%p], result [%d]", sessionRef, rc);
+    le_mdc_DisconnectService();
+#endif
+
+    // Stop session is considered successful if PDP connection is already closed.
+    if (state == LE_MDC_DISCONNECTED)
+    {
+        return LE_OK;
+    }
 
     return ConvertResultCode(rc);
 }
