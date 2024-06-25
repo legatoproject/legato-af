@@ -2264,7 +2264,7 @@ bool le_cbor_DecodeStream
                 }
 
                 callbacks->float2(context, val);
-                *bufferSize += LE_CBOR_HALF_FLOAT_MAX_SIZE;
+                *bufferSize -= LE_CBOR_HALF_FLOAT_MAX_SIZE;
             }
             return true;
         case 0xFA:
@@ -2278,7 +2278,7 @@ bool le_cbor_DecodeStream
                 }
 
                 callbacks->float4(context, val);
-                *bufferSize += LE_CBOR_FLOAT_MAX_SIZE;
+                *bufferSize -= LE_CBOR_FLOAT_MAX_SIZE;
             }
             return true;
         case 0xFB:
@@ -2292,7 +2292,7 @@ bool le_cbor_DecodeStream
                 }
 
                 callbacks->float8(context, val);
-                *bufferSize += LE_CBOR_DOUBLE_MAX_SIZE;
+                *bufferSize -= LE_CBOR_DOUBLE_MAX_SIZE;
             }
             return true;
         case 0xFC:
