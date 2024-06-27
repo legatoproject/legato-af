@@ -1835,14 +1835,31 @@ bool le_cbor_DecodeStream
             // One byte negative integer
             {
                 int8_t val;
-                if ((*bufferSize < LE_CBOR_INT8_MAX_SIZE) ||
-                    (!le_cbor_DecodeInt8(bufferPtr, &val)))
+                if (*bufferSize < LE_CBOR_INT8_MAX_SIZE)
                 {
                     return false;
                 }
+                else if (!le_cbor_DecodeInt8(bufferPtr, &val))
+                {
+                    // If le_cbor_DecodeInt8 returns an error, try to encode the value in int16
+                    // ex: -256 in cbor is sent by 0x38 FF and FF is considered as negative in
+                    // le_cbor_DecodeInt8 and false is returned
+                    uint8_t* tmp;
+                    uint16_t tempU16;
 
-                callbacks->negInt8(context, val);
+                    // Because le_cbor_DecodeInt16 updated the bufferPtr address, come back to
+                    // initial address
+                    *bufferPtr -= LE_CBOR_INT8_MAX_SIZE;
 
+                    tmp = *bufferPtr;
+                    tempU16 = tmp[1];
+
+                    callbacks->negInt16(context, tempU16 + 1);
+                }
+                else
+                {
+                    callbacks->negInt8(context, val);
+                }
                 *bufferSize -= LE_CBOR_INT8_MAX_SIZE;
             }
             return true;
@@ -1850,14 +1867,42 @@ bool le_cbor_DecodeStream
             // Two bytes negative integer
             {
                 int16_t val;
-                if ((*bufferSize < LE_CBOR_INT16_MAX_SIZE) ||
-                    (!le_cbor_DecodeInt16(bufferPtr, &val)))
+                if (*bufferSize < LE_CBOR_INT16_MAX_SIZE)
                 {
                     return false;
                 }
+                else if(!le_cbor_DecodeInt16(bufferPtr, &val))
+                {
+                    // If le_cbor_DecodeInt16 returns an error, try to encode the value in int16
+                    // ex: -65536 in cbor is sent by 0x39 FF FF and FF FF is considered as negative
+                    // in le_cbor_DecodeInt16 and false is returned
+                    int additional;
+                    unsigned int major;
+                    int length;
+                    uint64_t tempU64 = 0;
 
-                callbacks->negInt16(context, val);
+                    // Because le_cbor_DecodeInt16 updated the bufferPtr address, come back to
+                    // initial address
+                    *bufferPtr -= LE_CBOR_INT16_MAX_SIZE;
 
+                    LE_CBOR_UNPACK_TINY_ITEM();
+
+                    if (major != _LE_CBOR_NEG_INTEGER)
+                    {
+                        return false;
+                    }
+
+                    length = (additional == _LE_CBOR_COMPLEX_THRESHOLD)?1:
+                        2 << (additional-_LE_CBOR_COMPLEX_THRESHOLD-1);
+                    LE_CBOR_UNPACK_SIMPLE_BUFFER(((uint8_t*)&tempU64) + sizeof(uint64_t)-length, length);
+                    tempU64 = (uint64_t)be64toh(tempU64);
+
+                    callbacks->negInt64(context, tempU64 + 1);
+                }
+                else
+                {
+                    callbacks->negInt16(context, val);
+                }
                 *bufferSize -= LE_CBOR_INT16_MAX_SIZE;
             }
             return true;
@@ -1865,13 +1910,42 @@ bool le_cbor_DecodeStream
             // Four bytes negative integer
             {
                 int32_t val;
-                if ((*bufferSize < LE_CBOR_INT32_MAX_SIZE) ||
-                    (!le_cbor_DecodeInt32(bufferPtr, &val)))
+                if (*bufferSize < LE_CBOR_INT32_MAX_SIZE)
                 {
                     return false;
                 }
+                else if(!le_cbor_DecodeInt32(bufferPtr, &val))
+                {
+                    // If le_cbor_DecodeInt16 returns an error, try to encode the value in int16
+                    // ex: -65536 in cbor is sent by 0x39 FF FF and FF FF is considered as negative
+                    // in le_cbor_DecodeInt16 and false is returned
+                    int additional;
+                    unsigned int major;
+                    int length;
+                    uint64_t tempU64 = 0;
 
-                callbacks->negInt32(context, val);
+                    // Because le_cbor_DecodeInt32 updated the bufferPtr address, come back to
+                    // initial address
+                    *bufferPtr -= LE_CBOR_INT32_MAX_SIZE;
+
+                    LE_CBOR_UNPACK_TINY_ITEM();
+
+                    if (major != _LE_CBOR_NEG_INTEGER)
+                    {
+                        return false;
+                    }
+
+                    length = (additional == _LE_CBOR_COMPLEX_THRESHOLD)?1:
+                        2 << (additional-_LE_CBOR_COMPLEX_THRESHOLD-1);
+                    LE_CBOR_UNPACK_SIMPLE_BUFFER(((uint8_t*)&tempU64) + sizeof(uint64_t)-length, length);
+                    tempU64 = (uint64_t)be64toh(tempU64);
+
+                    callbacks->negInt64(context, tempU64 + 1);
+                }
+                else
+                {
+                    callbacks->negInt32(context, val);
+                }
 
                 *bufferSize -= LE_CBOR_INT32_MAX_SIZE;
             }
