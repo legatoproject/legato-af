@@ -690,8 +690,8 @@ le_result_t secSocket_AddOwnCertificate
 
     // Check certificate validity
 #ifdef MK_CONFIG_THIN_MODEM
-    if ((mbedtls_x509_time_is_past(GET_X509_TIME_TO(&contextPtr->caCert))) ||
-        (mbedtls_x509_time_is_future(GET_X509_TIME_FROM(&contextPtr->caCert))))
+    if ((mbedtls_x509_time_is_past(GET_X509_TIME_TO(&contextPtr->ownCert))) ||
+        (mbedtls_x509_time_is_future(GET_X509_TIME_FROM(&contextPtr->ownCert))))
 #else
     if ((mbedtls_x509_time_is_past(&contextPtr->ownCert.valid_to)) ||
         (mbedtls_x509_time_is_future(&contextPtr->ownCert.valid_from)))
