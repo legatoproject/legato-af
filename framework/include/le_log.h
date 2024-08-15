@@ -441,7 +441,14 @@ le_log_Level_t;
 
 typedef struct le_log_Session* le_log_SessionRef_t;
 
+#ifdef LE_USE_SLOG
+#define __SLOG_MIN_INCL__
+#include "compat/le/le_slog.h"
+#endif /* LE_USE_SLOG */
+
+#ifndef LE_TRACE /* if not overridden */
 typedef struct le_log_Trace* le_log_TraceRef_t;
+#endif /* LE_TRACE */
 
 #if !defined(LE_DEBUG) && \
     !defined(LE_DUMP) && \
@@ -628,6 +635,8 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 #define LE_IS_TRACE_ENABLED(traceRef)  (le_log_IsTraceEnabled(traceRef))
 
 
+#ifndef LE_TRACE /* if not overridden */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Logs the string if the keyword has been enabled by a runtime tool or configuration setting.
@@ -726,6 +735,8 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 #define le_log_DisableTrace(traceRef)           \
     ((void)(*((bool*)(traceRef)) = false))
 
+#endif /* LE_TRACE overridden */
+
 #else
 
 // If any logging macro is overridden, all logging macros must be overridden.
@@ -790,6 +801,8 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 //--------------------------------------------------------------------------------------------------
 #define le_log_GetFilterLevel()  (LE_LOG_LEVEL_STATIC_FILTER)
 #endif
+
+#ifndef LE_TRACE /* if not overridden */
 
 //--------------------------------------------------------------------------------------------------
 /*
@@ -869,6 +882,8 @@ extern LE_SHARED le_log_Level_t* LE_LOG_LEVEL_FILTER_PTR;
 //--------------------------------------------------------------------------------------------------
 #define le_log_DisableTrace(traceRef) ((void)(0))
 
+#endif /* LE_TRACE overridden */
+
 #endif /* Logging macro override */
 
 /// Function that does the real work of translating result codes.  See @ref LE_RESULT_TXT.
@@ -943,6 +958,9 @@ void _le_log_ExitFatal
         if (condition) { LE_EMERG(formatString, ##__VA_ARGS__); }   \
     } while (0)
 
+
+#ifndef LE_ASSERT /* if not overriden */
+
 //--------------------------------------------------------------------------------------------------
 /**
  * Log fatal errors by killing the calling process after logging the message at EMERGENCY
@@ -1001,6 +1019,7 @@ do{                                                             \
 #define LE_ASSERT_OK(condition)                                         \
     LE_FATAL_IF((condition) != LE_OK, "Assert Failed: '%s' is not LE_OK (0)", #condition)
 
+#endif /* LE_ASSERT overriden */
 
 //--------------------------------------------------------------------------------------------------
 /**
