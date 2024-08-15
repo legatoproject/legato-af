@@ -125,8 +125,14 @@ void RtosSystemBuildScriptGenerator_t::GenerateSystemPackBuildStatement
     // Build task list file
     script << "build " << tasksOutputFile << ":"
               "  CompileC " << path::Combine(buildParams.workingDir, "src/tasks.c") << "\n"
-              "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rtos/microSupervisor\n"
-              "\n";
+              "    cFlags = $cFlags -I$$LEGATO_ROOT/framework/daemons/rtos/microSupervisor";
+
+    if (envVars::GetConfigBool("LE_CONFIG_FILEID"))
+    {
+        script << " -D__FILEID__=" << 2;
+    }
+
+    script << "\n\n";
 
     if (envVars::GetConfigBool("LE_CONFIG_RPC"))
     {

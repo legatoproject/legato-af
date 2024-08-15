@@ -319,6 +319,10 @@ $(LIB_DIR)/microSupervisor.o: $(RTOS_SRC_DIR)/microSupervisor/microSupervisor.c 
 	$(L) CC $@
 	$(Q)$(CCACHE) $(CC) $(TARGET_CC_SYSROOT) -o $@ -c $< $(CFLAGS)
 
+ifeq ($(LE_CONFIG_FILEID),y)
+$(LIB_DIR)/microSupervisor.o: CFLAGS := $(CFLAGS) -D__FILEID__=0
+endif
+
 $(BIN_DIR)/startSystem: $(START_SRCS) | liblegato $(PA_START_LIB) $(BIN_DIR)
 	$(L) CCLD $@
 	$(Q)$(CCACHE) $(TARGET_CC) $(TARGET_CC_SYSROOT) -o $@ $^ $(CFLAGS) \

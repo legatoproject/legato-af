@@ -78,7 +78,13 @@ void ExeBuildScriptGenerator_t::GenerateCandCxxFlags
 {
     // Define the component name
     std::string componentName = exePtr->name + "_exe";
+
     script << " -DLE_COMPONENT_NAME=" << componentName;
+
+    if (envVars::GetConfigBool("LE_CONFIG_FILEID"))
+    {
+        script << " -D__FILEID__=" << 3;
+    }
 }
 
 

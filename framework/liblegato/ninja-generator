@@ -206,10 +206,17 @@ build ${LIBLEGATO_STATIC_NAME} : StaticLink$(ListObjects)
 
 EOF
 
+# Set initial value of __FILEID__
+fileid=${LE_CONFIG_FILEID_RESERVED:-0}
 for source in "${!LIBLEGATO_FILES[@]}"; do
     echo "build ${LIBLEGATO_FILES[$source]} : Compile $source"
-    echo "  flags = $CFLAGS"
+    if [ "${LE_CONFIG_FILEID}" = y ]; then
+        echo "  flags = $CFLAGS -D__FILEID__=$fileid"
+    else
+        echo "  flags = $CFLAGS"
+    fi
     echo
+    ((fileid++))
 done >> $NINJA_SCRIPT
 
 cat <<EOF  >> $NINJA_SCRIPT

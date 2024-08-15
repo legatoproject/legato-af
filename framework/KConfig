@@ -31,6 +31,23 @@ config CUSTOM_FA_PATH
   directories containing the source code needed to support the custom
   operating system.
 
+config FILEID
+  bool "Add __FILEID__ for each compiled C/Cpp file (EXPERIMENTAL)"
+  depends on EXPERIMENTAL
+  default y if CUSTOM_OS
+  default n
+  ---help---
+  Provide a C define __FILEID__ for each compiled C/Cpp file
+  which is useful for some Customized Loggers.
+
+config FILEID_RESERVED
+  int "Reserved range of __FILEID__"
+  depends on EXPERIMENTAL
+  range 0 65535
+  default 10
+  ---help---
+  Set the reserved range of __FILEID__ for static files.
+
 config BUILD_TARGET_TOOLS
   bool "Build on-target command-line tools"
   default n if CUSTOM_OS

@@ -17,6 +17,31 @@
 
 namespace ninja
 {
+int iter_no = -1;
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get next FileID (for LE_CONFIG_FILEID feature)
+ */
+//--------------------------------------------------------------------------------------------------
+int GetNextFileID()
+{
+    if (!envVars::GetConfigBool("LE_CONFIG_FILEID"))
+    {
+        return 0;
+    }
+    if (iter_no >= 0)
+    {
+        iter_no++;
+    }
+    else
+    {
+        /* Set initial value of __FILEID__ */
+        std::string tmpstr = envVars::Get("LE_CONFIG_FILEID_RESERVED");
+        iter_no = tmpstr.empty() ? 0: atoi(tmpstr.c_str());
+    }
+    return iter_no;
+}
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -178,6 +203,11 @@ void ComponentBuildScriptGenerator_t::GenerateCommonCAndCxxFlags
 
     // Add cFlags for user memory pool sizes, if provided.
     GenerateMemPoolDefinitions(componentPtr);
+
+    if (envVars::GetConfigBool("LE_CONFIG_FILEID"))
+    {
+        script << " -D__FILEID__=" << GetNextFileID();
+    }
 }
 
 
@@ -983,6 +1013,12 @@ void ComponentBuildScriptGenerator_t::GenerateCApiBuildStatement
         }
     }
     GenerateMemPoolDefinitions(apiFilePtr);
+
+    if (envVars::GetConfigBool("LE_CONFIG_FILEID"))
+    {
+        script << " -D__FILEID__=" << GetNextFileID();
+    }
+
     script << "\n\n";
 }
 
