@@ -233,9 +233,11 @@ targetTools: liblegato
 	$(L) MAKE $@
 	$(Q)$(MAKE) -f Makefile.targetTools
 
+.PHONY: buildfile
+buildfile: $(NINJA_SCRIPT)
 
 .PHONY: liblegato
-liblegato: $(LIB_DIR) $(NINJA_SCRIPT)
+liblegato: $(LIB_DIR) buildfile
 	$(L) NINJA $(NINJA_SCRIPT)
 	$(Q)ninja $(NINJA_FLAGS) -f $(NINJA_SCRIPT)
 

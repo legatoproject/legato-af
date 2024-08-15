@@ -57,6 +57,9 @@ LISTCMD := $(MAKE) -qp -f $(THIS_FILE) list 2> /dev/null | \
 # List of "utility" recipies
 UTILITIES := list clean distclean
 
+# Arguments to pass to framework target
+FRK_ARGS ?=
+
 # Determine the target platform
 TARGET ?=
 ifeq ($(MAKECMDGOALS),)
@@ -560,7 +563,7 @@ endif
 framework_$(TARGET): framework
 framework: tools package.properties $(HEADER_CONFIG) $(SHELL_CONFIG)
 	$(L) MAKE $@
-	$(Q)$(MAKE) -f Makefile.framework CC="$(TARGET_CC)"
+	$(Q)$(MAKE) -f Makefile.framework CC="$(TARGET_CC)" $(FRK_ARGS)
 
 .PHONY: system system_$(TARGET)
 system_$(TARGET): system
