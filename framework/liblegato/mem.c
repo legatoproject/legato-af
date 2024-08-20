@@ -565,7 +565,7 @@ static size_t MoveAllBlocks
             else
             {
                 LE_ERROR("Could not re-assemble block at %p"
-                         " (expected size ~%"PRIuS", found %"PRIuS"); block lost",
+                         " (expected size ~%"PRIuS", found %"PRIuS")",
                          blockLinkPtr, destPool->blockSize, blockSize);
             }
 
