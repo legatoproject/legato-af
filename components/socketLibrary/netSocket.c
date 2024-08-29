@@ -111,6 +111,44 @@ static le_result_t GetSrcSocketInfo
     return result;
 }
 
+#ifdef LE_CONFIG_TARGET_GILL
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get the details information of the interface
+ *
+ * @return
+ *      -  LE_OK on success
+ *      -  LE_FAULT on error
+ *
+ */
+//--------------------------------------------------------------------------------------------------
+static le_result_t GetDefaultInterfaceinfo(char* iface_name, char* mdc_ipAddressStr)
+{
+    le_mdc_ProfileRef_t mdc_ProfileRef = le_mdc_GetProfile((uint32_t)LE_MDC_DEFAULT_PROFILE);
+
+    if (le_mdc_GetInterfaceName(mdc_ProfileRef, iface_name, LE_MDC_INTERFACE_NAME_MAX_BYTES)
+        != LE_OK)
+    {
+        LE_DEBUG("Cannot get interface name");
+        return LE_FAULT;
+    }
+
+    if (mdc_ipAddressStr != NULL)
+    {
+
+        if (le_mdc_GetIPv4Address(mdc_ProfileRef, mdc_ipAddressStr, LE_MDC_IPV6_ADDR_MAX_BYTES)
+            != LE_OK)
+        {
+            LE_DEBUG("Cannot get IP address of the iface %s", iface_name);
+            return LE_FAULT;
+        }
+
+        LE_DEBUG("IP address of the iface %s is %s", iface_name, mdc_ipAddressStr);
+    }
+    return LE_OK;
+}
+#endif // LE_CONFIG_TARGET_GILL
+
 //--------------------------------------------------------------------------------------------------
 // Public functions
 //--------------------------------------------------------------------------------------------------
@@ -141,7 +179,6 @@ le_result_t netSocket_Connect
     int*            fdPtr       ///< [OUT] Socket file descriptor
 )
 {
-    int retcode;
     char portStr[PORT_STR_LEN] = {0};
     struct addrinfo hints, *addrList, *cur;
     struct sockaddr_storage srcSocket = {0};
@@ -170,12 +207,28 @@ le_result_t netSocket_Connect
         return LE_UNAVAILABLE;
     }
 
-    // Resolve name
+#ifdef LE_CONFIG_TARGET_GILL
+    char iface_name[LE_MDC_INTERFACE_NAME_MAX_BYTES] = {0};
+    char mdc_ipAddressStr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
+
+    if (LE_OK != GetDefaultInterfaceinfo(iface_name, mdc_ipAddressStr))
+    {
+        LE_ERROR("Cannot get the details information of iface %s ", iface_name);
+        return LE_UNAVAILABLE;
+    }
+    if (LE_OK != getaddrinfo_on_iface(hostPtr, portStr, &hints, &addrList, iface_name))
+    {
+        LE_ERROR("Failed to resolve hostname and service on iface %s ",iface_name);
+        return LE_UNAVAILABLE;
+    }
+#else // LE_CONFIG_TARGET_GILL
+    int retcode;
     if ((retcode = getaddrinfo(hostPtr, portStr, &hints, &addrList)) != 0)
     {
         LE_ERROR("Failed to resolve hostname and service - %s", strerror(retcode));
         return LE_UNAVAILABLE;
     }
+#endif // LE_CONFIG_TARGET_GILL
 
     // Iterate through the list of returned addresses until a connection succeeds
     for (cur = addrList; cur != NULL; cur = cur->ai_next)
