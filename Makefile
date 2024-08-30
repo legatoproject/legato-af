@@ -487,12 +487,14 @@ clean:
 	$(L) CLEAN ""
 	$(Q)rm -Rf build Documentation* bin doxygen.*.log doxygen.*.err
 	$(Q)rm -f framework/doc/toolsHost.dox framework/doc/toolsHost_*.dox
-	$(Q)rm -f sources.md5
+	$(Q)rm -f sources.md5 package.properties
+	$(Q)rm -rf __pycache__ 3rdParty/Kconfiglib/__pycache__
+	$(Q)find framework/tools/ifgen -type f -name *.pyc | xargs -r rm -f
 
 # Clean configuration too
 .PHONY: distclean
 distclean: clean
-	$(Q)rm -f .config*
+	$(Q)rm -f .config* version
 
 # Error for missing platform adaptors
 platformAdaptor modules:
