@@ -464,7 +464,7 @@ le_result_t SetupTLSParams
     // Set the RNG function
     mbedtls_ssl_conf_rng(&(contextPtr->sslConf), mbedtls_ctr_drbg_random, &(contextPtr->ctrDrbg));
     mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
-                        mbedtls_net_send, mbedtls_net_recv, NULL);
+                        mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
 #else
     //Set the minimum accepted SSL/TLS protocol version
     mbedtls_ssl_conf_min_version( &(contextPtr->sslConf), MBEDTLS_SSL_MAJOR_VERSION_3,
