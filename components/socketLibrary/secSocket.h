@@ -227,6 +227,7 @@ le_result_t secSocket_Write
  *
  * @return
  *  - LE_OK            The function succeeded
+ *  - LE_IN_PROGRESS   Secure HandShake still in progress
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  *  - LE_TIMEOUT       Timeout during execution
@@ -251,6 +252,21 @@ le_result_t secSocket_Read
 bool secSocket_IsDataAvailable
 (
     secSocket_Ctx_t* ctxPtr       ///< [INOUT] Secure socket context pointer
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suites to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           tlsVersion        ///< [IN] Supported TLS version (Minor version number)
 );
 
 //--------------------------------------------------------------------------------------------------

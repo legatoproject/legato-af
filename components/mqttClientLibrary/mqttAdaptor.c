@@ -184,7 +184,8 @@ void NetworkInit
     size_t ownCertLen,                 /// [IN] Length in byte of own certificate certPtr
     const uint8_t* ownPrivateKeyPtr,   /// [IN] Own private key pointer
     size_t ownPrivateKeyLen,           /// [IN] Length in byte of own private key
-    const char *alpnList               /// [IN] ALPN Protocol name
+    const char *alpnList,              /// [IN] ALPN Protocol name
+    uint8_t tlsVersion                 /// [IN] Supported TLS version (Minor version number)
 #endif
 )
 {
@@ -203,6 +204,7 @@ void NetworkInit
     net->ownPrivateKeyLen = ownPrivateKeyLen;
     net->alpnList[0] = alpnList;       // Only a single ALPN name supported currently
     net->alpnList[1] = NULL;           // Needed to terminate the ALPN with NULL
+    net->tlsVersion = tlsVersion;
 #endif
     net->mqttread = MqttRead;
     net->mqttwrite = MqttWrite;
@@ -274,7 +276,15 @@ le_result_t NetworkConnect
 #ifndef MK_CONFIG_NO_SSL
     if (net->secure)
     {
-        LE_INFO("Adding security certificate...");
+        LE_DEBUG("Setting TLS version...");
+        if (LE_OK != le_socket_SetTlsVersion(net->socketRef, net->tlsVersion))
+        {
+            LE_ERROR("Failed to set TLS version");
+            net->extError = EXT_TLS_SET_VERSION_ERR;
+            goto freeSocket;
+        }
+
+        LE_DEBUG("Adding security certificate...");
         if (LE_OK != le_socket_AddCertificate(net->socketRef,
                                               net->certificatePtr,
                                               net->certificateLen))
@@ -282,6 +292,8 @@ le_result_t NetworkConnect
             LE_ERROR("Failed to add root CA certificate into tls");
             goto freeSocket;
         }
+
+        LE_DEBUG("Auth type: %d", net->auth);
 
         if (net->auth == AUTH_MUTUAL) // Mutual Authentication
         {
@@ -302,6 +314,7 @@ le_result_t NetworkConnect
             }
         } // End of mutual authentication
 
+        LE_DEBUG("Setting Socket Authentication type...");
         if (LE_OK != le_socket_SetAuthType(net->socketRef, net->auth))
         {
             LE_ERROR("Failed to set mutual authentication type");
@@ -309,6 +322,7 @@ le_result_t NetworkConnect
             goto freeSocket;
         }
 
+        LE_DEBUG("Setting Cipher Suites...");
         if (LE_OK != le_socket_SetCipherSuites(net->socketRef, net->cipherIdx))
         {
             LE_ERROR("Failed to set cipher suite");
@@ -489,8 +503,11 @@ static int MqttRead
         LE_DEBUG("Read %d bytes from network", bufLen);
         return bufLen;
     }
-    else if (rc == LE_TIMEOUT)
+    else if ((rc == LE_TIMEOUT) || (rc == LE_IN_PROGRESS))
     {
+        // For TLS 1.3 le_socket_Read() may return LE_IN_PROGRESS.
+        // This means post TLS handshake activities are going on.
+        // This shouldn't be considered as error.
         return 0;
     }
     else

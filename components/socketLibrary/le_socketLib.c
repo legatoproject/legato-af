@@ -622,6 +622,50 @@ le_result_t le_socket_SetCipherSuites
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_socket_SetTlsVersion
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           tlsVersion       ///< [IN] Supported TLS version (Minor version number)
+)
+{
+#ifdef MK_CONFIG_THIN_MODEM
+    le_result_t status;
+    SocketCtx_t *contextPtr = (SocketCtx_t *)le_ref_Lookup(SocketRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    if (contextPtr->secureCtxPtr == NULL)
+    {
+        // Need to initialize the secure socket before adding the certificate
+        status = secSocket_Init(&(contextPtr->secureCtxPtr));
+        if (status != LE_OK)
+        {
+            LE_ERROR("Unable to initialize the secure socket");
+            return status;
+        }
+    }
+
+    secSocket_SetTlsVersion(contextPtr->secureCtxPtr, tlsVersion);
+    return LE_OK;
+#else
+    LE_ERROR("Setting TLS version isn't supported by this platform");
+    return LE_FAULT;
+#endif
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Set authentication type to the socket in order to make the connection secure.
  *
  * @return
@@ -983,7 +1027,7 @@ le_result_t le_socket_Read
         status = netSocket_Read(contextPtr->fd, dataPtr, dataLenPtr, contextPtr->timeout);
     }
 
-    if ((status != LE_OK) && (status != LE_WOULD_BLOCK))
+    if ((status != LE_OK) && (status != LE_WOULD_BLOCK) && (status != LE_IN_PROGRESS))
     {
         LE_ERROR("Read failed. Status: %d", status);
     }

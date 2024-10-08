@@ -41,6 +41,7 @@ typedef struct Network
     const uint8_t* ownPrivateKeyPtr;          ///< pointer of own private key
     size_t ownPrivateKeyLen;                  ///< length of own private key
     const char *alpnList[ALPN_LIST_SIZE + 1]; ///< ALPN Protocol name list
+    uint8_t tlsVersion;                       ///< TLS (minor) version used for mqtt
     MqttReadFunc mqttread;                    ///< read function pointer
     MqttWriteFunc mqttwrite;                  ///< write function pointer
     networkStatusHandler handlerFunc;         ///< Network status callback function
@@ -108,9 +109,8 @@ int ThreadStart
 //--------------------------------------------------------------------------------------------------
 void NetworkInit
 (
-    struct Network* net                /// [IN] Network structure
+    struct Network* net,               /// [IN] Network structure
 #ifndef MK_CONFIG_NO_SSL
-    ,
     int secure,                        /// [IN] Secure connection flag
     uint8_t auth,                      /// [IN] Authentication mode
     uint32_t cipherIdx,                /// [IN] Cipher Suite profile index
@@ -120,7 +120,8 @@ void NetworkInit
     size_t ownCertLen,                 /// [IN] Length in byte of own certificate certPtr
     const uint8_t* ownPrivateKeyPtr,   /// [IN] Own private key pointer
     size_t ownPrivateKeyLen,           /// [IN] Length in byte of own private key
-    const char* alpnList               /// [IN] ALPN Protocol name
+    const char* alpnList,              /// [IN] ALPN Protocol name
+    uint8_t tlsVersion                 /// [IN] Supported TLS version (Minor version number)
 #endif
 );
 

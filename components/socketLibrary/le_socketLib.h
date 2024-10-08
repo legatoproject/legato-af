@@ -532,6 +532,22 @@ LE_SHARED le_result_t le_socket_TrigMonitoring
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set cipher suites to the socket in order to make the connection secure.
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_socket_SetTlsVersion
+(
+    le_socket_Ref_t   ref,             ///< [IN] Socket context reference
+    uint8_t           tlsVersion       ///< [IN] Supported TLS version (Minor version number)
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get tls error code
  *
  * @note Get tls error code

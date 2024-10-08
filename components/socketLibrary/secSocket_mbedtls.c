@@ -90,6 +90,14 @@ typedef struct
 #ifdef MK_CONFIG_THIN_MODEM
     mbedtls_entropy_context entropy;                        ///< Entropy for random number generator.
     mbedtls_ctr_drbg_context ctrDrbg;                       ///< Random number generator context
+    /* There are the high and low bytes of ProtocolVersion as defined by:
+     * - RFC 5246: ProtocolVersion version = { 3, 3 };     // TLS v1.2
+     * - RFC 5246: ProtocolVersion version = { 3, 4 };     // TLS v1.4
+     * - RFC 8446: see section 4.2.1
+     * As Major version number is same for both TLS v1.2 and v1.3, here we will only keep track of
+     * minor version.
+     */
+    uint8_t               tlsVersion;                       ///< TLS version (minor version)
 #endif
 
     uint8_t               auth;                             ///< Authentication type.
@@ -239,6 +247,7 @@ static int ReadFromStream
     static size_t   count = 0;
 
     mbedtls_ssl_context* ctxPtr = (mbedtls_ssl_context*)sslCtxPtr;
+    LE_DEBUG("Requested read length: %d", length);
 
     while (r < 0)
     {
@@ -373,9 +382,14 @@ le_result_t SetupTLSParams
 {
     int              ret;
     MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+    uint8_t isTls13Higher = 0;     ///< Whether TLS v1.3 or higher is used
 
     LE_ASSERT(contextPtr != NULL);
     LE_ASSERT(hostPtr != NULL);
+
+#ifdef MK_CONFIG_THIN_MODEM
+    isTls13Higher = contextPtr->tlsVersion > MBEDTLS_SSL_MINOR_VERSION_3 ? 1 : 0;
+#endif
 
     LE_INFO("Setting up TLS parameters");
     // Setup
@@ -391,18 +405,36 @@ le_result_t SetupTLSParams
         return LE_NO_MEMORY;
     }
 
-    if (contextPtr->ciphersuite[0] == 0)
+    // Not ciphersuite should be set when tls version is 1.3 or higher
+    if (!isTls13Higher)
     {
-        LE_INFO("Add all approved cipher suites to SSL/TLS configuration");
-        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, ciphersuites);
+        if (contextPtr->ciphersuite[0] == 0)
+        {
+            LE_INFO("Add all approved cipher suites to SSL/TLS configuration");
+            mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, ciphersuites);
+        }
+        else
+        {
+            LE_INFO("Add cipher suite '%d' to SSL/TLS configuration", contextPtr->ciphersuite[0]);
+            mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, contextPtr->ciphersuite);
+        }
+    }
+
+    if (contextPtr->auth == AUTH_MUTUAL)
+    {
+        mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
+    }
+    else if (contextPtr->auth == AUTH_SERVER)
+    {
+        mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_OPTIONAL);
     }
     else
     {
-        LE_INFO("Add cipher suite '%d' to SSL/TLS configuration", contextPtr->ciphersuite[0]);
-        mbedtls_ssl_conf_ciphersuites(&contextPtr->sslConf, contextPtr->ciphersuite);
+        LE_ERROR("Bad authentication mode: %d, Allowed auth mode: %d or %d",
+                 contextPtr->auth, AUTH_MUTUAL, AUTH_SERVER);
+        return LE_FAULT;
     }
 
-    mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
     mbedtls_ssl_conf_ca_chain(&(contextPtr->sslConf), &(contextPtr->caCert), NULL);
 
     // Apply local certificate and key bindings if the authentication type is mutual
@@ -456,11 +488,27 @@ le_result_t SetupTLSParams
     }
 
 #ifdef MK_CONFIG_THIN_MODEM
-    //Set the minimum accepted SSL/TLS protocol version
-    mbedtls_ssl_conf_min_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_2);
-    //Set the maximum supported SSL/TLS version
-    mbedtls_ssl_conf_max_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_2 );
-
+    if (isTls13Higher)
+    {
+        LE_DEBUG("Setting TLS version 1.3");
+        // Initialize PSA
+        psa_status_t psa_init_status = psa_crypto_init();
+        if (psa_init_status != PSA_SUCCESS) {
+            LE_ERROR("Failed! psa_crypto_init returned %ld", psa_init_status);
+            return LE_FAULT;
+        }
+        mbedtls_ssl_conf_min_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_3);
+        //Set the maximum supported SSL/TLS version
+        mbedtls_ssl_conf_max_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_3 );
+    }
+    else
+    {
+        LE_DEBUG("Setting TLS version 1.2");
+        //Set the minimum accepted SSL/TLS protocol version
+        mbedtls_ssl_conf_min_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_2);
+        //Set the maximum supported SSL/TLS version
+        mbedtls_ssl_conf_max_tls_version( &(contextPtr->sslConf), MBEDTLS_SSL_VERSION_TLS1_2 );
+    }
     // Set the RNG function
     mbedtls_ssl_conf_rng(&(contextPtr->sslConf), mbedtls_ctr_drbg_random, &(contextPtr->ctrDrbg));
     mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
@@ -574,11 +622,17 @@ le_result_t secSocket_Init
 
     // Initialize the session data
     mbedtls_net_init(&(contextPtr->sock));
+    LE_DEBUG("Socket init");
     mbedtls_ssl_init(&(contextPtr->sslCtx));
+    LE_DEBUG("SSL ctx init");
     mbedtls_ssl_config_init(&(contextPtr->sslConf));
+    LE_DEBUG("SSL cfg init");
     mbedtls_x509_crt_init(&(contextPtr->caCert));
+    LE_DEBUG("CA cert init");
     mbedtls_x509_crt_init(&(contextPtr->ownCert));
+    LE_DEBUG("OWN cert init");
     mbedtls_pk_init(&(contextPtr->ownPkey));
+    LE_DEBUG("PK init init");
     contextPtr->auth = AUTH_SERVER;
     contextPtr->mbedtls_errcode = 0;
 
@@ -591,9 +645,18 @@ le_result_t secSocket_Init
     int ret = 0;
     mbedtls_entropy_init(&(contextPtr->entropy));
     mbedtls_ctr_drbg_init(&(contextPtr->ctrDrbg));
+    LE_DEBUG("Entropy and drbg init");
     if ((ret = mbedtls_ctr_drbg_seed(&(contextPtr->ctrDrbg), mbedtls_entropy_func,
             &(contextPtr->entropy), NULL, 0)) != 0) {
         LE_ERROR("mbedtls_ctr_drbg_seed returned 0x%4x", ret);
+        return LE_FAULT;
+    }
+    contextPtr->tlsVersion = MBEDTLS_SSL_MINOR_VERSION_4;
+    LE_DEBUG("Initializing psa_crypto");
+    // Initialize PSA
+    psa_status_t psa_init_status = psa_crypto_init();
+    if (psa_init_status != PSA_SUCCESS) {
+        LE_ERROR("psa_crypto_init() returned %ld", psa_init_status);
         return LE_FAULT;
     }
 #endif
@@ -1045,6 +1108,7 @@ le_result_t secSocket_Write
  *
  * @return
  *  - LE_OK            The function succeeded
+ *  - LE_IN_PROGRESS   Secure HandShake still in progress
  *  - LE_BAD_PARAMETER Invalid parameter
  *  - LE_FAULT         Internal error
  *  - LE_TIMEOUT       Timeout during execution
@@ -1076,6 +1140,14 @@ le_result_t secSocket_Read
             {
                 return LE_TIMEOUT;
             }
+#ifdef MK_CONFIG_THIN_MODEM
+            else if (count == MBEDTLS_ERR_SSL_RECEIVED_NEW_SESSION_TICKET)
+            {
+                contextPtr->mbedtls_errcode = 0;
+                LE_ERROR("Recived NEW session ticket error, will be ignored and tried again");
+                return LE_IN_PROGRESS;
+            }
+#endif
         }
         LE_INFO("ERROR on reading data from stream");
         return LE_FAULT;
@@ -1102,6 +1174,37 @@ bool secSocket_IsDataAvailable
 
     LE_ASSERT(contextPtr != NULL);
     return (mbedtls_ssl_get_bytes_avail(&(contextPtr->sslCtx)) != 0);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set the cipher suites to the secure socket context.
+ *
+ * @return
+ *  - LE_OK            The function succeeded
+ *  - LE_FAULT         Failure
+ */
+//--------------------------------------------------------------------------------------------------
+void secSocket_SetTlsVersion
+(
+    secSocket_Ctx_t*  ctxPtr,           ///< [INOUT] Secure socket context pointer
+    uint8_t           tlsVersion        ///< [IN] Supported TLS version (Minor version number)
+)
+{
+#ifdef MK_CONFIG_THIN_MODEM
+    MbedtlsCtx_t    *contextPtr = (MbedtlsCtx_t *) ctxPtr;
+
+    LE_ASSERT(contextPtr != NULL);
+    LE_DEBUG("Setting TLS minor version: %d", tlsVersion);
+
+    // If +ksslcrypto profile index 0 is selected, the module would send all the approved cipher
+    // suites to the server, so the server can check its own supported cipher suites and pick one
+    // that is supported by both parties. If other profile index is selected, the module would send
+    // the specified cipher suite to the server.
+    contextPtr->tlsVersion = tlsVersion;
+#else
+    LE_ERROR("Changing TLS version isn't supported for this platform");
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------

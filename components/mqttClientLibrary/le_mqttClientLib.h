@@ -86,6 +86,7 @@ struct le_mqttClient_Configuration
     const uint8_t   *ownPrivateKeyPtr;      ///< Security own private key pointer
     size_t           ownPrivateKeyLen;      ///< Length in byte of own private key
     const char      *alpnList;              ///< ALPN Protocol name
+    uint8_t          tlsVersion;            ///< Supported TLS version (Minor version number)
 #endif
 };
 

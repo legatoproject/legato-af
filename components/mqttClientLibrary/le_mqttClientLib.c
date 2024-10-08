@@ -590,7 +590,8 @@ LE_SHARED le_mqttClient_SessionRef_t le_mqttClient_CreateSession
                 configPtr->ownCertLen,
                 configPtr->ownPrivateKeyPtr,
                 configPtr->ownPrivateKeyLen,
-                configPtr->alpnList
+                configPtr->alpnList,
+                configPtr->tlsVersion
 #endif
                 );
 

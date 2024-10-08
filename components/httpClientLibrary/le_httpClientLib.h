@@ -724,6 +724,23 @@ LE_SHARED le_result_t le_httpClient_Resume
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Set TLS version
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t le_httpClient_SetTLSVersion
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    uint8_t              tlsVersion       ///< [IN] Minor version of TLS
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get tls error code
  *
  * @note Get tls error code

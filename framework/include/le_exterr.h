@@ -40,6 +40,7 @@ typedef enum
     EXT_TLS_SET_AUTH_ERR = 0x0200,                  //!< Failed to set tls authentication type
     EXT_TLS_SET_CIPHER_SUITE_ERR,                   //!< Failed to set tls cipher suite
     EXT_TLS_SET_ALPN_ERR,                           //!< Failed to set tls ALPN protocol list
+    EXT_TLS_SET_VERSION_ERR,                        //!< Failed to set tls version
     // SOCKET
     EXT_SOC_GET_DNS_QUERY_ERR = 0x0300,             //!< Failed to query IP address of server
     EXT_SOC_SET_CNX_TIMEOUT_ERR,                    //!< Failed to set connection timeout

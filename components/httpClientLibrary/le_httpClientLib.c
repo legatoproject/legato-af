@@ -1032,9 +1032,9 @@ static void HttpClientStateMachine
                     // - Network drop tears down the connection resulting in POLLIN event reported
                     //   continuously
                     status = le_socket_Read(contextPtr->socketRef, &tmp, &len);
-                    if ((!len) ||  (status != LE_OK))
+                    if ((len == 0) ||  ((status != LE_OK) && (status != LE_IN_PROGRESS)))
                     {
-                        LE_INFO("Connection teared down");
+                        LE_INFO("Connection teared down: %d", status);
 
                         le_httpClient_Stop(contextPtr->reference);
                         if (contextPtr->eventCb)
@@ -1451,6 +1451,39 @@ le_result_t le_httpClient_SetAuthType
     }
 
     return le_socket_SetAuthType(contextPtr->socketRef, auth);
+}
+
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set TLS version
+ *
+ * @return
+ *  - LE_OK            Function success
+ *  - LE_BAD_PARAMETER Invalid parameter
+ *  - LE_FORMAT_ERROR  Invalid certificate
+ *  - LE_FAULT         Internal error
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_httpClient_SetTLSVersion
+(
+    le_httpClient_Ref_t  ref,             ///< [IN] HTTP session context reference
+    uint8_t              tlsVersion       ///< [IN] Minor version of TLS
+)
+{
+#ifdef MK_CONFIG_THIN_MODEM
+    HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
+    if (contextPtr == NULL)
+    {
+        LE_ERROR("Reference not found: %p", ref);
+        return LE_BAD_PARAMETER;
+    }
+
+    return le_socket_SetTlsVersion(contextPtr->socketRef, tlsVersion);
+#else
+    LE_ERROR("Setting TLS version isn't supported by this platform");
+    return LE_FAULT;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------
