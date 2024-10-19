@@ -114,6 +114,21 @@ FUNCTION le_result_t Start
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * Abort a package download from a 3rd party server
+ *
+ * This will terminate download session to abort download job.
+ *
+ * @return
+ *      - LE_OK on success.
+ *      - LE_FAULT on failure.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t Abort
+(
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Get the current state of TPF service.
  *
  * @return

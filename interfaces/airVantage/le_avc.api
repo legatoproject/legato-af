@@ -724,7 +724,8 @@ ENUM Status
                             ///< bootstrap server failed
     CERTIFICATION_OK,       ///< Package is certified sent by a trusted server
     CERTIFICATION_KO,       ///< Package is not certified sent by a trusted server
-    DOWNLOAD_TIMEOUT        ///< Download timeout
+    DOWNLOAD_TIMEOUT,       ///< Download timeout
+    DOWNLOAD_ABORTED        ///< Download has aborted
 };
 
 //--------------------------------------------------------------------------------------------------
