@@ -105,6 +105,7 @@ typedef void (*le_mqttClient_EventFunc_t)
     char*                        message,       ///< [IN] Event message
                                                 ///  (Only set for LE_MQTT_CLIENT_MSG_EVENT
                                                 ///   event type)
+    size_t                       msgLen,        ///< [IN] Length of message
     void                        *contextPtr     ///< [IN] User data that was associated at callback
                                                 ///  registration.
 );

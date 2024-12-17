@@ -209,6 +209,7 @@ static void MessageAsyncRecvHandler
                                 LE_MQTT_CLIENT_MSG_EVENT,
                                 topic,
                                 msg,
+                                length,
                                 sessionRef->contextPtr);
     }
 }
@@ -297,6 +298,7 @@ discon:
                                     LE_MQTT_CLIENT_CONNECTION_DOWN,
                                     NULL,
                                     NULL,
+                                    0,
                                     sessionRef->contextPtr);
         }
     }
@@ -357,6 +359,7 @@ discon:
                             LE_MQTT_CLIENT_CONNECTION_DOWN,
                             NULL,
                             NULL,
+                            0,
                             sessionRef->contextPtr);
 }
 
@@ -707,6 +710,7 @@ LE_SHARED le_result_t le_mqttClient_StartSession
                                 LE_MQTT_CLIENT_CONNECTION_UP,
                                 NULL,
                                 NULL,
+                                0,
                                 sessionRef->contextPtr);
     }
 
