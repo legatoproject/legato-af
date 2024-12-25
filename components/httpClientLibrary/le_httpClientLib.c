@@ -1322,7 +1322,6 @@ le_result_t le_httpClient_AddCertificate
     size_t               certificateLen   ///< [IN] Certificate length
 )
 {
-    le_result_t status;
     HttpSessionCtx_t *contextPtr = (HttpSessionCtx_t *)le_ref_Lookup(HttpSessionRefMap, ref);
     if (contextPtr == NULL)
     {
@@ -1330,17 +1329,7 @@ le_result_t le_httpClient_AddCertificate
         return LE_BAD_PARAMETER;
     }
 
-    status = le_socket_AddCertificate(contextPtr->socketRef, certificatePtr, certificateLen);
-    if (status == LE_OK)
-    {
-        contextPtr->isSecure = true;
-    }
-    else
-    {
-        contextPtr->isSecure = false;
-    }
-
-    return status;
+    return le_socket_AddCertificate(contextPtr->socketRef, certificatePtr, certificateLen);
 }
 
 //--------------------------------------------------------------------------------------------------
