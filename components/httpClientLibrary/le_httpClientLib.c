@@ -1481,8 +1481,8 @@ le_result_t le_httpClient_SetTLSVersion
 
     return le_socket_SetTlsVersion(contextPtr->socketRef, tlsVersion);
 #else
-    LE_ERROR("Setting TLS version isn't supported by this platform");
-    return LE_FAULT;
+    LE_WARN("Setting TLS version isn't supported by this platform. Ignoring it.");
+    return LE_OK;
 #endif
 }
 

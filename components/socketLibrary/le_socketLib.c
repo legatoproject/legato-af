@@ -659,8 +659,8 @@ le_result_t le_socket_SetTlsVersion
     secSocket_SetTlsVersion(contextPtr->secureCtxPtr, tlsVersion);
     return LE_OK;
 #else
-    LE_ERROR("Setting TLS version isn't supported by this platform");
-    return LE_FAULT;
+    LE_ERROR("Setting TLS version isn't supported by this platform. Ignoring it.");
+    return LE_OK;
 #endif
 }
 

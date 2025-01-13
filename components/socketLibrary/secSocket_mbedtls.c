@@ -1178,11 +1178,7 @@ bool secSocket_IsDataAvailable
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the cipher suites to the secure socket context.
- *
- * @return
- *  - LE_OK            The function succeeded
- *  - LE_FAULT         Failure
+ * Set the tls version to the secure socket context.
  */
 //--------------------------------------------------------------------------------------------------
 void secSocket_SetTlsVersion
@@ -1203,7 +1199,7 @@ void secSocket_SetTlsVersion
     // the specified cipher suite to the server.
     contextPtr->tlsVersion = tlsVersion;
 #else
-    LE_ERROR("Changing TLS version isn't supported for this platform");
+    LE_WARN("Changing TLS version isn't supported for this platform. Ignoring it.");
 #endif
 }
 

@@ -256,11 +256,7 @@ bool secSocket_IsDataAvailable
 
 //--------------------------------------------------------------------------------------------------
 /**
- * Set the cipher suites to the secure socket context.
- *
- * @return
- *  - LE_OK            The function succeeded
- *  - LE_FAULT         Failure
+ * Set the tls version to the secure socket context.
  */
 //--------------------------------------------------------------------------------------------------
 void secSocket_SetTlsVersion
