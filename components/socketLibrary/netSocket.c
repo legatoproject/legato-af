@@ -122,14 +122,39 @@ static le_result_t GetSrcSocketInfo
  *
  */
 //--------------------------------------------------------------------------------------------------
-static le_result_t GetDefaultInterfaceinfo(char* iface_name, char* mdc_ipAddressStr)
+static le_result_t GetInterfaceInfo(char* iface_name, char* mdc_ipAddressStr)
 {
-    le_mdc_ProfileRef_t mdc_ProfileRef = le_mdc_GetProfile((uint32_t)LE_MDC_DEFAULT_PROFILE);
-
-    if (le_mdc_GetInterfaceName(mdc_ProfileRef, iface_name, LE_MDC_INTERFACE_NAME_MAX_BYTES)
-        != LE_OK)
+    le_mdc_ProfileRef_t mdc_ProfileRef = NULL;
+    le_mdc_ProfileInfo_t profileList[LE_MDC_PROFILE_LIST_ENTRY_MAX];
+    size_t listLen = LE_MDC_PROFILE_LIST_ENTRY_MAX;
+    le_result_t ret = le_mdc_GetProfileList(profileList, &listLen);
+    if ((ret != LE_OK) || (listLen == 0))
     {
-        LE_DEBUG("Cannot get interface name");
+        LE_ERROR("Failed to get cellular's profile list; error: %d", ret);
+    }
+
+    ret = LE_FAULT;
+    for (int i = 0; i < listLen; i++)
+    {
+        LE_DEBUG("Cellular profile retrieved index %i, type %i, name %s",
+                profileList[i].index, profileList[i].type, profileList[i].name);
+        mdc_ProfileRef = le_mdc_GetProfile(profileList[i].index);
+        if (mdc_ProfileRef)
+        {
+            ret = le_mdc_GetInterfaceName(mdc_ProfileRef, iface_name, LE_MDC_INTERFACE_NAME_MAX_BYTES);
+            if (LE_OK == ret)
+            {
+                LE_DEBUG("Get interface name on mdc_profile: %d", profileList[i].index);
+                break;
+            }
+            else
+            {
+                LE_DEBUG("Fail to get interface name on mdc_profile: %d", profileList[i].index);
+            }
+        }
+    }
+    if (LE_OK != ret)
+    {
         return LE_FAULT;
     }
 
@@ -211,7 +236,7 @@ le_result_t netSocket_Connect
     char iface_name[LE_MDC_INTERFACE_NAME_MAX_BYTES] = {0};
     char mdc_ipAddressStr[LE_MDC_IPV6_ADDR_MAX_BYTES] = {0};
 
-    if (LE_OK != GetDefaultInterfaceinfo(iface_name, mdc_ipAddressStr))
+    if (LE_OK != GetInterfaceInfo(iface_name, mdc_ipAddressStr))
     {
         LE_ERROR("Cannot get the details information of iface %s ", iface_name);
         return LE_UNAVAILABLE;
