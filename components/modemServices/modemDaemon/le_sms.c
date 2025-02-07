@@ -95,7 +95,7 @@ static le_sms_MsgRef_t MsgRef;
 static HandlerCtx_t* HandlerCtxPtr = NULL;
   #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
-#else // MK_CONFIG_SMS_LIGHT
+#else // END MK_CONFIG_SMS_LIGHT
 //--------------------------------------------------------------------------------------------------
 /**
  * Maximum Message IDs returned by the List SMS messages command.
@@ -2247,7 +2247,7 @@ static void CloseSessionEventHandler
         result = le_ref_NextNode(iterRef);
     }
 }
-#endif // MK_CONFIG_SMS_LIGHT
+#endif
 
 #ifndef MK_CONFIG_DISABLE_SMS_INDICATION
 //--------------------------------------------------------------------------------------------------
@@ -2266,7 +2266,7 @@ static void NewSmsHandler
     {
         HandlerCtxPtr->handlerFuncPtr(MsgRef, HandlerCtxPtr->userContext);
     }
-#else // MK_CONFIG_SMS_LIGHT
+#else // END MK_CONFIG_SMS_LIGHT
     pa_sms_Pdu_t messagePdu;
     memset(&messagePdu, 0, sizeof(pa_sms_Pdu_t));
     le_result_t res = LE_OK;
@@ -2401,7 +2401,7 @@ static void NewSmsHandler
 
     LE_DEBUG("All the registered client's handlers notified with objPtr %p, Obj %p",
              &newSmsMsgObjPtr, newSmsMsgObjPtr);
-#endif // MK_CONFIG_SMS_LIGHT
+#endif
 }
 #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 
@@ -5018,7 +5018,7 @@ le_result_t le_sms_GetTpSt
 
     return LE_OK;
 }
-#else
+#else // END NOT DEFINED MK_CONFIG_SMS_LIGHT
 //--------------------------------------------------------------------------------------------------
 /**
  * Send a text message.
@@ -5109,9 +5109,16 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
     // Create a safe reference for this object
     HandlerCtxPtr->handlerRef     = (void *)HandlerCtxPtr;
 
+    // Register a handler function for new message indication.
+    if (pa_sms_SetNewMsgHandler(NewSmsHandler) != LE_OK)
+    {
+        LE_KILL_CLIENT("Add new message indication handler failed");
+        return NULL;
+    }
+
     return HandlerCtxPtr->handlerRef;
 
-#else // MK_CONFIG_SMS_LIGHT
+#else // END MK_CONFIG_SMS_LIGHT
     // search the sessionCtx; create it if doesn't exist.
     SessionCtxNode_t* sessionCtxPtr = GetSessionCtx(le_sms_GetClientSessionRef());
     if (!sessionCtxPtr)
@@ -5132,7 +5139,7 @@ le_sms_RxMessageHandlerRef_t le_sms_AddRxMessageHandler
     le_dls_Queue(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
 
     return handlerCtxPtr->handlerRef;
-#endif // MK_CONFIG_SMS_LIGHT
+#endif
 #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 }
 
@@ -5153,6 +5160,13 @@ void le_sms_RemoveRxMessageHandler
     return;
 #else
 #ifdef MK_CONFIG_SMS_LIGHT
+    // De-Register a handler function for new message indication.
+    if (pa_sms_ClearNewMsgHandler() != LE_OK)
+    {
+        LE_ERROR("Remove new message indication handler failed");
+        return;
+    }
+
     if (!HandlerCtxPtr)
     {
         LE_ERROR("No subscrition was done !");
@@ -5168,7 +5182,7 @@ void le_sms_RemoveRxMessageHandler
     le_mem_Release(HandlerCtxPtr);
     HandlerCtxPtr = NULL;
 
-#else // MK_CONFIG_SMS_LIGHT
+#else // END MK_CONFIG_SMS_LIGHT
     // Get the hander context
     HandlerCtxNode_t* handlerCtxPtr = le_ref_Lookup(HandlerRefMap, handlerRef);
     if (NULL == handlerCtxPtr)
@@ -5190,7 +5204,7 @@ void le_sms_RemoveRxMessageHandler
     // Remove the handler node from the session context.
     le_dls_Remove(&(sessionCtxPtr->handlerList), &(handlerCtxPtr->link));
     le_mem_Release(handlerCtxPtr);
-#endif // MK_CONFIG_SMS_LIGHT
+#endif
 #endif // MK_CONFIG_DISABLE_SMS_INDICATION
 }
 
@@ -5214,7 +5228,7 @@ le_result_t le_sms_Init
                                         SMS_MAX_SESSION,
                                         sizeof(HandlerCtx_t));
   #endif
-#else // MK_CONFIG_SMS_LIGHT
+#else // END MK_CONFIG_SMS_LIGHT
     // Initialize the smsPdu module.
     smsPdu_Initialize();
 
@@ -5285,7 +5299,6 @@ le_result_t le_sms_Init
     le_thread_Start(le_thread_Create(WDOG_THREAD_NAME_SMS_COMMAND_SENDING, SmsSenderThread, NULL));
 
     le_sem_Wait(SmsSem);
-#endif // MK_CONFIG_SMS_LIGHT
 
 #ifndef MK_CONFIG_DISABLE_SMS_INDICATION
     // Register a handler function for new message indication.
@@ -5294,6 +5307,7 @@ le_result_t le_sms_Init
         LE_CRIT("Add pa_sms_SetNewMsgHandler failed");
         return LE_FAULT;
     }
+#endif
 #endif
 
     return LE_OK;
