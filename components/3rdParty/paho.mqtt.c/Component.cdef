@@ -13,8 +13,21 @@ requires:
     file:
     {
         /usr/lib/ssl/openssl.cnf    /usr/lib/ssl/
-        /usr/lib/libssl.so.1.0.2    /usr/lib/
-        /usr/lib/libcrypto.so.1.0.2 /usr/lib/
+        #if file_exists(/usr/lib/libssl.so.3)
+            /usr/lib/libssl.so.3        /usr/lib/
+            /usr/lib/libcrypto.so.3     /usr/lib/
+        #elif file_exists(/usr/lib/libssl.so.1.1)
+            /usr/lib/libssl.so.1.1      /usr/lib/
+            /usr/lib/libcrypto.so.1.1   /usr/lib/
+        #elif file_exists(/usr/lib/libssl.so.1.0.2)
+            /usr/lib/libssl.so.1.0.2    /usr/lib/
+            /usr/lib/libcrypto.so.1.0.2 /usr/lib/
+        #elif file_exists(/usr/lib/libssl.so.1.0.0)
+            /usr/lib/libssl.so.1.0.0    /usr/lib/
+            /usr/lib/libcrypto.so.1.0.0 /usr/lib/
+        #else
+            /openssl/not/found /lib/
+        #endif
     }
 }
 
