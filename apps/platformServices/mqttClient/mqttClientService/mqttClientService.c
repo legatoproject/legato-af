@@ -792,7 +792,8 @@ static void ConnectionLostHandler
     char* causePtr    ///< paho library doesn't currently populate this
 )
 {
-    le_event_Report(ConnectionLostThreadEventId, &contextPtr, sizeof(void*));
+    mqtt_SessionRef_t* sessionRefPtr = (mqtt_SessionRef_t*)contextPtr;
+    le_event_Report(ConnectionLostThreadEventId, &sessionRefPtr, sizeof(void*));
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -806,7 +807,9 @@ static void ConnectionLostEventHandler
     void* reportPtr
 )
 {
-    mqtt_Session* s = le_ref_Lookup(SessionRefMap, reportPtr);
+    mqtt_SessionRef_t* sessionRefPtr = (mqtt_SessionRef_t*)reportPtr;
+    mqtt_Session* s = le_ref_Lookup(SessionRefMap, (void*)*sessionRefPtr);
+
     if (s == NULL)
     {
         LE_KILL_CLIENT("Session doesn't exist");
