@@ -649,6 +649,9 @@ le_result_t secSocket_Init
     if ((ret = mbedtls_ctr_drbg_seed(&(contextPtr->ctrDrbg), mbedtls_entropy_func,
             &(contextPtr->entropy), NULL, 0)) != 0) {
         LE_ERROR("mbedtls_ctr_drbg_seed returned 0x%4x", ret);
+        mbedtls_entropy_free(&(contextPtr->entropy));
+        mbedtls_ctr_drbg_free(&(contextPtr->ctrDrbg));
+        le_mem_Release(contextPtr);
         return LE_FAULT;
     }
     contextPtr->tlsVersion = MBEDTLS_SSL_MINOR_VERSION_4;
@@ -657,6 +660,9 @@ le_result_t secSocket_Init
     psa_status_t psa_init_status = psa_crypto_init();
     if (psa_init_status != PSA_SUCCESS) {
         LE_ERROR("psa_crypto_init() returned %ld", psa_init_status);
+        mbedtls_entropy_free(&(contextPtr->entropy));
+        mbedtls_ctr_drbg_free(&(contextPtr->ctrDrbg));
+        le_mem_Release(contextPtr);
         return LE_FAULT;
     }
 #endif
