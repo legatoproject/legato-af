@@ -465,28 +465,6 @@ le_result_t SetupTLSParams
         }
     }
 
-    if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
-    {
-        contextPtr->mbedtls_errcode = ret;
-        LE_ERROR("Failed! mbedtls_ssl_setup returned %d", ret);
-        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
-        {
-            return LE_NO_MEMORY;
-        }
-        return LE_FAULT;
-    }
-
-    if ((ret = mbedtls_ssl_set_hostname(&(contextPtr->sslCtx), hostPtr)) != 0)
-    {
-        contextPtr->mbedtls_errcode = ret;
-        LE_ERROR("Failed! mbedtls_ssl_set_hostname returned %d", ret);
-        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
-        {
-            return LE_NO_MEMORY;
-        }
-        return LE_FAULT;
-    }
-
 #ifdef MK_CONFIG_THIN_MODEM
     if (isTls13Higher)
     {
@@ -511,8 +489,6 @@ le_result_t SetupTLSParams
     }
     // Set the RNG function
     mbedtls_ssl_conf_rng(&(contextPtr->sslConf), mbedtls_ctr_drbg_random, &(contextPtr->ctrDrbg));
-    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
-                        mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
 #else
     //Set the minimum accepted SSL/TLS protocol version
     mbedtls_ssl_conf_min_version( &(contextPtr->sslConf), MBEDTLS_SSL_MAJOR_VERSION_3,
@@ -522,6 +498,34 @@ le_result_t SetupTLSParams
                                                        MBEDTLS_SSL_MINOR_VERSION_3);
     // Set the RNG function
     mbedtls_port_SSLSetRNG(&contextPtr->sslConf);
+#endif
+
+    if ((ret = mbedtls_ssl_setup(&(contextPtr->sslCtx), &(contextPtr->sslConf))) != 0)
+    {
+        contextPtr->mbedtls_errcode = ret;
+        LE_ERROR("Failed! mbedtls_ssl_setup returned %d", ret);
+        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
+        {
+            return LE_NO_MEMORY;
+        }
+        return LE_FAULT;
+    }
+
+    if ((ret = mbedtls_ssl_set_hostname(&(contextPtr->sslCtx), hostPtr)) != 0)
+    {
+        contextPtr->mbedtls_errcode = ret;
+        LE_ERROR("Failed! mbedtls_ssl_set_hostname returned %d", ret);
+        if (MBEDTLS_ERR_SSL_ALLOC_FAILED == ret)
+        {
+            return LE_NO_MEMORY;
+        }
+        return LE_FAULT;
+    }
+
+#ifdef MK_CONFIG_THIN_MODEM
+    mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
+                        mbedtls_net_send, mbedtls_net_recv, mbedtls_net_recv_timeout);
+#else
     mbedtls_ssl_set_bio(&(contextPtr->sslCtx), &(contextPtr->sock),
                         mbedtls_net_send, NULL, mbedtls_net_recv_timeout);
 #endif
