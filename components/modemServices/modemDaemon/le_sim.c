@@ -3500,3 +3500,41 @@ le_result_t le_sim_SetPower
 
     return pa_sim_SetPower(power);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Enable or disable SIM detection
+ *
+ * @return
+ *      - LE_OK             Function succeeded.
+ *      - LE_FAULT          Function failed.
+ *      - LE_UNSUPPORTED    SIM detection is not supported on this device.
+ *
+ * @note SIM detection is hardware-specific.
+ *       Please check the return value to make sure this is functional.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SetDetection
+(
+    bool    enable     ///< [IN] True if the feature needs to be enabled. False otherwise.
+)
+{
+    return pa_sim_SetDetection(enable);
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Examine if the hardware-specific SIM detection is supported.
+ *
+ * @return
+ *      - LE_OK        Function succeeded.
+ *      - LE_FAULT     Function failed.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_IsSimDetSupported
+(
+    bool* supportedPtr ///< [OUT] True if SIM detection is supported. False otherwise.
+)
+{
+    return pa_sim_IsSimDetSupported(supportedPtr);
+}
