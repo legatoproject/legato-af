@@ -220,6 +220,7 @@ config ENABLE_SECSTORE_ADMIN
 
 config SECSTORE_IKS_BACKEND
   bool "Use IoT Keystore as SecStore encryption engine"
+  default n if TARGET_WP77XX
   default y
   ---help---
     Use IoT Keystore as SecStore back-end to encrypt/decrypt the user data.
