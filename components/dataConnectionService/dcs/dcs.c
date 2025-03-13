@@ -339,8 +339,14 @@ le_result_t le_dcs_GetState
     }
     else
     {
-        (void)dcsTech_GetNetInterface(channelDb->technology, channelRef, interfaceName,
-                                         interfaceNameSize);
+        ret = dcsTech_GetNetInterface(channelDb->technology, channelRef, interfaceName, interfaceNameSize);
+        if (LE_OK != ret)
+        {
+            LE_ERROR("Failed to get the interface name of channel %s of technology %s", channelDb->channelName,
+                     dcs_ConvertTechEnumToName(channelDb->technology));
+            return ret;
+        }
+
         if (LE_OK == net_GetNetIntfState(interfaceName, &netstate))
         {
             LE_DEBUG("Network interface %s has state %s", interfaceName, netstate ? "up" : "down");
