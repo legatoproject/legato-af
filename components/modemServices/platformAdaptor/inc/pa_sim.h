@@ -819,4 +819,37 @@ LE_SHARED le_result_t pa_sim_IsSimDetSupported
 (
     bool* supportedPtr ///< [OUT] True if SIM detection is supported. False otherwise.
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * pa_sim_GetHwConfigHandler command handler
+ *
+ * @return
+ *  - LE_OK             The function succeeded
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_GetHwConfigHandler
+(
+    le_sim_SimDetCfg_t* config      ///< [OUT] Pointer of Sim detect config structure
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * pa_sim_SetHwConfigHandler command handler
+ *
+ * @return
+ *  - LE_OK             The function succeeded
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist
+ *  - LE_BAD_PARAMETER  A parameter is invalid.
+ *  - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+LE_SHARED le_result_t pa_sim_SetHwConfigHandler
+(
+    const le_sim_SimDetCfg_t *config    ///< [IN] Pointer of Sim detect config structure
+);
+
 #endif // LEGATO_PASIM_INCLUDE_GUARD

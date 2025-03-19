@@ -558,6 +558,13 @@ DEFINE  EID_BYTES  = (EID_LEN+1);
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * SIM detect config GPIO pin number
+ */
+//--------------------------------------------------------------------------------------------------
+DEFINE DET_CFG_GPIO_PIN_16 = (16);
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Reference type for FPLMN list.
  */
 //--------------------------------------------------------------------------------------------------
@@ -695,6 +702,65 @@ ENUM StkRefreshStage
 
 //--------------------------------------------------------------------------------------------------
 /**
+ * SIM detect config mode
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SimDetCfgModeTypes
+{
+    DET_CFG_MODE_INVALID = -1,
+    DET_CFG_MODE_RESET,
+    DET_CFG_MODE_SET_SIM1
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM detect config detect mode
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SimDetCfgDetModeTypes
+{
+    DET_CFG_DET_MODE_EMPTY,
+    DET_CFG_DET_MODE_DISABLE,
+    DET_CFG_DET_MODE_GPIO
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM detect config GPIO status
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SimDetCfgPinTypes
+{
+    DET_CFG_PIN_EMPTY
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM detect config GPIO pull status
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SimDetCfgPullTypes
+{
+    DET_CFG_PULL_EMPTY,
+    DET_CFG_PULL_DISABLE,
+    DET_CFG_PULL_UP,
+    DET_CFG_PULL_DOWN
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * SIM detect config Polarity status
+ */
+//--------------------------------------------------------------------------------------------------
+ENUM SimDetCfgPolarityTypes
+{
+    DET_CFG_POLARITY_EMPTY,
+    DET_CFG_POLARITY_POS,
+    DET_CFG_POLARITY_NEG
+};
+
+//--------------------------------------------------------------------------------------------------
+/**
  * Handler for sim state changes.
  *
  */
@@ -773,6 +839,20 @@ HANDLER IccidChangeHandler
     Id       simId IN,               ///< The SIM identifier.
     string   iccid[ICCID_LEN] IN     ///< ICCID
 );
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Structure for Sim detect config.
+ */
+//--------------------------------------------------------------------------------------------------
+STRUCT SimDetCfg
+{
+    int8 mode;
+    int8 detect_mode;
+    int8 detect_pin;
+    int8 detect_pull;
+    int8 detect_polarity;
+};
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -1599,4 +1679,36 @@ FUNCTION le_result_t SetDetection
 FUNCTION le_result_t IsSimDetSupported
 (
     bool supported OUT            ///< True if SIM detection is supported. False otherwise.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get HW_CFG content from file system
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_FAULT          On failure.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t GetHwConfigHandler
+(
+    SimDetCfg sim OUT                        ///< SIM detect config.
+);
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set HW_CFG content from file system
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_FAULT          On failure.
+ *      - LE_BAD_PARAMETER  A parameter is invalid.
+ *      - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+FUNCTION le_result_t SetHwConfigHandler
+(
+    SimDetCfg sim IN                        ///< SIM detect config.
 );

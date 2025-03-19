@@ -751,3 +751,43 @@ le_result_t pa_sim_IsSimDetSupported
     *supportedPtr = false;
     return LE_OK;
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * pa_sim_GetHwConfigHandler command handler
+ *
+ * @return
+ *  - LE_OK             On success.
+ *  - LE_FAULT          On failure.
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist.
+ *  - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_GetHwConfigHandler
+(
+    le_sim_SimDetCfg_t *config      ///< [OUT] Pointer of Sim detect config structure
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * pa_sim_SetHwConfigHandler command handler
+ *
+ * @return
+ *  - LE_OK             On success.
+ *  - LE_FAULT          On failure.
+ *  - LE_NOT_FOUND      The file does not exists or a directory in the path does not exist.
+ *  - LE_UNSUPPORTED    The platform does not support this operation.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t pa_sim_SetHwConfigHandler
+(
+    const le_sim_SimDetCfg_t* config      ///< [IN] Pointer of Sim detect config structure
+)
+{
+    LE_ERROR("Unsupported function called");
+    return LE_UNSUPPORTED;
+}

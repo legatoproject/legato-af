@@ -3538,3 +3538,55 @@ le_result_t le_sim_IsSimDetSupported
 {
     return pa_sim_IsSimDetSupported(supportedPtr);
 }
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Get HW_CFG content from file system
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_FAULT          On failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_GetHwConfigHandler
+(
+    le_sim_SimDetCfg_t* sim      ///< [OUT] Structure of Simdetcfg
+)
+{
+    le_result_t result;
+
+    result = pa_sim_GetHwConfigHandler(sim);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Get HW_CFG failed");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
+
+//--------------------------------------------------------------------------------------------------
+/**
+ * Set HW_CFG content from file system
+ *
+ * @return
+ *      - LE_OK             On success.
+ *      - LE_FAULT          On failure.
+ */
+//--------------------------------------------------------------------------------------------------
+le_result_t le_sim_SetHwConfigHandler
+(
+    const le_sim_SimDetCfg_t* sim      ///< [IN] Structure of Simdetcfg
+)
+{
+    le_result_t result;
+
+    result = pa_sim_SetHwConfigHandler(sim);
+    if (LE_OK != result)
+    {
+        LE_ERROR("Set HW_CFG failed");
+        return LE_FAULT;
+    }
+
+    return LE_OK;
+}
