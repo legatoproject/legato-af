@@ -445,7 +445,7 @@ le_result_t le_socket_AddCertificate
     {
         // Need to initialize the secure socket before adding the certificate
         status = secSocket_Init(&(contextPtr->secureCtxPtr));
-        contextPtr -> isSecure = true;
+        contextPtr->isSecure = true;
         if (status != LE_OK)
         {
             LE_ERROR("Unable to initialize the secure socket");
@@ -779,7 +779,6 @@ le_result_t le_socket_Connect
         status = secSocket_Connect(contextPtr->secureCtxPtr, contextPtr->host,
                                    contextPtr->port, contextPtr->srcAddr,
                                    contextPtr->type, &(contextPtr->fd));
-        contextPtr->isSecure = (status == LE_OK);
 #endif
     }
     else
