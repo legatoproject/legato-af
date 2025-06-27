@@ -319,8 +319,14 @@ $(LIB_DIR)/microSupervisor.o: $(RTOS_SRC_DIR)/microSupervisor/microSupervisor.c 
 	$(L) CC $@
 	$(Q)$(CCACHE) $(CC) $(TARGET_CC_SYSROOT) -o $@ -c $< $(CFLAGS)
 
+ifneq ($(LE_CONFIG_FILETAG),)
+ifneq ($(LE_CONFIG_FILETAG),0)
+$(LIB_DIR)/microSupervisor.o: CFLAGS += -D__FILETAG__=\"$(shell echo "$(<F)" | rev | cut -c-$(LE_CONFIG_FILETAG) | rev)\"
+endif
+endif
+
 ifeq ($(LE_CONFIG_FILEID),y)
-$(LIB_DIR)/microSupervisor.o: CFLAGS := $(CFLAGS) -D__FILEID__=0
+$(LIB_DIR)/microSupervisor.o: CFLAGS += -D__FILEID__=0
 endif
 
 $(BIN_DIR)/startSystem: $(START_SRCS) | liblegato $(PA_START_LIB) $(BIN_DIR)

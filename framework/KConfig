@@ -48,6 +48,15 @@ config FILEID_RESERVED
   ---help---
   Set the reserved range of __FILEID__ for static files.
 
+config FILETAG
+  int "Add __FILETAG__ for each compiled C/Cpp file (EXPERIMENTAL)"
+  depends on EXPERIMENTAL
+  range 0 60
+  default 0
+  ---help---
+  Provide a C define __FILETAG__ for each compiled C/Cpp file
+  which can be used in debug information.
+
 config BUILD_TARGET_TOOLS
   bool "Build on-target command-line tools"
   default n if CUSTOM_OS

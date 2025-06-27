@@ -157,7 +157,14 @@ rule Compile
   depfile = \$out.d
   command = $CCACHE $CC $depends_flags -c \$in -o \$out \$flags \$
             -DLE_COMPONENT_NAME=framework \$
-            -DLE_FILENAME=\`basename \$in\` \$
+            -DLE_FILENAME=\`basename \$in\` \$`
+if [[ -n "${LE_CONFIG_FILETAG}" && "$LE_CONFIG_FILETAG" != "0" ]]; then
+cat <<FILETAGFLAG
+
+            -D__FILETAG__=\\"\\\`basename \\\$in | rev | cut -c-$LE_CONFIG_FILETAG | rev\\\`\\" \$
+
+FILETAGFLAG
+fi`
             -I$LEGATO_ROOT/framework/include \$
             -I$LEGATO_ROOT/framework/liblegato
 

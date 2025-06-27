@@ -179,6 +179,7 @@ void BuildScriptGenerator_t::GenerateCFlags
 {
     const std::string& target = buildParams.target;
     std::string sysrootOption;
+    std::string fileTag = envVars::Get("LE_CONFIG_FILETAG");
 
     if (!buildParams.sysrootDir.empty())
     {
@@ -200,8 +201,12 @@ void BuildScriptGenerator_t::GenerateCFlags
     }
 
     script << "  -c $in -o $out "
-        " -DLE_FILENAME=`basename $in`" // Define the file name for the log macros.
-        " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
+        " -DLE_FILENAME=`basename $in`"; // Define the file name for the log macros.
+    if (!fileTag.empty() && fileTag != "0")
+    {
+        script << " -D__FILETAG__=\\\"`basename $in | rev | cut -c-" << fileTag << " | rev`\\\"";
+    }
+    script << " -DMK_TOOLS_BUILD"; // Indicate build is being done by the mk tools.
     if (target != "localhost")
     {
         script << "  -DLEGATO_EMBEDDED";    // Indicate target is an embedded device (not a PC).
