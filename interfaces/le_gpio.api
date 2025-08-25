@@ -88,7 +88,7 @@
  * @verbatim
 bindings:
 {
-    ui.frontPanel.powerLed -> gpioService.le_gpio22
+    ui.frontPanel.powerLed -> gpioService.le_gpioPin22
 }
 @endverbatim
  *
