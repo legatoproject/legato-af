@@ -12,21 +12,28 @@ requires:
 
     file:
     {
-        /usr/lib/ssl/openssl.cnf    /usr/lib/ssl/
-        #if file_exists(/usr/lib/libssl.so.3)
+	#if file_exists(${LEGATO_SYSROOT}/usr/lib/ssl/openssl.cnf)
+	    /usr/lib/ssl/openssl.cnf    	/usr/lib/ssl/
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/ssl-1.1/openssl.cnf)
+	    /usr/lib/ssl-1.1/openssl.cnf	/usr/lib/ssl/
+	#else
+	    /openssl/cnf/not/found 		/usr/lib/ssl/
+	#endif
+
+	#if file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.3)
             /usr/lib/libssl.so.3        /usr/lib/
             /usr/lib/libcrypto.so.3     /usr/lib/
-        #elif file_exists(/usr/lib/libssl.so.1.1)
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.1.1)
             /usr/lib/libssl.so.1.1      /usr/lib/
             /usr/lib/libcrypto.so.1.1   /usr/lib/
-        #elif file_exists(/usr/lib/libssl.so.1.0.2)
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.1.0.2)
             /usr/lib/libssl.so.1.0.2    /usr/lib/
             /usr/lib/libcrypto.so.1.0.2 /usr/lib/
-        #elif file_exists(/usr/lib/libssl.so.1.0.0)
+        #elif file_exists(${LEGATO_SYSROOT}/usr/lib/libssl.so.1.0.0)
             /usr/lib/libssl.so.1.0.0    /usr/lib/
             /usr/lib/libcrypto.so.1.0.0 /usr/lib/
         #else
-            /openssl/not/found /lib/
+            /openssl/lib/not/found /lib/
         #endif
     }
 }
