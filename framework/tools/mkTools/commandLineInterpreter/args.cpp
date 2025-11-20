@@ -859,7 +859,7 @@ bool MatchesSaved
     }
 
     int i;
-    char lineBuff[1024];
+    char lineBuff[8 * 1024];
 
     for (i = 0; i < buildParams.argc; i++)
     {
