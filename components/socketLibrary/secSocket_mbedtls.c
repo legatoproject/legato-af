@@ -420,13 +420,9 @@ le_result_t SetupTLSParams
         }
     }
 
-    if (contextPtr->auth == AUTH_MUTUAL)
+    if ((contextPtr->auth == AUTH_MUTUAL) || (contextPtr->auth == AUTH_SERVER))
     {
         mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_REQUIRED);
-    }
-    else if (contextPtr->auth == AUTH_SERVER)
-    {
-        mbedtls_ssl_conf_authmode(&(contextPtr->sslConf), MBEDTLS_SSL_VERIFY_OPTIONAL);
     }
     else
     {
