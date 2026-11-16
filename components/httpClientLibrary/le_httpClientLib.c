@@ -75,6 +75,14 @@
 //--------------------------------------------------------------------------------------------------
 #define RESPONSE_BUFFER_SIZE        1024
 
+//--------------------------------------------------------------------------------------------------
+/**
+ * Size of the buffer used to discard unexpected data received while the client is idle. It is kept
+ * small because it is allocated on the stack of the thread running the HTTP client state machine.
+ */
+//--------------------------------------------------------------------------------------------------
+#define IDLE_DRAIN_BUFFER_SIZE      256
+
 
 //--------------------------------------------------------------------------------------------------
 /**
@@ -772,17 +780,20 @@ static le_result_t HandleHttpResponse
     {
         int read;
         needmore = http_data(&tinyCtxPtr->handler, data, (int)length, &read);
-        // If data read equals HEAD size but body is expected due to
-        // HTTP_GET command, then continue to read remaining data.
+        // tinyHTTP returns HEAD_CMD_ENDED when the headers are complete and end exactly at the
+        // end of the buffer. HEAD has no body, so the response ends here. For the other commands,
+        // keep reading if a body is expected: either a Content-Length > 0, or chunked encoding
+        // (tinyHTTP resets contentlength to 0 when chunked mode starts, so test the chunked flag
+        // too).
         if (HEAD_CMD_ENDED == needmore)
         {
             if ((HTTP_GET == contextPtr->command ||
                 HTTP_POST == contextPtr->command ||
                 HTTP_PUT == contextPtr->command ||
                 HTTP_DELETE == contextPtr->command) &&
-                tinyCtxPtr->handler.contentlength > 0)
+                ((tinyCtxPtr->handler.contentlength > 0) || tinyCtxPtr->handler.chunked))
             {
-                LE_DEBUG("HTTP_HEAD response received, continue reading data");
+                LE_DEBUG("Headers complete and body expected, continue reading data");
                 break;
             }
             else
@@ -1023,7 +1034,7 @@ static void HttpClientStateMachine
             default:
                 if (events & POLLIN)
                 {
-                    char tmp;
+                    char tmp[IDLE_DRAIN_BUFFER_SIZE];
                     size_t len = sizeof(tmp);
 
                     // There are two cases where flushing data from socket is needed:
@@ -1031,7 +1042,7 @@ static void HttpClientStateMachine
                     //   needs to be consumed by SSL layer before receiving POLLRDHUP event
                     // - Network drop tears down the connection resulting in POLLIN event reported
                     //   continuously
-                    status = le_socket_Read(contextPtr->socketRef, &tmp, &len);
+                    status = le_socket_Read(contextPtr->socketRef, tmp, &len);
                     if ((len == 0) ||  ((status != LE_OK) && (status != LE_IN_PROGRESS)))
                     {
                         LE_INFO("Connection teared down: %d", status);
@@ -1042,6 +1053,10 @@ static void HttpClientStateMachine
                             contextPtr->eventCb(contextPtr->reference,
                                                 LE_HTTP_CLIENT_EVENT_CLOSED);
                         }
+                    }
+                    else
+                    {
+                        LE_WARN("Discarded %d unexpected bytes in idle state", (int)len);
                     }
                 }
                 break;
