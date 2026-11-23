@@ -88,13 +88,13 @@ Legato uses [git-repo](https://code.google.com/p/git-repo/) as it is distributed
   ```bash
   $ mkdir workspace
   $ cd workspace
-  $ repo init -u git://github.com/legatoproject/manifest
+  $ repo init -u https://github.com/legatoproject/manifest
   $ repo sync
   ```
 
   You can also clone a specific release:
   ```bash
-  $ repo init -u git://github.com/legatoproject/manifest -m legato/releases/16.07.0.xml
+  $ repo init -u https://github.com/legatoproject/manifest -m legato/releases/16.07.0.xml
   $ repo sync
   ```
 
