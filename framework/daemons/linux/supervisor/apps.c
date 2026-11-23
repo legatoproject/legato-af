@@ -1363,8 +1363,8 @@ void apps_Shutdown
     // Deletes all inactive apps first.
     DeletesAllInactiveApp();
 
-    // Get the first app to stop.
-    le_dls_Link_t* appLinkPtr = le_dls_Peek(&ActiveAppsList);
+    // Get the first app to stop (taking from Tail to shutdown in opposite order as the startup one).
+    le_dls_Link_t* appLinkPtr = le_dls_PeekTail(&ActiveAppsList);
 
     if (appLinkPtr != NULL)
     {
